@@ -24716,7 +24716,7 @@ C
       go to 11
       endif
       h=xa(khi)-xa(klo)
-      if (h.eq.0.) pause 'bad xa input.'
+      if (h.eq.0.) stop 'bad xa input.'
       a=(xa(khi)-x)/h
       b=(x-xa(klo))/h
       y=a*ya(klo)+b*ya(khi)+
