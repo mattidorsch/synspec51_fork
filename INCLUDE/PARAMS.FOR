@@ -30,10 +30,10 @@ C
      *           MHT   = 7,
      *           MHE  = 20,
      *           MHWL  = 65,
-     *           MLHE = 44,
-     *           MWHE = 80,
+     *           MLHE = 70,
+     *           MWHE = 1153,
      *           MTHE = 3,
-     *           MDHE = 11)
+     *           MDHE = 25)
 C
 C     Basic physical constants
 C
