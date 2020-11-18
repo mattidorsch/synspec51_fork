@@ -53,8 +53,8 @@ C                                                                      I
 C ==================================================================== I
 C
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
 C
       OPEN(UNIT=12,STATUS='UNKNOWN')
       OPEN(UNIT=14,STATUS='UNKNOWN')
@@ -115,10 +115,10 @@ C
 C     General input and initialization procedure
 C
       IMPLICIT LOGICAL (L)
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'LINDAT.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       common/quasun/nunalp,nunbet,nungam,nunbal
 C
 C ------------------------------------------------
@@ -229,9 +229,9 @@ C
 C     driver for input and initializations - "new" routine
 C
       IMPLICIT LOGICAL (L)
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       PARAMETER (MFRQ=120)
       PARAMETER (WI1=911.753578, WI2=227.837832)
       common/dissol/fropc(mlevel),indexp(mlevel)
@@ -560,9 +560,9 @@ C
 C     =====================
 C 
       IMPLICIT LOGICAL (L)
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       PARAMETER (MFRQ=120)
       PARAMETER (WI1=911.753578, WI2=227.837832)
       PARAMETER (T15=1.D-15)
@@ -804,9 +804,9 @@ C     settiing up the default values of various input flags, and
 C     input of non-standard values of various input flags and parameters
 C
       IMPLICIT LOGICAL (L)
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
 C 
       PARAMETER(MVAR=97)
       PARAMETER(INPFI=4)
@@ -1015,7 +1015,7 @@ C     =========================
 C
 C     Initialization of the basic parameters for the Saha equation
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       parameter (enhe1=24.5799,enhe2=54.3999)
       character*4 DYP
       DIMENSION D(3,MATOM),XI(8,MATOM),DYP(MATOM)
@@ -1525,8 +1525,8 @@ C
 C   SET UP COMMON/RRRVAL/  - VALUES OF  N(ION)/U(ION) FOR ALL THE ATOMS
 C   AND IONS CONSIDERED
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       COMMON/BLAPAR/RELOP,SPACE0,CUTOF0,TSTD,DSTD,ALAMC
       COMMON/HPOPST/HPOP
 C
@@ -1586,8 +1586,8 @@ C     modified LTE Saha equations - possibly using
 C     radiation temperatures after 
 C     Schaerer and Schmutz AA 288, 321, 1994
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       dimension FFI(MION0)
 C
       Q=0.
@@ -1664,8 +1664,8 @@ C
 C     LOGARITHMIC INTERPOLATION COEFFICIENTS FOR INTERPOLATION OF
 C     TEMP(ID) TO THE VALUES  5000,10000,20000,40000
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       DIMENSION TT(4)
       DATA TT /3.699, 4.000, 4.301, 4.602/
 C
@@ -1688,11 +1688,11 @@ C
 C
 C     AUXILIARY INITIALIZATION PROCEDURE
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'LINDAT.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       parameter (un=1.)
       logical lasdel
       DIMENSION CROSS(MCROSS,MFREQ),
@@ -2039,10 +2039,10 @@ C     driver for evaluating opacities and emissivities which then
 C     enter the solution of the radiative transfer equation
 C     (RTE or RTEDFE)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'LINDAT.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       DIMENSION CROSS(MCROSS,MFREQ),
      *          ABSO(MFREQ),EMIS(MFREQ),SCAT(MFREQ)
       COMMON/RTEOPA/CH(MFREQ,MDEPTH),ET(MFREQ,MDEPTH),
@@ -2119,10 +2119,10 @@ C
 C
 C     solution of the radiative transfer equation by Feautrier method
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       DIMENSION D(3,3,MDEPTH),ANU(3,MDEPTH),AANU(MDEPTH),DDD(MDEPTH),
      *       AA(3,3),BB(3,3),CC(3,3),VL(3),AMU(3),WTMU(3),
      *       DT(MDEPTH),TAU(MDEPTH),
@@ -2704,9 +2704,9 @@ C     Output onto unit 7 serves as an input to the next program
 C     ROTINS, which performs convolutions for the rotational and
 C     instrumental broadening, and plots the synthetic spectrum
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       PARAMETER (UN=1.,CAS=1./2.997925D18,EQWC=1.19917D22)
       PARAMETER (PI2=3.141592654/2.)
       DIMENSION FLX(3),REL(3),ALX(3)
@@ -2818,9 +2818,9 @@ C
 C
 C     SET UP COMMON/PHOPAR/  - PHOTOIONIZATION CROSS-SECTIONS
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       DIMENSION CROSS(MCROSS,MFREQ)
       common/dissol/fropc(mlevel),indexp(mlevel)
 C
@@ -2864,9 +2864,9 @@ C
 C
 C     SET UP COMMON/PHOPAR/  - PHOTOIONIZATION CROSS-SECTIONS
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       DIMENSION CROSS(MCROSS,MFREQ)
       common/dissol/fropc(mlevel),indexp(mlevel)
 C
@@ -2916,7 +2916,7 @@ C            ITR -  index of the transition
 c            mode - =0 cross-section equal to zero longward of edge
 c            mode - >0 cross-section non-zero (extrapolated) longward of edge
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       PARAMETER (SIH0=2.815D29, E10=2.3025851)
       parameter (wi1=911.753878, wi2=227.837832, un=1.e0)
       CHARACTER*10 TYPLEV(MLEVEL)
@@ -3080,7 +3080,7 @@ C
 C     Hydrogenic bound-free Gaunt factor for the principal quantum
 C     number I and frequency FR
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       X=FR/2.99793E14
       GAUNT=1.
       IF(I.EQ.1) THEN
@@ -3128,7 +3128,7 @@ C
 C     Hydrogenic bound-free Gaunt factor for the principal quantum
 C     number I and frequency FR (from Klaus Werner)
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       GNTK=1.
       IF(I.GT.3) GO TO 16
       Y=1./FR      
@@ -3152,7 +3152,7 @@ C
 C     Non-standard evaluation of the photoionization cross-sections
 C     Basically user-suppled procedure; here are some examples
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       SIGSP=0.
       if(itr.le.0) return
 C
@@ -3193,7 +3193,7 @@ C
 C     Photoionization cross-section for neutral carbon 2p1D and 2p1S
 C     levels (G.B.Taylor - private communication)
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       DIMENSION FR2(34),SG2(34),FR3(45),SG3(45)
       DATA FR2/ 0.74, 0.75, 0.76, 0.77, 0.78, 0.79, 0.80, 0.81, 0.82,
      *                0.83,       0.85, 0.86, 0.87, 0.88, 0.89, 0.90,
@@ -3250,7 +3250,7 @@ C
 C     Special formula for the photoionization cross-section from the
 C     averaged <n=2> level of He I
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       DATA C1/3.E0/,C2/9.E0/,C3/1.6E1/,
      * A1/6.45105E-18/,A2/3.02E-19/,A3/9.9847E-18/,A4/1.1763673E-17/,
      * A5/3.63662E-19/,A6/-2.783E2/,A7/1.488E1/,A8/-2.311E-1/,
@@ -3275,7 +3275,7 @@ C     (Hidalgo's number = INDEX = -IB-100).
 C     Compute linearly interpolated value of the cross-section
 C     at the frequency FR.
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       DIMENSION WL1(20),WL2(20),WLI(20),SIG0(20,24),SIGS(20)
 C
       DATA WL1 /
@@ -3357,7 +3357,7 @@ C     at the frequency FR.
 C
 C     (At the moment, only a few transitions are considered)
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       DIMENSION HEV(30),F0(30),SIG0(30,2),SIGS(30)
 C
       DATA HEV /
@@ -3450,7 +3450,7 @@ C            = 13  -  the given transition is from non-averaged
 C                     triplet state
 C      FR    - frequency
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
 C
       NI=NQUANT(II)
       IGI=INT(G(II)+0.01)
@@ -3593,7 +3593,7 @@ C                FREQ = FREQUENCY
 C
 C           DGH JUNE 1988 JILA, slightly modified by I.H.
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       INTEGER S,L,SS,LL
       DIMENSION COEF(4,53),IST(3,2),N0(3,2),
      *          FL0(53),A(53),B(53),XFITM(53)
@@ -3749,7 +3749,7 @@ C     level I of ion KI. Threshold cross-sections will be of the order
 C     of the numerical value of 10^-18.
 C     Opacity-Project (OP) interpolation fit formula
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       PARAMETER    (E10=2.3025851)
       PARAMETER    (MMAXOP = 200,! maximum number of levels in OP data
      +              MOP    =  15 )! maximum number of fit points per level
@@ -3809,7 +3809,7 @@ C        NOP()     = number of fit points for current level
 C        XOP(,)    = x     = alog10(nu/nu0)       of fit point
 C        SOP(,)    = sigma = alog10(sigma/10^-18) of fit point 
 C      
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       PARAMETER    (MMAXOP = 200,! maximum number of levels in OP data
      +              MOP    =  15 )! maximum number of fit points per level
       CHARACTER*10  IDLVOP(MMAXOP) ! level identifyer Opacity-Project data
@@ -3873,7 +3873,7 @@ C
 C     linear interpolation routine. Determines YINT = Y(XINT) from 
 C     grid Y(X) with N points and dimension NTOT. 
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       DIMENSION X(NTOT),Y(NTOT)
 C
 C     bisection (see Numerical Recipes par 3.4 page 90)
@@ -3917,10 +3917,10 @@ C             SCAT - array of scattering coefficient (all scattering
 C                    mechanisms except electron scattering)
 C
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'LINDAT.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       DIMENSION CROSS(MCROSS,MFREQ)
       DIMENSION ABSO(MFREQ),EMIS(MFREQ),SCAT(MFREQ),
      *          ABLIN(MFREQ),EMLIN(MFREQ)
@@ -4138,11 +4138,11 @@ C             SCAT - array of scattering coefficient (all scattering
 C                    mechanisms except electron scattering)
 C
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'LINDAT.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       logical lasdel
       DIMENSION CROSS(MCROSS,MFREQ)
       DIMENSION ABSO(MFREQ),EMIS(MFREQ),SCAT(MFREQ),
@@ -4332,9 +4332,9 @@ C
 C     =========================
 C     formal routine - taken from TLUSTY, but not used here
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       PARAMETER (FRH=3.28805E15, PH2=2.815D29*2., EHB=157802.77355)
 C
       sgmerg=0.
@@ -4372,7 +4372,7 @@ C
 C     Hydrogenic free-free Gaunt factor, for temperature T and
 C     frequency FR
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       THET=5040.4/T
       IF(THET.LT.4.E-2) THET=4.E-2
       X=FR/2.99793E14
@@ -4396,7 +4396,7 @@ C     ==========================
 C
 C     Free-free cross section for H- (After Kurucz,1970,SAO 309, P.80)
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       SFFHMI_old=(1.3727E-25+(4.3748E-10-2.5993E-7/T)/FR)*POPI/FR
       RETURN
       END
@@ -4411,8 +4411,8 @@ C
 C     OPACITY OF THE LYMAN LINES WINGS (ALPHA - DELTA)
 C     WITH APPROXIMATE PARTIAL REDISTRIBUTION
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       DIMENSION SN(4),SR(4),SS(4),GS(4),FRLY(4),BNLY(4),GA(4)
       DATA FRLY / 2.4660375E15, 2.9227111E15, 3.0825469E15, 3.156528E15/
      *    ,BNLY / 5.527E-2,     4.090E-2,     2.699E-2,     1.855E-2  /,
@@ -4481,8 +4481,8 @@ C     ========================
 C
 C     LYMAN-ALPHA STARK BROADENING AFTER N.FEAUTRIER
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       DIMENSION DL(20),F05(20),F10(20),F20(20),F40(20),X(4)
       DATA F05 / 0.0537, 0.0964, 0.1330, 0.3105, 0.4585, 0.6772, 0.8229,
      *           0.8556, 0.9250, 0.9618, 0.9733, 1.1076, 1.0644, 1.0525,
@@ -4524,8 +4524,8 @@ C     =================
 C
 C     Initialization procedure for treating the hydrogen line opacity
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       DIMENSION ALB(15)
       DATA ALB /656.28,486.13,434.05,410.17,397.01,
      *          388.91,383.54,379.79,377.06,375.02,
@@ -4622,8 +4622,8 @@ C     =====================
 C
 C     Initialization procedure for treating the hydrogen line opacity
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
 C
 C     IHYL=-1  -  hydrogen lines are excluded a priori
 C
@@ -4683,9 +4683,9 @@ C     =======================================
 C
 C     opacity and emissivity of hydrogen lines  
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       PARAMETER (FRH1=3.28805E15,FRH2=FRH1/4.,UN=1.,SIXTH=1./6.)
       PARAMETER (CPP=4.1412E-16,CPJ=157803.) 
       PARAMETER (C00=1.25E-9,CDOP=1.284523E12,CID=0.02654,TWO=2.)
@@ -4952,10 +4952,10 @@ C     =================================
 C
 C     opacity and emissivity of hydrogen lines  
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       PARAMETER (FRH1=3.28805E15,FRH2=FRH1/4.,UN=1.,SIXTH=1./6.)
       PARAMETER (CPP=4.1412E-16,CPJ=157803.) 
       PARAMETER (C00=1.25E-9,CDOP=1.284523E12,CID=0.02654,TWO=2.)
@@ -5216,8 +5216,8 @@ C     =================
 C
 C     Initialization procedure for treating the He II line opacity
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       dimension frhe(12)
       DATA FRHE /1.3158153D+16, 3.2895381D+15, 1.4624854D+15,
      *           8.2261878D+14, 5.2647201D+14, 3.6560459D+14,
@@ -5318,8 +5318,8 @@ C     =====================
 C
 C     Initialization procedure for treating the He II line opacity
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       dimension frhe(12)
       DATA FRHE /1.3158153D+16, 3.2895381D+15, 1.4624854D+15,
      *           8.2261878D+14, 5.2647201D+14, 3.6560459D+14,
@@ -5411,9 +5411,9 @@ C
 C     opacity and emissivity of He II lines  (these which are not considered
 C     explicitly)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       PARAMETER (UN=1.,SIXTH=1./6.)
       PARAMETER (CPP=4.1412E-16,CPJ=631479.)
       PARAMETER (C00=1.25E-9,CDOP=1.284523E12,CID=0.02654,TWO=2.)
@@ -5616,10 +5616,10 @@ C
 C     opacity and emissivity of He II lines  (these which are not considered
 C     explicitly)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       PARAMETER (UN=1.,SIXTH=1./6.)
       PARAMETER (CPP=4.1412E-16,CPJ=631479.) 
       PARAMETER (C00=1.25E-9,CDOP=1.284523E12,CID=0.02654,TWO=2.)
@@ -5826,7 +5826,7 @@ C             FIJ   - Stark f-value for the line i-j
 C             FIJ0  - f-value for the undisplaced component of the line
 C
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       PARAMETER (RYD1=911.763811,RYD2=911.495745,CXKIJ=5.5E-5)
       PARAMETER (WI1=911.753578, WI2=227.837832)
       PARAMETER (UN=1.,TEN=10.,TWEN=20.,HUND=100.)
@@ -5926,7 +5926,7 @@ C                    multiplied to get total Stark Profile
 C                    FAC should be taken to 2 for hydrogen, (and =1
 C                    for He II)
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       PARAMETER (F0=-0.5758228,F1=0.4796232,F2=0.07209481/2.,AL=1.26)
       PARAMETER (SD=0.5641895,SLO=-2.5,TRHA=1.5,BL1=1.52,BL2=8.325)
       PARAMETER (SAC=0.07966/2.)
@@ -5976,7 +5976,7 @@ C                     of betad.
 C                     DIV = solution of equation
 C                     exp(-(beta/betad)**2)/betad/sqrt(pi)=3*beta**-5/2
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       PARAMETER (UN=1.,TWO=2.,UNQ=1.25,UNH=1.5,TWH=2.5,FO=4.,FI=5.)
       PARAMETER (CA=1.671,BL=5.821,AL=1.26,CX=0.28,DX=0.0001)
 C
@@ -6003,8 +6003,8 @@ C
 C     Initializes necessary arrays for evaluating hydrogen line profiles
 C     from the Lemke, Tremblay-Bergeron, or Schoening-Butler tables
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       DIMENSION WLINE(4,22)
       CHARACTER*1 CHAR
       DATA INIT /0/
@@ -6228,7 +6228,7 @@ C     Interpolation in temperature and electron density from the
 C     hydrogen broadening tables to the actual valus of
 C     temperature and electron density
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       PARAMETER (TWO=2.)
       DIMENSION ZZ(3),XX(3),WX(3),WZ(3)
 C
@@ -6325,7 +6325,7 @@ C     Input:  XL - array of x
 C             YL - array of f(x)
 C             XL0 - the point x(0) to which one interpolates
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       DIMENSION XL(3),YL(3)
       A0=(XL(2)-XL(1))*(XL(3)-XL(2))*(XL(3)-XL(1))
       A1=(XL0-XL(2))*(XL0-XL(3))*(XL(3)-XL(2))
@@ -6354,8 +6354,8 @@ C     but only for those denisities where the intgral is 1 +- 0.1
 C
 C     Modified by Antoine Bedard
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       COMMON/PROHE1/PRFHE1(50,4,8,3),DLMHE1(50,8,3),XNEHE1(8),
      *              NWLAM(8,20)
 C     NWLAM(8,4):8 is max number electron denisities,  4 for 4 lines!
@@ -6647,8 +6647,8 @@ C                                        = 4  for 4922,
 C                                        = 5- for beau)
 C     Output: WTOT - Stark width in Angstroms
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       DIMENSION ALPH0(4,20),W0(4,20),ALAM0(20)
       DATA ALPH0 / 0.107, 0.119, 0.134, 0.154, !4471
      *             0.206, 0.235, 0.272, 0.317, !4387
@@ -6731,7 +6731,7 @@ C     Extrapolation in wavelengths in Shamey, or Barnard, Cooper,
 C     Smith tables
 C     Special formula suggested by Cooper
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       DIMENSION W0(4,20)
 C     What is W0?
       DATA W0    / 1.460, 1.269, 1.079, 0.898,
@@ -6787,8 +6787,8 @@ C
 C     Output: PHE1 - profile coefficient in frequency units,
 C                    normalized to sqrt(pi) [not unity]
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       PARAMETER (NT=4)
 C      COMMON/PROHE1/PRFHE1(50,NT,8,3),DLMHE1(50,8,3),XNEHE1(8),
 C     *              NWLAM(8,NT)
@@ -7341,8 +7341,8 @@ C     Butler
 C
 C     This procedure is quite analogous to HYDINI for hydrogen lines
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       COMMON/HE2PRF/PRFHE2(19,MDEPTH,36),WLHE2(19,36),NWLHE2(19),
      *              ILHE2(19),IUHE2(19)
       COMMON/HE2DAT/WL2(36,19),XT2(6),XNE2(11,19),PRF2(36,6,11),
@@ -7437,7 +7437,7 @@ C     actual values of temperature and electron density
 C
 C     This procedure is quite analogous to INTHYD for hydrogen lines
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       PARAMETER (UN=1.)
       COMMON/HE2DAT/WL2(36,19),XT2(6),XNE2(11,19),PRF2(36,6,11),
      *              NWL2,NT2,NE2
@@ -7525,7 +7525,7 @@ C     the only difference is a somewhat different definition
 C     of the parameter A ,ie. A for He II is equal to A for hydrogen
 C     minus ln(2)
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       PARAMETER (UN=1.,TWO=2.,UNQ=1.25,UNH=1.5,TWH=2.5,FO=4.,FI=5.)
       PARAMETER (CA=0.978,BL=5.821,AL=1.26,CX=0.28,DX=0.0001)
 C
@@ -7560,9 +7560,9 @@ C            ID    - depth index
 C     Output: ABLIN - absorption coefficient
 C             EMLIN - emission coefficient
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       logical lasdel
       DIMENSION ABLIN(1),EMLIN(1),OSCHE2(19),PRF0(40),WLL(40)
       COMMON/HE2PRF/PRFHE2(19,MDEPTH,36),WLHE2(19,36),NWLHE2(19),
@@ -7669,7 +7669,7 @@ C                   > 0  - special profile
 C
 C     Modified by Antoine Bedard
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
 C
       ISPEC=0
       IF(IAT.GT.2) RETURN
@@ -7766,8 +7766,8 @@ C            EXCL - excitation potential of the lower level (in cm**-1)
 C            EXCU - excitation potential of the upper level (in cm**-1)
 C            ION  - ionisation degree (1=neutrals, 2=once ionized, etc.)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       DIMENSION JU(24),NU(24),IT(24)
       DATA IT/1,1,0,1,0,0,0,1,0,0,0,1,1,0,0,0,1,0,1,0,0,0,0,0/
       DATA NU/6,6,9,3,8,4,7,5,6,6,5,4,4,4,3,4,3,3,5,5,7,8,10,2/
@@ -7910,11 +7910,11 @@ C     SELECTION OF LINES THAT MAY CONTRIBUTE,
 C     SET UP AUXILIARY FIELDS CONTAINING LINE PARAMETERS,
 C     SET UP THE SET OF FREQUENCY POINTS
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       COMMON/LIMPAR/ALAM0,ALAM1,FRMIN,FRLAST,FRLI0,FRLIM
       COMMON/BLAPAR/RELOP,SPACE0,CUTOF0,TSTD,DSTD,ALAMC
       COMMON/CTRFUN/CINT1(MDEPTH),CINT2(MDEPTH),
@@ -8247,10 +8247,10 @@ C     Auxiliary routine for LINSET - read table of detailed
 C     photoinization cross-section from unit IPHT1, 
 C     and interpolate to the set of current wavelengths (WLAM)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       COMMON/PHOTCS/PHOT(MFREQ,MPHOT),WPHT0,WPHT1,APHT(MPHOT),
      *              EPHT(MPHOT),GPHT(MPHOT),JPHT(MPHOT),
      *              NPHT
@@ -8449,10 +8449,10 @@ C     The only differences between NEW and OLD is the occurence of
 C     GS and GW in NEW, and slightly different format of reading.
 C
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       COMMON/LIMPAR/ALAM0,ALAM1,FRMIN,FRLAST,FRLI0,FRLIM
       COMMON/BLAPAR/RELOP,SPACE0,CUTOF0,TSTD,DSTD,ALAMC
       COMMON/IPOTLS/IPOTL(mlin0)
@@ -8835,10 +8835,10 @@ C
 C     driving procedure for treating a partial line list for the
 C     current wavelength region
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       COMMON/PRFQUA/DOPA1(MATOM,MDEPTH),VDWC(MDEPTH)
 C
       PARAMETER (DP0=3.33564E-11, DP1=1.651E8, 
@@ -8883,10 +8883,10 @@ C     ================
 C
 C     output of selected line parameters (identification table)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       CHARACTER*4 TYPION(30)
       CHARACTER*4 APB,AP0,AP1,AP2,AP3,AP4,APR
       COMMON/PRFQUA/DOPA1(MATOM,MDEPTH),VDWC(MDEPTH)
@@ -8984,10 +8984,10 @@ C     =================
 C
 C     output information about hydrogen lines
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       CHARACTER*4 TYPION(30)
       CHARACTER*4 APB,AP0,AP1,AP2,AP3,AP4,APR
       COMMON/PRFQUA/DOPA1(MATOM,MDEPTH),VDWC(MDEPTH)
@@ -9132,10 +9132,10 @@ C     ===============================================================
 C
 C     NLTE option -  automatic assignement of level indices
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       PARAMETER (MNION = MIOEX,
      *           MNLEV = MLEVEL,
      *           ECONST=  5.03411142E15)
@@ -9435,10 +9435,10 @@ C
 C     Opacity due to detailed photoionization (read from tables by
 C     routine READPH)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       COMMON/PHOTCS/PHOT(MFREQ,MPHOT),WPHT0,WPHT1,APHT(MPHOT),
      *              EPHT(MPHOT),GPHT(MPHOT),JPHT(MPHOT),
      *              NPHT
@@ -9484,9 +9484,9 @@ C     ===========================================
 C
 C     Control procedure for the NLTE option
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       COMMON/NLTPOP/PNLT(MATOM,MION,MDEPTH)
       PARAMETER (UN     = 1., 
      *           C3     = 1.4387886,
@@ -9584,10 +9584,10 @@ C     =====================================
 C
 C     TOTAL LINE OPACITY (ABLIN)  AND EMISSIVITY (EMLIN)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       LOGICAL LPR,lasdel
       PARAMETER (UN     = 1.,
      *           EXT0   = 3.17,
@@ -9775,11 +9775,11 @@ C
 C     TOTAL LINE OPACITY (ABLIN)  AND EMISSIVITY (EMLIN)
 C     (a variant for winds)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       COMMON/BLAPAR/RELOP,SPACE0,CUTOF0,TSTD,DSTD,ALAMC
       LOGICAL LPR,lasdel
       PARAMETER (UN     = 1., 
@@ -10020,10 +10020,10 @@ C
       SUBROUTINE PROFIL(IL,IAT,ID,AGAM)
 C     =================================
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       COMMON/PRFQUA/DOPA1(MATOM,MDEPTH),VDWC(MDEPTH)
       DIMENSION WGR(4)
       PARAMETER (PI4=7.95774715E-2)
@@ -10081,8 +10081,8 @@ C     STARK DAMPING PARAMETER (GAM) CALCULATED FROM INPUT VALUES
 C     OF STARK WIDTHS FOR  T=5000, 10000, 20000, 40000 K,
 C     AND FOR  NE=1.E16 (FOR NEUTRALS)  OR  NE = 1.E17 (FOR IONS)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       DIMENSION WGR(4)
       if(t.le.0.) return
       J=JT(ID)
@@ -10102,8 +10102,8 @@ C     NEUTRAL HELIUM STARK BROADENING PARAMETERS
 C     AFTER DIMITRIJEVIC AND SAHAL-BRECHOT, 1984, J.Q.S.R.T. 31, 301
 C     OR FREUDENSTEIN AND COOPER, 1978, AP.J. 224, 1079  (FOR C(IND).GT.0)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       DIMENSION W(5,20),V(4,20),C(20)
 C
 C   ELECTRONS T= 5000   10000   20000   40000     LAMBDA
@@ -10173,7 +10173,7 @@ C
 C     NLTE PARAMETER EPSILON (COLLISIONAL/SPONTANEOUS DEEXCITATION)
 C     AFTER  KASTNER, 1981, J.Q.S.R.T. 26, 377
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       DATA CK0,CK1 /7.75E-8, 2.58E-8/
       X=1.438E8/ALAM/T
       XKT=12390./ALAM
@@ -10199,7 +10199,7 @@ C
 C     KERNEL FUNCTION K2  (AUXILIARY PROCEDURE TO NLTE)
 C     AFTER  HUMMER,  1981, J.Q.S.R.T. 26, 187
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       DATA PI2SQ,PISQ /2.506628275D0,  1.772453851D0/
       DATA A0,A1,A2,A3,A4 /
      *  1.D0,  -1.117897000D-1,  -1.249099917D-1,  -9.136358767D-3,
@@ -10243,8 +10243,8 @@ C      T       - temperature
 C      P       - gass pressure
 C      ANE     - electron density
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       DIMENSION POP(MLEVEL),ES(MLEVEL,MLEVEL),BS(MLEVEL),POPLTE(MLEVEL)
       COMMON POP,ES,BS
 C
@@ -10310,8 +10310,8 @@ C              and the present depth scale are different
 C            = 0  -  no interpolation, i.e. scale DEPTH coincides with DM
 C            > 0  -  polynomial interpolation of the (INTRPL-1)th order
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       PARAMETER (MINPUT=MLEVEL+4)
       DIMENSION ESEMAT(MLEVEL,MLEVEL),BESE(MLEVEL),POPLTE(MLEVEL)
       COMMON ESEMAT,BESE,POPLTE,POPUL0(MLEVEL,MDEPTH),X(MINPUT),
@@ -10419,8 +10419,8 @@ C
       SUBROUTINE LEVSOL(A,B,POPP,NLVCAL)
 C     ==================================
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       DIMENSION A(MLEVEL,MLEVEL),B(MLEVEL),POPP(MLEVEL),
      *          AP(MLEVEL,MLEVEL),BP(MLEVEL),POPP1(MLEVEL)
 C
@@ -10510,8 +10510,8 @@ C      NXTSIO  -  see above
 C      REL     -  population multiplier - see above
 C                 if REL=0, the program sets up REL=1
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       DIMENSION ESEMAT(MLEVEL,MLEVEL),BESE(MLEVEL),POPLTE(MLEVEL)
       COMMON ESEMAT,BESE,POPLTE,POPUL0(MLEVEL,MDEPTH),
      *       POPULL(MLEVEL,MDEPTH),POPL(MLEVEL)
@@ -10568,8 +10568,8 @@ C
 C
 C     LTE RATE MATRIX  (SAHA-BOLTZMANN EQS. + CHARGE CONSERVATION EQ.)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       parameter (un=1.)
       DIMENSION A(MLEVEL,MLEVEL),B(MLEVEL)
       LOGICAL LCHC
@@ -10675,8 +10675,8 @@ C     wrt. temperature (T) and electron density (DUSUMN)
 C
 C     Input: ID  - depth index
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       PARAMETER (UH=1.5)
       PARAMETER (CMAX=2.154D4,CCON=2.0706D-16,TWO=2.D0)
 C
@@ -10790,7 +10790,7 @@ C     ===================
 C
 C     Bound-free cross-section for H- (negative hydrogen ion)
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       SBFHMI=0.
       sbfhmi_old=0.
       FR0=1.8259E14
@@ -10847,8 +10847,8 @@ C     EMAD  - emission coefficient (at frequency point IJ and depth ID)
 C     SCAD  - scattering coefficient (at frequency point IJ and depth ID)
 C
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       DIMENSION CROSS(MCROSS,MFREQ)
       PARAMETER (FRAYH  =  2.463E15,
      *           FRAYHe =  5.150E15,
@@ -11070,8 +11070,8 @@ c            a   - correlation parameter
 c            id  - depth index
 c            z   - ionic charge
 c
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       parameter (p1=0.1402,p2=0.1285,p3=1.,p4=3.15,p5=4.,un=1.)
       parameter (tkn=3.01,ckn=5.33333333,cb=8.59e14)
       parameter (f23=-2./3.)
@@ -11123,8 +11123,8 @@ C
 C     Stores occupation probabilities for hydrogen levels
 C     in common WNCOM for further use
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       PARAMETER (UN=1.,TWO=2.,SIXTH=1./6.,CCOR=0.09)
       parameter (p1=0.1402,p2=0.1285,p3=1.,p4=3.15,p5=4.)
       parameter (tkn=3.01,ckn=5.33333333,cb=8.59d14,f23=-2./3.)
@@ -11167,7 +11167,7 @@ C     ===========================
 C
 C     Timing procedure (call machine dependent routine!!)
 C
-C     INCLUDE 'PARAMS.FOR'
+C     INCLUDE 'INCLUDE/PARAMS.FOR'
 c      CHARACTER ROUT*20
 c      dimension dummy(2)
 c      DATA T0/0./
@@ -11197,7 +11197,7 @@ C     =====================
 c
 c     stops the program and writes a text
 c
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       character*(*) text
       write(6,10) text
    10 format(1x,a)
@@ -11218,7 +11218,7 @@ c     computes a voigt function  h = h(a,v)
 c     a=gamma/(4*pi*dnud)   and  v=(nu-nu0)/dnud.  this  is  done after
 c     traving (landolt-b\rnstein, p. 449).
 c
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       dimension ak(19),a1(5)
       data ak      /-1.12470432, -0.15516677,  3.28867591, -2.34357915,
      ,  0.42139162, -4.48480194,  9.39456063, -6.61487486,  1.98919585,
@@ -11316,8 +11316,8 @@ C     given in a successive order in the data (i.e. as in TLUSTY for
 C     explicit levels. For other levels, additional input data in
 C     unit 54 !!
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       PARAMETER (HCCM=H*2.997925D10,BAM=1.D-18)
       LOGICAL LUV
       DIMENSION CRD(MFCRA),XIFE(8),FRD(MFCRA)
@@ -11521,10 +11521,10 @@ C
 C     Opacity due to detailed photoionization (read from tables by
 C     routine SIGAVS)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       DIMENSION ABSO(MFREQ),EMIS(MFREQ),PLANF(MFREQ),STIMU(MFREQ)
       DIMENSION PHOTI(MCROSS,MFREQ)
       DIMENSION IJP(MLEVEL),IJQ(MPHOT)
@@ -11621,7 +11621,7 @@ c     valid for first and second order in neutral and ionized H density
 c     modified routine provided originally by D. Koester
 c           
 c
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       parameter (NXMAX=1400,NNMAX=5)
       common/quasun/nunalp,nunbet,nungam,nunbal
       common /callarda/xlalp(NXMAX),plalp(NXMAX,NNMAX),stnnea,stncha,
@@ -11721,7 +11721,7 @@ c             if integrated over A;
 c             It then renormalized by multiplying by
 c             8.853e-29*lambda_0^2*f_ij
 c
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       parameter (NXMAX=1400,NNMAX=5)
       parameter (xnorma=8.8528e-29*1215.6*1215.6*0.41618,
      *           xnormb=8.8528e-29*1025.73*1025.7*0.0791,
@@ -11924,7 +11924,7 @@ c     comments
 c
 c     lines beginning with ! or * are understood as comments
 c
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       character*80 buff
    10 continue
       read(5,501,end=20) buff
@@ -11948,7 +11948,7 @@ C
 C     pretabulate expansion coefficients for the Voigt function
 C     200 steps per doppler width - up to 10 Doppler widths
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       PARAMETER (VSTEPS=200.,MVOI=2001)
       COMMON/VOITAB/H0TAB(MVOI),H1TAB(MVOI),H2TAB(MVOI)
       DIMENSION TABVI(81),TABH1(81)
@@ -11992,7 +11992,7 @@ C     ====================
 C
 C     Voigt function after Kurucz (in Computational Astrophysics)
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       PARAMETER (MVOI=2001)
       PARAMETER (ONE=1., THREE=3., TEN=10., FIFTN=15., TWOH=200.,
      *           C14142=1.4142, C11283=1.12838, C15=1.5,C32=3.2,
@@ -12042,9 +12042,9 @@ C     for two continuum points
 C     used when one employs RTEDFE, ie. the DFE method for the
 C     transfer equation for the inner frequency points
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       DIMENSION D(3,3,MDEPTH),ANU(3,MDEPTH),AANU(MDEPTH),DDD(MDEPTH),
      *       AA(3,3),BB(3,3),CC(3,3),VL(3),AMU(3),WTMU(3),
      *       DT(MDEPTH),TAU(MDEPTH),
@@ -12494,9 +12494,9 @@ C      CH     - two-dimensional array  absorption coefficient (frequency,
 C               depth)
 C      ET     - emission coefficient (frequency, depth)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
       PARAMETER (ONE=1.,TWO=2.,HALF=0.5)
       PARAMETER (TAUREF = 0.6666666666667)
       DIMENSION DT(MDEPTH),ST0(MDEPTH),AB0(MDEPTH),DELDM(MDEPTH),
@@ -12678,7 +12678,7 @@ C
 C     Output:
 C      U     - partition function
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       PARAMETER (NIONS=123, NSS=222)
       PARAMETER (UN=1.D0, HALF=0.5D0, TWO=2.D0, TRHA=1.5D0,
      *           THIRD=UN/3.D0, SIXTH=UN/6.D0)
@@ -13498,7 +13498,7 @@ c     after Fischel and Sparks, 1971, NASA SP-3066
 c
 c     Output:  PF   partition function
 c
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       dimension tt(50),pn(10),nca(9)
       dimension p4a(22),p4b(10,28), 
      *          p5a(30),p5b(10,20),
@@ -13805,7 +13805,7 @@ C            to be inverted;
 C      Inversion is accomplished in place and the original matrix is
 C      replaced by its inverse
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       DIMENSION A(NR,NR)
       IF(N.EQ.1) GO TO 250
       DO 50 I=2,N
@@ -13888,7 +13888,7 @@ C            B  - the rhs vector
 C     Output: X - solution vector
 C     Note that matrix A and vector B are destroyed here !
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       DIMENSION A(NR,NR),B(NR),X(NR),D(MLEVEL)
       DIMENSION IP(MLEVEL)
       DO 70 I=1,N
@@ -13951,7 +13951,7 @@ C
 C     First exponential integral function E1(X)
 C
       
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       IF(X.GT.1.0) GO TO 10
       EXPINT=-LOG(X)-0.57721566+X*(0.99999193+X*(-0.24991055
      1        +X*(0.05519968+X*(-0.00976004+X*0.00107857))))
@@ -13986,7 +13986,7 @@ C      NXX  - number of elements in array XX
 C     Output:
 C      YY   - interpolated functional values YY=y(XX)
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       DIMENSION X(1),Y(1),XX(1),YY(1)
       EXP10(X0)=EXP(X0*2.30258509299405D0)
       IF(NPOL.LE.0.OR.NX.LE.0) GO TO 200
@@ -14065,7 +14065,7 @@ C
 *
 * M.A.Barstow - University of Leicester, Dept of Physics & Astronomy
 *
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       real nvii
       PARAMETER (MH=100,MHEI=100,MHEII=100,MCI=135,
      +     MCII=157,MCIII=156,MCIV=55,MCV=15,MCVI=100,MNI=228,MNII=122,
@@ -19260,7 +19260,7 @@ C
         SUBROUTINE PARTDV(TEMP,DNE,Z,NLEV,NE,GEE,ENRGY,S,U)
 C       ===================================================
 C 
-        INCLUDE 'PARAMS.FOR'
+        INCLUDE 'INCLUDE/PARAMS.FOR'
         DIMENSION GEE(*),ENRGY(*),S(*)
         INTEGER NE(*)
         U=0.0
@@ -19294,7 +19294,7 @@ C
         SUBROUTINE PARTDVHM(TEMP,DNE,Z,NLEV,NE,GEE,ENRGY,S,U)
 C       ===================================================
 C 
-        INCLUDE 'PARAMS.FOR'
+        INCLUDE 'INCLUDE/PARAMS.FOR'
         DIMENSION GEE(*),ENRGY(*),S(*)
         INTEGER NE(*)
         U=0.0
@@ -19325,7 +19325,7 @@ C     ****************************************************************
 C
 C
       DOUBLE PRECISION FUNCTION PARTFZR4(T,DNE,U)
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       DOUBLE PRECISION T, DNE
       DOUBLE PRECISION U
       WRITE(*,*)'ZR4:T= ',T
@@ -19678,7 +19678,7 @@ C     EDITED 27 JULY 1994 BY GMW - REPLACED PT III PF COEFF. AND IP
 C     MODE 3 RETURNS PARTITION FUNCTION   
 C                                      
 C      IMPLICIT REAL*8 (A-H,O-Z)
-      INCLUDE 'PARAMS.FOR' 
+      INCLUDE 'INCLUDE/PARAMS.FOR' 
       REAL*8 IP
       PARAMETER (DEBCON=1./2.8965E-18,
      *           TVCON=8.6171E-5,
@@ -20042,8 +20042,8 @@ c
       subroutine frac1
 c     ================
 c
-      include 'PARAMS.FOR'
-      include 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       parameter (mtemp=100,melec=60,mion1=30)
       dimension xxt(mdepth),xxe(mdepth)
       dimension kt0(mdepth),kn0(mdepth)
@@ -20300,8 +20300,8 @@ C     Auxiliary quantities for dissolved fractions
 C
 C     Modified by Antoine Bedard
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       PARAMETER (UN=1.,SIXTH=UN/6.,CCOR=0.09)
       parameter (p1=0.1402,p2=0.1285,p3=un,p4=3.15,p5=4.)
       parameter (f23=-2./3.)
@@ -20332,8 +20332,8 @@ C     ====================================
 C
 C     dissolved fraction for frequency FR
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       PARAMETER (UN=1.,TKN=3.01,CKN=5.33333333,
      *           CKN1=1.1666667,CB=8.59d14,CB1=3.437977d15)
       PARAMETER (SQFRH=5.734152D7)
@@ -20404,8 +20404,8 @@ C     which follow from the models atmosphere (unit 7) obtained by
 C     summing all populations and upper sums
 C     The program stops if it finds discrepancy more than 10 %
 c
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       dimension sumpop(matom),sumiat(matom)
 c
       IST=0
@@ -20456,8 +20456,8 @@ c     =================
 c
 c     Initialization of the molecular equilibrium
 c
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       common/moltst/pfmol(500,mdepth),anmol(500,mdepth),
      *              pfato(100,mdepth),anato(100,mdepth)
 c
@@ -20579,10 +20579,10 @@ C    GR      - gamma(rad)
 C    GS      - gamma(Stark)
 C    GW      - gamma(VdW)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       COMMON/LIMPAR/ALAM0,ALAM1,FRMIN,FRLAST,FRLI0,FRLIM
       COMMON/BLAPAR/RELOP,SPACE0,CUTOF0,TSTD,DSTD,ALAMC
       COMMON/NXTINM/ALMM00,ALSM00
@@ -20764,10 +20764,10 @@ C
 C     Selection of molecular lines that may contribute,
 C     set up auxiliary fields containing line parameters.
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       COMMON/LIMPAR/ALAM0,ALAM1,FRMIN,FRLAST,FRLI0,FRLIM
       COMMON/BLAPAR/RELOP,SPACE0,CUTOF0,TSTD,DSTD,ALAMC
       SAVE IMLAST
@@ -20894,10 +20894,10 @@ C
 C     driving procedure for treating a partial molecular line list for the
 C     current wavelength region
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
 C
       PARAMETER (DP0=3.33564E-11, DP1=1.651E8, UN=1.) 
 C
@@ -20922,10 +20922,10 @@ C     =================
 C
 C     output of selected molecular line parameters (identification table)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
 
       COMMON/REFDEP/IREFD(MFREQ)
       COMMON/PRFQUA/DOPA1(MATOM,MDEPTH),VDWC(MDEPTH)
@@ -21015,10 +21015,10 @@ C     ===========================================
 C
 C     Total molecular line opacity (ABLIN) and emissivity (EMLIN)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       PARAMETER (UN     = 1., 
      *           EXT0   = 3.17,
      *           TEN    = 10.)
@@ -21083,7 +21083,7 @@ C     Taken from Kurucz ATLAS9
 C
 C     FROM MATHISEN (1984), AFTER WISHART(1979) AND BROAD AND REINHARDT (1976)
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       DIMENSION WBF(85),BF(85)
       DATA WBF/  18.00,  19.60,  21.40,  23.60,  26.40,  29.80,  34.30,
      1   40.40,  49.10,  62.60, 111.30, 112.10, 112.67, 112.95, 113.05,
@@ -21131,7 +21131,7 @@ C     Taken from Kurucz ATLAS9
 C
 C     From Bell and Berrington J.Phys.B,vol. 20, 801-806,1987.
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       PARAMETER (CONFF=5040.*1.380658E-16, CONTH=5040.)
       DIMENSION FFLOG(22,11),FFCS(11,22),FFLOG2(22)
       DIMENSION FFBEG(11,11),FFEND(11,11),FFTT(11),WFFLOG(22)
@@ -21351,8 +21351,8 @@ c   I.H. 012498
 c
 c 
 
-        INCLUDE 'PARAMS.FOR'
-        INCLUDE 'MODELP.FOR'
+        INCLUDE 'INCLUDE/PARAMS.FOR'
+        INCLUDE 'INCLUDE/MODELP.FOR'
 
         character*128 MET,MOLEC
         REAL*8 IP,KP,KPLOG,IPI,NNH
@@ -21625,8 +21625,8 @@ C
         SUBROUTINE DIE(TEM,PG)
 c       ======================
 c
-        INCLUDE 'PARAMS.FOR'
-        INCLUDE 'MODELP.FOR'
+        INCLUDE 'INCLUDE/PARAMS.FOR'
+        INCLUDE 'INCLUDE/MODELP.FOR'
 
         REAL*8 IP,KP
         COMMON/COMFH1/C(600,5),NELEM(5,600),NATO(5,600),
@@ -21846,7 +21846,7 @@ c     ======================
 c
 c     TiO partition function (data from Kurucz web site)
 c
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       dimension pf0(800)
       data pf0/       
      *    29.107,    55.425,    82.417,   111.190,   142.564,   176.916,
@@ -22024,9 +22024,9 @@ C      RD, VEL: Radial points, expansion velocity
 C
 C     Synspec version
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       PARAMETER (RSUN=6.96D10)
       common/velaux/velmax,iemoff,nltoff,itrad
 C
@@ -22076,9 +22076,9 @@ C
 C     Setup impact rays and angles
 C      (assumes one impact ray tangent to every depth layer)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       PARAMETER (PI4=4.*3.141592654)
       PARAMETER (UN=1., TWO=2., HALF=0.5)
       DIMENSION RS(MDEPF ),RDX(MDEPF )
@@ -22295,8 +22295,8 @@ C
 C     The present version of this routine assumes that there are
 C      impact rays tangent to every depth layers (i.e. NREXT=ND)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       PARAMETER (UN=1., TWO=2., HALF=0.5)
       PARAMETER (SIX=6.)
       PARAMETER (C03=UN/3.,D03=2./3.,C04=UN/4.,C06=UN/6.)
@@ -22399,8 +22399,8 @@ C
 C     Solve tridiagonal system of equations
 C      from Numerical Recipes (standard Gaussian elimination)
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       DIMENSION A(N),B(N),C(N),R(N),U(N)
       DIMENSION GTRID(MKU)
 C
@@ -22430,10 +22430,10 @@ C     enter the solution of the radiative transfer equation (RTEWIN)
 C     Setup opacities for a given frequency set 
 C     Oversample in radial and frequency space for later interpolation
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       PARAMETER (UN=1., TWO=2., HALF=0.5)
       DIMENSION CROSS(MCROSS,MOPAC),
      *          ABSO(MOPAC),EMIS(MOPAC),
@@ -22637,10 +22637,10 @@ C     The numerical method used:
 C     Discontinuous Finite Element method
 C     Castor, Dykema, Klein, 1992, ApJ 387, 561.
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       PARAMETER (UN=1., TWO=2., HALF=0.5)
       PARAMETER (NTRALI=10,DJMAX=1.D-3)
       COMMON/RTEOPA/CH(MFREQ,MDEPTH),ET(MFREQ,MDEPTH),
@@ -22887,10 +22887,10 @@ C
 C     Version including velocity field and extension
 C      radiative transfer along ray IU
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'SYNTHP.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       PARAMETER (UN=1., TWO=2., HALF=0.5)
       PARAMETER (TAUREF = 0.6666666666667)
       DIMENSION ST0(2*MDEPF ),TAU(2*MDEPF ),AB0(2*MDEPF ),
@@ -23139,9 +23139,9 @@ C     NRCORE  - Number of core rays
 C
 C
 c      parameter (un=1.,two=2.)
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       dimension zz(mdepth),vel0(mdepth),rrel(mdepth),
 c     *          dvel0(mdepth),vel1(mdepth),hstt(mdepth),
      *          den0(mdepth),vel00(mdepth),ind(mdepth),
@@ -23338,9 +23338,9 @@ C
 C     determination of the radiation temperatures
 C     after Schmutz (1991); inversion done by Newton-Raphson
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
-      INCLUDE 'WINCOM.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
       common/velaux/velmax,iemoff,nltoff,itrad
       PARAMETER (CON=2.0706D-16, un=1.)
       parameter (nterad=3)
@@ -23399,7 +23399,7 @@ C     cross-section times partition function for CH
 C
 C     from Kurucz ATLAS9
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       parameter (fihu=500.,fihui=1./fihu,
      *           twhu=200.,twhui=1./twhu,
      *           tenl=2.30258509299405E0)
@@ -23683,7 +23683,7 @@ C     cross-section times partition function for OH
 C
 C     from Kurucz ATLAS9
 C
-      INCLUDE 'PARAMS.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
       parameter (fihu=500.,fihui=1./fihu,
      *           twhu=200.,twhui=1./twhu,
      *           tenl=2.30258509299405E0)
@@ -24014,8 +24014,8 @@ C
 C     Initializes necessary arrays for evaluating hydrogen line profiles
 C     from the XENOMORPH tables
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
 C
       DO I=1,4
          DO J=1,22
@@ -24140,8 +24140,8 @@ C     Interpolation in temperature and electron density from the
 C     Xenomorph tables for hydrogen lines to the actual valus of
 C     temperature and electron density
 C
-      INCLUDE 'PARAMS.FOR'
-      INCLUDE 'MODELP.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
       DIMENSION ZZ(3),XX(3),WXB(3),WZB(3),WXR(3),WZR(3)
 C
       NX=2
@@ -24182,6 +24182,84 @@ C
       W0R=YINT(ZZ,WZR,Z0)
       RETURN
       END
+
+
+C
+C
+C     ******************************************************************
+C
+C
+      subroutine readhe1v2
+C     Read combined and updated HeI tables
+C     based on Beauchamp+ (1997),
+C     Lara+ (2012), and
+C     Gigosos+ (2009)
+C     from DATA/beauchamp_irrgang.dat
+C     Created by Matti Dorsch
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      character str*100
+c
+      open(25,file='./DATA/beauchamp.dat',status='old')
+      write(6,600) ihe1pr
+ 600  format(' -----------'/
+     *       ' Reading Beauchamp tables; ihe1pr =',i2,/
+     *       ' -----------')
+      read(25,*) nlhe !number of tables
+      read(25,*) nthe !number of temperatures
+      read(25,*) (the(i),i=1,nthe) !temperatures
+      read(25,*) ndhe !number of nes TODO needs to depend on the line index!
+      read(25,*) (dhe(i),i=1,ndhe) !nes
+      do itt=1,nthe
+         thel(itt)=dlog10(the(itt))
+      enddo
+      do idd=1,ndhe-2
+         dhel(idd)=dlog10(dhe(idd+2))
+      enddo
+C     iterate over all tables
+      do ill=1,nlhe
+         read(25,'(a)') str !line with LAMBDA
+C        number of wl points, skip5, min.ne, skip1, max.ne
+C         read(str,'(i2,5x,e12.5)') nwhe(ill),d0he(ill)
+         read(str,'(i2,5x,e12.5,1x,e12.5)')
+     *        nwhe(ill),d0he(ill),d1he(ill)
+C         write(*,*) 'd0he(ill)',d0he(ill)
+C         write(*,*) 'd1he(ill)',d1he(ill)
+
+         read(25,*) ilowhe(ill),iuphe(ill),fhe(ill),wavhe(ill)
+         read(25,*) (wshe(ill,itt),itt=1,nthe) !e impact half-width
+         read(25,*) (dshe(ill,itt),itt=1,nthe) !shifts
+         read(25,*) (ashe(ill,itt),itt=1,nthe) !ion broadening param
+         read(25,*) drefhe(ill) !reference ne
+         read(25,*)
+         read(25,*)
+         write(*,*) 'wavhe(ill)',wavhe(ill)
+         if(nwhe(ill).gt.0)then
+            if(wavhe(ill).gt.1000)then
+               read(25,'(9f7.2)') (whe(ill,iww),iww=1,nwhe(ill))
+            else
+               read(25,'(9f8.2)') (whe(ill,iww),iww=1,nwhe(ill))
+            endif
+            do idd=1,ndhe
+               do itt=1,nthe
+                  read(25,'(6e12.5)')
+     .                 (profhe(ill,itt,idd,iww),iww=1,nwhe(ill))
+               enddo
+               if(profhe(ill,1,idd,1).gt.0.)then
+                  do itt=1,nthe
+                     do iww=1,nwhe(ill)
+                        profhe(ill,itt,idd,iww)=
+     .                       dlog10(profhe(ill,itt,idd,iww))
+                     enddo
+                  enddo
+               endif
+            enddo
+         endif
+      enddo
+      close(25)
+c
+      return
+      end
+
 
 C
 C
@@ -24276,9 +24354,9 @@ C     no extrapolation, instead closest table, except if ne is
 C     below the grid, then isolated approx. using WTOT
 C     Created by Antoine Bedard
 c
-      include 'INCLUDE/PARAMS.FOR'
-      include 'INCLUDE/MODELP.FOR'
-      include 'INCLUDE/LINDAT.FOR'
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
       parameter(cas=2.997925d18,pi=3.14159265359d0,os0=0.02654,
      *          f13=1./3.,f43=4./3.,f49=4./9.,f89=8./9.)
       dimension prft(mthe),prfd(mdhe),coeff(100)
