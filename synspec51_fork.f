@@ -6827,7 +6827,7 @@ C     effect of turbulent velocity on the Doppler width
 C
 C      IF (ILINE.GT.103.AND.ILINE.LT.121)
 C     +     WRITE(*,*)'PHE1: ILINE = ',ILINE
-C     disable shamy tables
+C     disable shamey tables
 C      IF (ILINE.EQ.2) ILINE = 22
 C      IF (ILINE.EQ.3) ILINE = 21
 C
@@ -7689,7 +7689,7 @@ C           MD: use BCSS for 4471 and 4922
             if(ihe1pr.eq.2.AND.
      *         ABS(ALAM-447.1).GT.0.5.AND.
      *         ABS(ALAM-492.2).GT.0.2)then
-C              nlhe = number of tables spec. in beachamp.dat
+C              nlhe = number of tables spec. in beauchamp.dat
                do ill=1,nlhe
                   if(abs(alam-0.1d0*wavhe(ill)).lt.0.2) ispec=-ill
                enddo
@@ -24182,14 +24182,12 @@ C
       W0R=YINT(ZZ,WZR,Z0)
       RETURN
       END
-
-
 C
 C
 C     ******************************************************************
 C
 C
-      subroutine readhe1v2
+      subroutine readhe1_irrgang
 C     Read combined and updated HeI tables
 C     based on Beauchamp+ (1997),
 C     Lara+ (2012), and
@@ -24207,23 +24205,27 @@ c
       read(25,*) nlhe !number of tables
       read(25,*) nthe !number of temperatures
       read(25,*) (the(i),i=1,nthe) !temperatures
-      read(25,*) ndhe !number of nes TODO needs to depend on the line index!
-      read(25,*) (dhe(i),i=1,ndhe) !nes
+C      read(25,*) ndhe !number of nes TODO needs to depend on the line index!
+C      read(25,*) (dhe(i),i=1,ndhe) !nes
       do itt=1,nthe
          thel(itt)=dlog10(the(itt))
       enddo
-      do idd=1,ndhe-2
-         dhel(idd)=dlog10(dhe(idd+2))
-      enddo
+C      do idd=1,ndhe-2
+C         dhel(idd)=dlog10(dhe(idd+2))
+C      enddo
 C     iterate over all tables
       do ill=1,nlhe
          read(25,'(a)') str !line with LAMBDA
 C        number of wl points, skip5, min.ne, skip1, max.ne
 C         read(str,'(i2,5x,e12.5)') nwhe(ill),d0he(ill)
-         read(str,'(i2,5x,e12.5,1x,e12.5)')
-     *        nwhe(ill),d0he(ill),d1he(ill)
+C         read(str,'(i2,5x,e12.5,1x,e12.5)')
+C     *        nwhe(ill),d0he(ill),d1he(ill)
+         read(str,'(i2,3x,i2,e12.5,1x,e12.5)')
+     *        nwhe(ill),ndhe(ill),d0he(ill),d1he(ill)
 C         write(*,*) 'd0he(ill)',d0he(ill)
 C         write(*,*) 'd1he(ill)',d1he(ill)
+C         read(25,*) (dhe(i),i=1,ndhe(ill)) !nes
+         read(25,'(9f7.2)') (dhe(ill,idd),idd=1,ndhe(ill)) !nes
 
          read(25,*) ilowhe(ill),iuphe(ill),fhe(ill),wavhe(ill)
          read(25,*) (wshe(ill,itt),itt=1,nthe) !e impact half-width
@@ -24239,7 +24241,7 @@ C         write(*,*) 'd1he(ill)',d1he(ill)
             else
                read(25,'(9f8.2)') (whe(ill,iww),iww=1,nwhe(ill))
             endif
-            do idd=1,ndhe
+            do idd=1,ndhe(ill)
                do itt=1,nthe
                   read(25,'(6e12.5)')
      .                 (profhe(ill,itt,idd,iww),iww=1,nwhe(ill))
@@ -24439,7 +24441,8 @@ C        distance from line center in omega
                sign=-1.
             endif
 C           similar to 1/v_av just above eq. 3.19 in Griem (1962)
-C           amplitude of the velocity distribution for a maxwell-boltzmann distribution, and not the average velocity itself
+C           amplitude of the velocity distribution for a maxwell-boltzmann 
+C           distribution, and not the average velocity itself
             vm=1.d0/dsqrt(16.*bolk*t0/pi/6.6464414d-24)
             rhom=(3./4./pi/ane0)**f13
             sigma=ws0*vm*rhom
@@ -24492,6 +24495,7 @@ c        Detailed profiles
 c
          if(ifirst.eq.1)then
             nnnwhe=nwhe(iline)
+C           TODO change this to: nnndhe = ndhe(iline)
             nnndhe=ndhe-2
             t0l=dlog10(t0)
             ane0l=dlog10(ane0)
