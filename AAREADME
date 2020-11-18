@@ -1,0 +1,14 @@
+!!!
+! compile with gfortran-5 or gfortran-6 (not >=7!)
+! otherwise strength (or broadening?)
+! of heavy metal lines will be wrong (too weak)!
+! maybe only for lines that don't have GammaStark provided?
+! only Z>30 affected -> maybe something in that subroutine?
+! some Sr, YIII, Zr, Sn, Pb lines def. affected, both in UV and optical.
+! effect is worse in UV!
+!!!
+--
+- spring 2020:
+--
+changed SUBROUTINE DWNFR1
+
