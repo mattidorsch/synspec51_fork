@@ -6380,12 +6380,12 @@ C      COMMON/PRO403/PRF403(57,4,7),DLM403(57,7),XNE403(7)
 C      COMMON/PRO439/PRF439(53,4,6),DLM439(53,6),XNE439(6)
       DATA NT /4/
 C
-
+C     use Beauchamp tables
       if(ihe1pr.eq.2)then
          call readhe1_irrgang
 C         to use BCSS 4471, 4922 do not return
 C         also no need to return, if fort.67 exists
-C         return
+         return
       endif
 
 C      WRITE(*,*)'HE1INI: ALAM = ',ALAM
@@ -6394,11 +6394,10 @@ C     80 and 50 correspond to max nwl in table +1!
 C     NWL = 59 for HeI 5058 -> use 60?!
       IH=67
 C
-c     OPEN(UNIT=IH,STATUS='OLD')
+      OPEN(UNIT=IH,STATUS='OLD')
 C
 C        read the Barnard, Cooper, Smith tables for He I 4471 line,
 C        which have to be stored in file unit IH
-C
 C
       NE=7
       DO IE=1,NE
@@ -7656,7 +7655,7 @@ C
       FUNCTION ISPEC(IAT,ION,ALAM)
 C     ============================
 C
-C     Auxiliary procedure for INISET
+C     Auxiliary procedure for INISET (only H/He)
 C
 C     Input:  IAT  - atomic number
 C             ION  - ion (=1 for neutrals, =2 for once ionized, etc.)
@@ -7679,40 +7678,17 @@ C
          RETURN
        ELSE
          IF(ION.EQ.1) THEN
-            IF(ABS(ALAM-447.1).LT.0.5.AND.IHE1PR.GT.0) ISPEC=2
-            IF(ABS(ALAM-438.8).LT.0.2.AND.IHE1PR.GT.0) ISPEC=3
-            IF(ABS(ALAM-402.6).LT.0.2.AND.IHE1PR.GT.0) ISPEC=4
-            IF(ABS(ALAM-492.2).LT.0.2.AND.IHE1PR.GT.0) ISPEC=5
+c           IHE1PR = 1 --> Profiles from Barnard, Cooper, Smith, Shamey
+            IF(ABS(ALAM-447.1).LT.0.5.AND.IHE1PR.eq.1) ISPEC=2
+            IF(ABS(ALAM-438.8).LT.0.2.AND.IHE1PR.eq.1) ISPEC=3
+            IF(ABS(ALAM-402.6).LT.0.2.AND.IHE1PR.eq.1) ISPEC=4
+            IF(ABS(ALAM-492.2).LT.0.2.AND.IHE1PR.eq.1) ISPEC=5
 c           Antoine: IHE1PR = 2 --> Profiles from Beauchamp
-C            if(ihe1pr.eq.2)then
-C           MD: use BCSS for 4471 and 4922
-            if(ihe1pr.eq.2.AND.
-     *         ABS(ALAM-447.1).GT.0.5.AND.
-     *         ABS(ALAM-492.2).GT.0.2)then
-C              nlhe = number of tables spec. in beauchamp.dat
+            if(ihe1pr.eq.2)then
                do ill=1,nlhe
                   if(abs(alam-0.1d0*wavhe(ill)).lt.0.2) ispec=-ill
                enddo
             endif
-C           enable Beauchamp He I broadening tables (MD)
-C            IF(ABS(ALAM- 370.5).LT.0.2.AND.IHE1PR.GT.0) ISPEC=105
-C            IF(ABS(ALAM- 382.0).LT.0.2.AND.IHE1PR.GT.0) ISPEC=106
-C            IF(ABS(ALAM- 386.7).LT.0.2.AND.IHE1PR.GT.0) ISPEC=107
-C            IF(ABS(ALAM- 388.9).LT.0.2.AND.IHE1PR.GT.0) ISPEC=108
-C            IF(ABS(ALAM- 396.5).LT.0.2.AND.IHE1PR.GT.0) ISPEC=109
-C            IF(ABS(ALAM- 400.9).LT.0.2.AND.IHE1PR.GT.0) ISPEC=110
-C            IF(ABS(ALAM- 402.4).LT.0.2.AND.IHE1PR.GT.0) ISPEC=111
-C            IF(ABS(ALAM- 412.1).LT.0.2.AND.IHE1PR.GT.0) ISPEC=112
-C            IF(ABS(ALAM- 414.4).LT.0.2.AND.IHE1PR.GT.0) ISPEC=113
-C            IF(ABS(ALAM- 416.9).LT.0.2.AND.IHE1PR.GT.0) ISPEC=114
-C            IF(ABS(ALAM- 443.8).LT.0.2.AND.IHE1PR.GT.0) ISPEC=115
-C            IF(ABS(ALAM- 471.3).LT.0.2.AND.IHE1PR.GT.0) ISPEC=116
-C            IF(ABS(ALAM- 501.6).LT.0.2.AND.IHE1PR.GT.0) ISPEC=117
-C            IF(ABS(ALAM- 504.8).LT.0.2.AND.IHE1PR.GT.0) ISPEC=118
-C            IF(ABS(ALAM- 587.6).LT.0.2.AND.IHE1PR.GT.0) ISPEC=119
-C            IF(ABS(ALAM- 667.8).LT.0.2.AND.IHE1PR.GT.0) ISPEC=120
-C            IF(ABS(ALAM- 438.8).LT.0.2.AND.IHE1PR.GT.0) ISPEC=121
-C            IF(ABS(ALAM- 402.6).LT.0.2.AND.IHE1PR.GT.0) ISPEC=122
           ELSE
 C
             IF(ALAM.LT.163..OR.ALAM.GT.1012.7) RETURN
@@ -7990,14 +7966,14 @@ C
       ALAM=CNM/FR0
 C  
       if(ifwin.gt.0) then
-      IF(ALAMC.GT.0.) SPACE=SPACE0*ALAM/ALAMC
-      IF(SPACE0.LT.0.) SPACE=-SPACE0
-      CUTOFF=CUTOF0*ALAM/ALAMC
-      DOPSTD=1.E7/ALAM*DSTD
-      DISTAN=0.15*DOPSTD
-      SPAC=SPACE
-      IF(MOD(IFREQ,10).GT.0) SPAC=3.E16/ALAM/ALAM*SPACE
-      DISTA0=0.14*SPAC
+        IF(ALAMC.GT.0.) SPACE=SPACE0*ALAM/ALAMC
+        IF(SPACE0.LT.0.) SPACE=-SPACE0
+        CUTOFF=CUTOF0*ALAM/ALAMC
+        DOPSTD=1.E7/ALAM*DSTD
+        DISTAN=0.15*DOPSTD
+        SPAC=SPACE
+        IF(MOD(IFREQ,10).GT.0) SPAC=3.E16/ALAM/ALAM*SPACE
+        DISTA0=0.14*SPAC
       end if
 C
 C     set up a different starting wavelength for IMODE=1
@@ -8015,7 +7991,7 @@ C
       IF(IJ.LT.MFREQ+1) GO TO 50
       IF(ALAM.GT.ALAM1+CUTOFF) GO TO 210
 C
-C     SECOND SELECTION : FOR LINE STRENGHTS
+C     SECOND SELECTION : FOR LINE STRENGTHS
 C
    50 CONTINUE
       ISTR=0
@@ -8033,7 +8009,6 @@ C
          if(ifwin.gt.0) frmav=frmav*(1.-vinf/2.997925e10)
          IF(IJ.GE.MFREQ+1.AND.FRMAv-FR0.GT.EXT+SPAC) GO TO 20
       END IF
-
 C
       NLIN=NLIN+1
       if(nlin.gt.mlin) call quit(' too many lines in a set')
@@ -9616,7 +9591,7 @@ C
          INNLT=INDNLT(IL)
          IAT=INDAT(IL)/100
          ION=MOD(INDAT(IL),100)
-C        LPR=.FALSE. leads to special HeI broadening
+C        LPR=.FALSE. ! leads to special HeI broadening
          LPR=.TRUE.
          ISP=ISPRF(IL)
 C         IF (ISP.EQ.105) WRITE(*,*)'LINOP: ISP = ',ISP
@@ -9633,6 +9608,7 @@ C         IF(ISP.GT.104.AND.ISP.LT.122) LPR=.FALSE.
 C         IF (ISP.GE.6.AND.ISP.LT.105) GO TO 100
 C         IF (ISP.GE.122) GO TO 100
 C         IF(ISP.GT.1.AND.ISP.LE.6) LPR=.FALSE.
+C        changed ISP.GE.6 to ISP.GE.7
          IF (ISP.GE.7) GO TO 100
          CALL PROFIL(IL,IAT,ID,AGAM)
          DOP1=DOPA1(IAT,ID)
@@ -24230,9 +24206,10 @@ C        skip two lines
 C        read electron densities dhe for this line
          read(25,'(9e8.1)') (dhe(ill,idd),idd=1,ndhe(ill))
 C        Also save ne in log10 for use in interpolation.
-C        Ignores first two densities. Why?
-         do idd=1,ndhe(ill)-2
-            dhel(ill,idd) = dlog10(dhe(ill,idd+2))
+C        Ignores first two densities, prob. because they are = 0
+C        in original tables.
+         do idd=1,ndhe(ill)
+            dhel(ill,idd) = dlog10(dhe(ill,idd))
          enddo
 C        reading the densities works ...
 C         do j=1,ndhe(ill)
@@ -24241,7 +24218,7 @@ C         enddo
 C        if not only approximation parameters are given
          if(nwhe(ill).gt.0)then
 C           read wavelength grid
-C           EUV lines have different format
+C           EUV lines have a different format
             if(wavhe(ill).gt.1000)then
                read(25,'(9f8.3)') (whe(ill,iww),iww=1,nwhe(ill))
             else
@@ -24257,7 +24234,7 @@ C           read intensities
                   read(25,'(6e12.5)')
      *                 (profhe(ill,itt,idd,iww),iww=1,nwhe(ill))
                enddo
-C              convert intensities to log10 if not given as log10
+C              convert all intensities to log10 if not given as log10
                if(profhe(ill,1,idd,1).gt.0.)then
                   do itt=1,nthe
                      do iww=1,nwhe(ill)
@@ -24279,16 +24256,16 @@ C     ******************************************************************
 C
 C
 C      subroutine readhe1
-c     ==================
+C     ==================
 C
 C     Read updated Beauchamp (1997) tables
 C     from DATA/beauchamp.dat
 C     Created by Antoine Bedard
 C
-c
+C
 C      INCLUDE 'INCLUDE/PARAMS.FOR'
 C      character str*100
-Cc
+C
 C      open(25,file='./DATA/beauchamp.dat',status='old')
 C      write(6,600) ihe1pr
 C 600  format(' -----------'/
@@ -24346,16 +24323,16 @@ C            enddo
 C         endif
 C      enddo
 C      close(25)
-c
+C
 C      return
 C      end
 C
 C
 C
       subroutine absohe(id,fr,iline,il,abl,eml)
-c     =========================================
-c
-c     He I line profiles after Beauchamp et al. (1997).
+C     =========================================
+C
+C     He I line profiles after Beauchamp et al. (1997).
 C     ABSOHE is called to compute the absorption (ABL) and emission
 C     (EML) coefficients of the line at each frequency.
 C     Detailed profiles are interpolated to the correct temperature
@@ -24364,21 +24341,21 @@ C     If temperature or electron density are outside tabulated range
 C     no extrapolation, instead closest table, except if ne is
 C     below the grid, then isolated approx. using WTOT.
 C     Created by Antoine Bedard.
-c
+C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
       INCLUDE 'INCLUDE/LINDAT.FOR'
       parameter(cas=2.997925d18,pi=3.14159265359d0,os0=0.02654,
      *          f13=1./3.,f43=4./3.,f49=4./9.,f89=8./9.)
-      dimension prft(mthe),prfd(mdhe),coeff(100)
+      dimension prft(mthe),prfd(mdhe),coeff(1200)
       common/hepars/ idold,ilold,fr000,t,ane,t0,ane0,abtra,emtra,f,
-     *               ws0,ds0,as0,nnnwhe,dwav0(mwhe),prof0(mwhe)
-
-c
-      ilforb=1 ! Always use the detailed profiles
-C      ilforb=0 ! Always use the isolated line approx
-c
-C     ifirst -> first line?!
+     *               ws0,ds0,as0,nnnwhe,dwav0(mwhe),prof0(mwhe),
+     *               dhel0(mdhe)
+C
+      ilforb=1 ! use the detailed profiles if possible
+C      ilforb=0 ! always use the isolated line approximation
+C
+C     ifirst=1 -> first frequency for which this line is used
       if(id.eq.idold.and.il.eq.ilold)then
          ifirst=0
       else
@@ -24386,35 +24363,36 @@ C     ifirst -> first line?!
       endif
       idold=id
       ilold=il
-c
+C
       if(ifirst.eq.1)then
-         fr000=freq0(il)
-         t=temp(id)
-         ane=elec(id)
-         t0=dmax1(the(1),dmin1(t,the(nthe)))
-C        ane0 is the lowest electron density in the tables
-C        or the actual electron density, if lower
-C        this is used as electron density from here. 
-         ane0=dmin1(ane,dhe(1,ndhe(1)))
-         i=ilowhe(iline)+nfirst(ielhe1)-1
-         j=iuphe(iline)+nfirst(ielhe1)-1
-         abtra=popul(i,id)*wop(j,id)
-         emtra=popul(j,id)*wop(i,id)*g(i)/g(j)
+         fr000 = freq0(il)
+         t = temp(id)
+         ane = elec(id)
+C        The actual temp. and electron densities are replaced by the 
+C        upper limits of the tables if they exceed them.
+C        ane0 is used as electron density from here on. 
+         t0 = dmax1(the(1),dmin1(t,the(nthe)))
+         ane0 = dmin1(ane, dhe(iline,ndhe(iline)))
+         i = ilowhe(iline) + nfirst(ielhe1) - 1
+         j = iuphe(iline) + nfirst(ielhe1) - 1
+         abtra = popul(i,id) * wop(j,id)
+         emtra = popul(j,id) * wop(i,id) * g(i)/g(j)
      *        *dexp((enion(i)-enion(j))/bolk/t)
          f=exp(gf0(il)+4.2014672)/g(i)
       endif
-c
+C
 C     nwhe = number of wl points, d0he min. elec. -density
 C     defined d1he as max. d0he min. elec. -density
 C      if(ane0.gt.d1he(iline))then
 C         write(*,*) 'ne too high',d1he(iline),ane0,wavhe(iline)
 C      endif
 C      if(0.eq.0)then
+C      if(ilforb.eq.0.or.nwhe(iline).eq.0.or.ane0.lt.d0he(iline))then
       if(ilforb.eq.0.or.nwhe(iline).eq.0.or.
      *    ane0.lt.d0he(iline).or.ane0.gt.d1he(iline))then
-c
-c        Isolated profiles
-c
+C
+C        Isolated profiles
+C
          if(ifirst.eq.1)then
             do itt=1,nthe
                if(the(itt).ge.t0) go to 178
@@ -24440,7 +24418,7 @@ C           2*pi*f*f/c = 2*pi*f/lambda = omega/lambda
 C           why invert sign?
             ds0=-ds0
          endif
-c
+C
 C        conversion from f to omega
          afreq0=2.*pi*fr000
          afreqi=2.*pi*fr
@@ -24471,7 +24449,7 @@ C              dynamical correction after BCS (1974, eq. 6.7)
 C              this overwrites wcorr and scorr
                call dynhe(xcorr,wcorr,scorr)
             endif
-C           disable dyn. correction since it doesn't
+C           disable dyn. correction because it doesn't
 C           improve general fit for He-sdOs
             wcorr=1.36
             scorr=2.36
@@ -24501,15 +24479,19 @@ C        use two components for HeI 4471
 C         IF(ILINE.EQ.1) PHE1=(8.*phi+voigthe(agam,v1))/9.
          factor = 2.*pi
          phi = phi*factor
-c
+C
       else
-c
-c        Detailed profiles
-c
+C
+C        Detailed profiles
+C
          if(ifirst.eq.1)then
-            nnnwhe=nwhe(iline)
-C           -2 and and later +2 -> skip fitst two densities. Why?
-            nnndhe = ndhe(iline)-2
+            nnnwhe = nwhe(iline)
+C           for original tables: skip first two densities.
+            nnndhe = ndhe(iline)
+C           1d-array of electron densities for specific line
+            dhel0 = dhel(iline,:)
+C            write(*,*) 'dhel0', dhel0
+C            write(*,*) 'nnndhe', nnndhe
             t0l = dlog10(t0)
             ane0l = dlog10(ane0)
             do itt=1,nthe
@@ -24520,17 +24502,20 @@ C           -2 and and later +2 -> skip fitst two densities. Why?
             do iww=1,nnnwhe
                dwav0(iww)=whe(iline,iww)
                do idd=1,nnndhe
+C                 create list of intensities for line, density
                   do itt=1,nthe
-                     prft(itt)=profhe(iline,itt,idd+2,iww)
+                     prft(itt)=profhe(iline,itt,idd,iww)
                   enddo
+C                 linear interpolation in temperature
                   prfd(idd)=prft(it0-1)+xxxt*(prft(it0)-prft(it0-1))
                enddo
-               call spline(dhel(iline,:),prfd,nnndhe,coeff)
-               call splint(dhel(iline,:),prfd,coeff,
+C              interpolate intensities in electron density
+               call spline(dhel0,prfd,nnndhe,coeff)
+               call splint(dhel0,prfd,coeff,
      *                     nnndhe,ane0l,prof0(iww))
             enddo
          endif
-c
+C
          wav0=cas/fr000
          wavi=cas/fr
          dwav=wavi-wav0
@@ -24540,28 +24525,30 @@ c
          elseif(dwav.le.dwav0(1))then
             phi=2.5*dlog10(dwav0(1)/dwav)+prof0(1)
          else
+C           interpolate intensities in wavelength 
+C           (more coeff -> better interp.)
             call spline(dwav0,prof0,nnnwhe,coeff)
             call splint(dwav0,prof0,coeff,nnnwhe,dwav,phi)
          endif
          phi=10.**phi
          factor=wavi**2./cas
          phi=phi*factor
-c
+C
       endif
-c
+C
       sig=os0*f*phi
       xkf=dexp(-4.79928d-11*fr/t)
       xkfb=xkf*1.4743d-2*(fr/1.d15)**3.
       abl=sig*(abtra-emtra*xkf)
       eml=sig*emtra*xkfb
-c
+C
       return
       end
 C
 C
 C
       subroutine dynhe(xxk,ww,ss)
-c     ===========================
+C     ===========================
 C
 C     Dynamical correction to impact approx. after
 C     Barnard, Cooper & Smith (1974), Tab. 1
@@ -24688,7 +24675,7 @@ C
 C
 C
       subroutine spline(x,y,n,y2)
-c     ===========================
+C     ===========================
 C
 C     Created by Antoine Bedard
 C
@@ -24715,7 +24702,7 @@ C
 C
 C
       subroutine splint(xa,ya,y2a,n,x,y)
-c     ==================================
+C     ==================================
 C
 C     Created by Antoine Bedard
 C
@@ -24747,7 +24734,7 @@ c     ================
 c
 c     subroutine to calculate the depth dependent abundance profile for
 c     a layered H+He atmosphere.
-C     Created by Antoine Bedard
+c     Created by Antoine Bedard
 c
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'

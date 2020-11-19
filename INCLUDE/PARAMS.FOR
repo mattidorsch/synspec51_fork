@@ -33,7 +33,7 @@ C
      *           MLHE = 46, ! max. number of lines in HeI table
      *           MWHE = 1153, ! max. number of wavelengths per HeI line
      *           MTHE = 3, ! max. number of temp. for HeI table
-     *           MDHE = 25) ! max. number of electron densities per HeI line
+     *           MDHE = 27) ! max. number of electron densities per HeI line
 C
 C     Basic physical constants
 C
