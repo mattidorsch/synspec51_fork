@@ -6382,7 +6382,7 @@ C      COMMON/PRO439/PRF439(53,4,6),DLM439(53,6),XNE439(6)
 C
 
       if(ihe1pr.eq.2)then
-         call readhe1
+         call readhe1_irrgang
 C         to use BCSS 4471, 4922 do not return
 C         also no need to return, if fort.67 exists
 C         return
@@ -24197,10 +24197,10 @@ C     Created by Matti Dorsch
       INCLUDE 'INCLUDE/PARAMS.FOR'
       character str*100
 c
-      open(25,file='./DATA/beauchamp.dat',status='old')
+      open(25,file='./DATA/beauchamp_irrgang.dat',status='old')
       write(6,600) ihe1pr
  600  format(' -----------'/
-     *       ' Reading Beauchamp tables; ihe1pr =',i2,/
+     *       ' Reading Beauchamp-Gigosos-Lara tables; ihe1pr =',i2,/
      *       ' -----------')
       read(25,*) nlhe !number of tables
       read(25,*) nthe !number of temperatures
@@ -24215,29 +24215,30 @@ C         dhel(idd)=dlog10(dhe(idd+2))
 C      enddo
 C     iterate over all tables
       do ill=1,nlhe
-         read(25,'(a)') str !line with LAMBDA
+         read(25,'(a)') str ! str = line with LAMBDA
 C        number of wl points, skip5, min.ne, skip1, max.ne
 C         read(str,'(i2,5x,e12.5)') nwhe(ill),d0he(ill)
-C         read(str,'(i2,5x,e12.5,1x,e12.5)')
-C     *        nwhe(ill),d0he(ill),d1he(ill)
-         read(str,'(i2,3x,i2,e12.5,1x,e12.5)')
+C         read(str,'(i2,5x,i2,e12.5,1x,e12.5)')
+C     *        nwhe(ill),ndhe(ill),d0he(ill),d1he(ill)
+         read(str,'(i4,3x,i2,e12.5,1x,e12.5)')
      *        nwhe(ill),ndhe(ill),d0he(ill),d1he(ill)
 C         write(*,*) 'd0he(ill)',d0he(ill)
 C         write(*,*) 'd1he(ill)',d1he(ill)
 C         read(25,*) (dhe(i),i=1,ndhe(ill)) !nes
-         read(25,'(9f7.2)') (dhe(ill,idd),idd=1,ndhe(ill)) !nes
 
          read(25,*) ilowhe(ill),iuphe(ill),fhe(ill),wavhe(ill)
          read(25,*) (wshe(ill,itt),itt=1,nthe) !e impact half-width
          read(25,*) (dshe(ill,itt),itt=1,nthe) !shifts
          read(25,*) (ashe(ill,itt),itt=1,nthe) !ion broadening param
          read(25,*) drefhe(ill) !reference ne
+C        skip two lines
          read(25,*)
          read(25,*)
+         read(25,'(9f7.2)') (dhe(ill,idd),idd=1,ndhe(ill)) !nes
          write(*,*) 'wavhe(ill)',wavhe(ill)
          if(nwhe(ill).gt.0)then
             if(wavhe(ill).gt.1000)then
-               read(25,'(9f7.2)') (whe(ill,iww),iww=1,nwhe(ill))
+               read(25,'(9f8.3)') (whe(ill,iww),iww=1,nwhe(ill))
             else
                read(25,'(9f8.2)') (whe(ill,iww),iww=1,nwhe(ill))
             endif
@@ -24268,7 +24269,7 @@ C
 C     ******************************************************************
 C
 C
-      subroutine readhe1
+C      subroutine readhe1
 c     ==================
 C
 C     Read updated Beauchamp (1997) tables
@@ -24276,69 +24277,69 @@ C     from DATA/beauchamp.dat
 C     Created by Antoine Bedard
 C
 c
-      INCLUDE 'INCLUDE/PARAMS.FOR'
-      character str*100
-c
-      open(25,file='./DATA/beauchamp.dat',status='old')
-      write(6,600) ihe1pr
- 600  format(' -----------'/
-     *       ' Reading Beauchamp tables; ihe1pr =',i2,/
-     *       ' -----------')
-      read(25,*) nlhe !number of tables
-      read(25,*) nthe !number of temperatures
-      read(25,*) (the(i),i=1,nthe) !temperatures
-      read(25,*) ndhe !number of nes
-      read(25,*) (dhe(i),i=1,ndhe) !nes
-      do itt=1,nthe
-         thel(itt)=dlog10(the(itt))
-      enddo
-      do idd=1,ndhe-2
-         dhel(idd)=dlog10(dhe(idd+2))
-      enddo
+C      INCLUDE 'INCLUDE/PARAMS.FOR'
+C      character str*100
+Cc
+C      open(25,file='./DATA/beauchamp.dat',status='old')
+C      write(6,600) ihe1pr
+C 600  format(' -----------'/
+C     *       ' Reading Beauchamp tables; ihe1pr =',i2,/
+C     *       ' -----------')
+C      read(25,*) nlhe !number of tables
+C      read(25,*) nthe !number of temperatures
+C      read(25,*) (the(i),i=1,nthe) !temperatures
+C      read(25,*) ndhe !number of nes
+C      read(25,*) (dhe(i),i=1,ndhe) !nes
+C      do itt=1,nthe
+C         thel(itt)=dlog10(the(itt))
+C      enddo
+C      do idd=1,ndhe-2
+C         dhel(idd)=dlog10(dhe(idd+2))
+C      enddo
 C     iterate over all tables
-      do ill=1,nlhe
-         read(25,'(a)') str !line with LAMBDA
+C      do ill=1,nlhe
+C         read(25,'(a)') str !line with LAMBDA
 C        number of wl points, skip5, min.ne, skip1, max.ne
 C         read(str,'(i2,5x,e12.5)') nwhe(ill),d0he(ill)
-         read(str,'(i2,5x,e12.5,1x,e12.5)')
-     *        nwhe(ill),d0he(ill),d1he(ill)
+C         read(str,'(i2,5x,e12.5,1x,e12.5)')
+C     *        nwhe(ill),d0he(ill),d1he(ill)
 C         write(*,*) 'd0he(ill)',d0he(ill)
 C         write(*,*) 'd1he(ill)',d1he(ill)
-
-         read(25,*) ilowhe(ill),iuphe(ill),fhe(ill),wavhe(ill)
-         read(25,*) (wshe(ill,itt),itt=1,nthe) !e impact half-width
-         read(25,*) (dshe(ill,itt),itt=1,nthe) !shifts
-         read(25,*) (ashe(ill,itt),itt=1,nthe) !ion broadening param
-         read(25,*) drefhe(ill) !reference ne
-         read(25,*)
-         read(25,*)
-         write(*,*) 'wavhe(ill)',wavhe(ill)
-         if(nwhe(ill).gt.0)then
-            if(wavhe(ill).gt.1000)then
-               read(25,'(9f7.2)') (whe(ill,iww),iww=1,nwhe(ill))
-            else
-               read(25,'(9f8.2)') (whe(ill,iww),iww=1,nwhe(ill))
-            endif
-            do idd=1,ndhe
-               do itt=1,nthe
-                  read(25,'(6e12.5)')
-     .                 (profhe(ill,itt,idd,iww),iww=1,nwhe(ill))
-               enddo
-               if(profhe(ill,1,idd,1).gt.0.)then
-                  do itt=1,nthe
-                     do iww=1,nwhe(ill)
-                        profhe(ill,itt,idd,iww)=
-     .                       dlog10(profhe(ill,itt,idd,iww))
-                     enddo
-                  enddo
-               endif
-            enddo
-         endif
-      enddo
-      close(25)
+C
+C         read(25,*) ilowhe(ill),iuphe(ill),fhe(ill),wavhe(ill)
+C         read(25,*) (wshe(ill,itt),itt=1,nthe) !e impact half-width
+C         read(25,*) (dshe(ill,itt),itt=1,nthe) !shifts
+C         read(25,*) (ashe(ill,itt),itt=1,nthe) !ion broadening param
+C         read(25,*) drefhe(ill) !reference ne
+C         read(25,*)
+C         read(25,*)
+C         write(*,*) 'wavhe(ill)',wavhe(ill)
+C         if(nwhe(ill).gt.0)then
+C            if(wavhe(ill).gt.1000)then
+C               read(25,'(9f7.2)') (whe(ill,iww),iww=1,nwhe(ill))
+C            else
+C               read(25,'(9f8.2)') (whe(ill,iww),iww=1,nwhe(ill))
+C            endif
+C            do idd=1,ndhe
+C               do itt=1,nthe
+C                  read(25,'(6e12.5)')
+C     .                 (profhe(ill,itt,idd,iww),iww=1,nwhe(ill))
+C               enddo
+C               if(profhe(ill,1,idd,1).gt.0.)then
+C                  do itt=1,nthe
+C                     do iww=1,nwhe(ill)
+C                        profhe(ill,itt,idd,iww)=
+C     .                       dlog10(profhe(ill,itt,idd,iww))
+C                     enddo
+C                  enddo
+C               endif
+C            enddo
+C         endif
+C      enddo
+C      close(25)
 c
-      return
-      end
+C      return
+C      end
 C
 C
 C
@@ -24383,7 +24384,8 @@ c
          t=temp(id)
          ane=elec(id)
          t0=dmax1(the(1),dmin1(t,the(nthe)))
-         ane0=dmin1(ane,dhe(ndhe))
+C        minimum electron density?
+         ane0=dmin1(ane,dhe(1,ndhe(1)))
          i=ilowhe(iline)+nfirst(ielhe1)-1
          j=iuphe(iline)+nfirst(ielhe1)-1
          abtra=popul(i,id)*wop(j,id)
@@ -24496,7 +24498,7 @@ c
          if(ifirst.eq.1)then
             nnnwhe=nwhe(iline)
 C           TODO change this to: nnndhe = ndhe(iline)
-            nnndhe=ndhe-2
+            nnndhe=ndhe(iline)-2
             t0l=dlog10(t0)
             ane0l=dlog10(ane0)
             do itt=1,nthe
