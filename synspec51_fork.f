@@ -24188,12 +24188,18 @@ C     ******************************************************************
 C
 C
       subroutine readhe1_irrgang
-C     Read combined and updated HeI tables
-C     based on Beauchamp+ (1997),
-C     Lara+ (2012), and
-C     Gigosos+ (2009)
-C     from DATA/beauchamp_irrgang.dat
-C     Created by Matti Dorsch
+C     Read combined and updated HeI tables. These tables are based on
+C     the tables of Beauchamp+ (1997), but have been extended with 
+C     results for HeI 4471 from Gigosos+ (2009) and HeI 4922 from
+C     Lara+ (2012). In addition, the wavenlength and density grids
+C     were extended using cubic spline interpolation. 
+C     Many tables were interpolated to lower densities to ensure a
+C     smooth transition to approximated profiles.
+C     The original Beauchamp tables often have normalizations < 1, 
+C     because the central wavelengths were not properly sampled in the 
+C     calculation. These points were replaced by extrapolation. 
+C     The table is read from DATA/beauchamp_irrgang.dat.
+C     The new tables were created by Andreas Irrgang.
       INCLUDE 'INCLUDE/PARAMS.FOR'
       character str*100
 c
@@ -24202,56 +24208,61 @@ c
  600  format(' -----------'/
      *       ' Reading Beauchamp-Gigosos-Lara tables; ihe1pr =',i2,/
      *       ' -----------')
-      read(25,*) nlhe !number of tables
-      read(25,*) nthe !number of temperatures
-      read(25,*) (the(i),i=1,nthe) !temperatures
-C      read(25,*) ndhe !number of nes TODO needs to depend on the line index!
-C      read(25,*) (dhe(i),i=1,ndhe) !nes
+      read(25,*) nlhe ! number of tables
+      read(25,*) nthe ! number of temperatures
+      read(25,*) (the(i),i=1,nthe) ! temperatures
       do itt=1,nthe
          thel(itt)=dlog10(the(itt))
       enddo
-C      do idd=1,ndhe-2
-C         dhel(idd)=dlog10(dhe(idd+2))
-C      enddo
 C     iterate over all tables
       do ill=1,nlhe
          read(25,'(a)') str ! str = line with LAMBDA
-C        number of wl points, skip5, min.ne, skip1, max.ne
-C         read(str,'(i2,5x,e12.5)') nwhe(ill),d0he(ill)
-C         read(str,'(i2,5x,i2,e12.5,1x,e12.5)')
-C     *        nwhe(ill),ndhe(ill),d0he(ill),d1he(ill)
-         read(str,'(i4,3x,i2,e12.5,1x,e12.5)')
+         read(str,'(i4,i3,e8.1,e8.1)')
      *        nwhe(ill),ndhe(ill),d0he(ill),d1he(ill)
-C         write(*,*) 'd0he(ill)',d0he(ill)
-C         write(*,*) 'd1he(ill)',d1he(ill)
-C         read(25,*) (dhe(i),i=1,ndhe(ill)) !nes
-
          read(25,*) ilowhe(ill),iuphe(ill),fhe(ill),wavhe(ill)
-         read(25,*) (wshe(ill,itt),itt=1,nthe) !e impact half-width
-         read(25,*) (dshe(ill,itt),itt=1,nthe) !shifts
-         read(25,*) (ashe(ill,itt),itt=1,nthe) !ion broadening param
-         read(25,*) drefhe(ill) !reference ne
+         read(25,*) (wshe(ill,itt),itt=1,nthe) ! e- impact half-width
+         read(25,*) (dshe(ill,itt),itt=1,nthe) ! shifts
+         read(25,*) (ashe(ill,itt),itt=1,nthe) ! ion broadening param
+         read(25,*) drefhe(ill) ! reference ne
 C        skip two lines
          read(25,*)
          read(25,*)
-         read(25,'(9f7.2)') (dhe(ill,idd),idd=1,ndhe(ill)) !nes
-         write(*,*) 'wavhe(ill)',wavhe(ill)
+C        read electron densities dhe for this line
+         read(25,'(9e8.1)') (dhe(ill,idd),idd=1,ndhe(ill))
+C        Also save ne in log10 for use in interpolation.
+C        Ignores first two densities. Why?
+         do idd=1,ndhe(ill)-2
+            dhel(ill,idd) = dlog10(dhe(ill,idd+2))
+         enddo
+C        reading the densities works ...
+C         do j=1,ndhe(ill)
+C            write (*,*) dhe(ill,j)
+C         enddo
+C        if not only approximation parameters are given
          if(nwhe(ill).gt.0)then
+C           read wavelength grid
+C           EUV lines have different format
             if(wavhe(ill).gt.1000)then
                read(25,'(9f8.3)') (whe(ill,iww),iww=1,nwhe(ill))
             else
                read(25,'(9f8.2)') (whe(ill,iww),iww=1,nwhe(ill))
             endif
+C           reading the wavelength grid works ...
+C            do j=1,nwhe(ill)
+C               write (*,*) whe(ill,j)
+C            enddo
+C           read intensities
             do idd=1,ndhe(ill)
                do itt=1,nthe
                   read(25,'(6e12.5)')
-     .                 (profhe(ill,itt,idd,iww),iww=1,nwhe(ill))
+     *                 (profhe(ill,itt,idd,iww),iww=1,nwhe(ill))
                enddo
+C              convert intensities to log10 if not given as log10
                if(profhe(ill,1,idd,1).gt.0.)then
                   do itt=1,nthe
                      do iww=1,nwhe(ill)
                         profhe(ill,itt,idd,iww)=
-     .                       dlog10(profhe(ill,itt,idd,iww))
+     *                       dlog10(profhe(ill,itt,idd,iww))
                      enddo
                   enddo
                endif
@@ -24262,8 +24273,6 @@ C        skip two lines
 c
       return
       end
-
-
 C
 C
 C     ******************************************************************
@@ -24346,16 +24355,15 @@ C
       subroutine absohe(id,fr,iline,il,abl,eml)
 c     =========================================
 c
-C                    FR=FREQ(IJ)
-c     Beauchamp He I line profiles
+c     He I line profiles after Beauchamp et al. (1997).
 C     ABSOHE is called to compute the absorption (ABL) and emission
-C     (EML) coefficients of the line at each frequency
-C     detailed profiles interpolated to the right temperature
-C     and electron density
-C     if temperature or electron density are outside tabulated range
+C     (EML) coefficients of the line at each frequency.
+C     Detailed profiles are interpolated to the correct temperature
+C     and electron density.
+C     If temperature or electron density are outside tabulated range
 C     no extrapolation, instead closest table, except if ne is
-C     below the grid, then isolated approx. using WTOT
-C     Created by Antoine Bedard
+C     below the grid, then isolated approx. using WTOT.
+C     Created by Antoine Bedard.
 c
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
@@ -24364,7 +24372,7 @@ c
      *          f13=1./3.,f43=4./3.,f49=4./9.,f89=8./9.)
       dimension prft(mthe),prfd(mdhe),coeff(100)
       common/hepars/ idold,ilold,fr000,t,ane,t0,ane0,abtra,emtra,f,
-     .               ws0,ds0,as0,nnnwhe,dwav0(mwhe),prof0(mwhe)
+     *               ws0,ds0,as0,nnnwhe,dwav0(mwhe),prof0(mwhe)
 
 c
       ilforb=1 ! Always use the detailed profiles
@@ -24384,13 +24392,15 @@ c
          t=temp(id)
          ane=elec(id)
          t0=dmax1(the(1),dmin1(t,the(nthe)))
-C        minimum electron density?
+C        ane0 is the lowest electron density in the tables
+C        or the actual electron density, if lower
+C        this is used as electron density from here. 
          ane0=dmin1(ane,dhe(1,ndhe(1)))
          i=ilowhe(iline)+nfirst(ielhe1)-1
          j=iuphe(iline)+nfirst(ielhe1)-1
          abtra=popul(i,id)*wop(j,id)
          emtra=popul(j,id)*wop(i,id)*g(i)/g(j)
-     .        *dexp((enion(i)-enion(j))/bolk/t)
+     *        *dexp((enion(i)-enion(j))/bolk/t)
          f=exp(gf0(il)+4.2014672)/g(i)
       endif
 c
@@ -24418,11 +24428,11 @@ C              d -> wl shift
 C              a -> ion brad.
 C           as well as scaling to correct ne
             ws0=xxxne*(xxxt*wshe(iline,itt)+
-     .           (1.d0-xxxt)*wshe(iline,itt-1))
+     *           (1.d0-xxxt)*wshe(iline,itt-1))
             ds0=xxxt*dshe(iline,itt)+
-     .          (1.d0-xxxt)*dshe(iline,itt-1)
+     *          (1.d0-xxxt)*dshe(iline,itt-1)
             as0=xxxne**0.25*
-     .              (xxxt*ashe(iline,itt)+(1.d0-xxxt)*ashe(iline,itt-1))
+     *              (xxxt*ashe(iline,itt)+(1.d0-xxxt)*ashe(iline,itt-1))
 C           conversion of ws0 from lambda to omega
 C           2*pi*f*f/c = 2*pi*f/lambda = omega/lambda
             factor=2.*pi*fr000**2./cas
@@ -24482,14 +24492,15 @@ C        normally this is abs(wave), not dwave!
          v=abs(dtot0)/dop
          agam=wtot/dop
 C        should this really be divided by dop?
-         phi=voigthe(agam,v)/dop ! voigthe is already divided by sqrt(pi) !!!
+C        voigthe is already divided by sqrt(pi)
+         phi = voigthe(agam,v) / dop
 C         ALAM=2.997925E18/FREQ
 C         DLAM=ALAM-WLAM0(ILINE)
 C         v1=abs(ALAM-4471.682)/dop
 C        use two components for HeI 4471
 C         IF(ILINE.EQ.1) PHE1=(8.*phi+voigthe(agam,v1))/9.
-         factor=2.*pi
-         phi=phi*factor
+         factor = 2.*pi
+         phi = phi*factor
 c
       else
 c
@@ -24497,15 +24508,15 @@ c        Detailed profiles
 c
          if(ifirst.eq.1)then
             nnnwhe=nwhe(iline)
-C           TODO change this to: nnndhe = ndhe(iline)
-            nnndhe=ndhe(iline)-2
-            t0l=dlog10(t0)
-            ane0l=dlog10(ane0)
+C           -2 and and later +2 -> skip fitst two densities. Why?
+            nnndhe = ndhe(iline)-2
+            t0l = dlog10(t0)
+            ane0l = dlog10(ane0)
             do itt=1,nthe
                if(thel(itt).ge.t0l) go to 188
             enddo
- 188        it0=itt
-            xxxt=(t0l-thel(it0-1))/(thel(it0)-thel(it0-1))
+ 188        it0 = itt
+            xxxt = (t0l-thel(it0-1))/(thel(it0)-thel(it0-1))
             do iww=1,nnnwhe
                dwav0(iww)=whe(iline,iww)
                do idd=1,nnndhe
@@ -24514,8 +24525,9 @@ C           TODO change this to: nnndhe = ndhe(iline)
                   enddo
                   prfd(idd)=prft(it0-1)+xxxt*(prft(it0)-prft(it0-1))
                enddo
-               call spline(dhel,prfd,nnndhe,coeff)
-               call splint(dhel,prfd,coeff,nnndhe,ane0l,prof0(iww))
+               call spline(dhel(iline,:),prfd,nnndhe,coeff)
+               call splint(dhel(iline,:),prfd,coeff,
+     *                     nnndhe,ane0l,prof0(iww))
             enddo
          endif
 c
