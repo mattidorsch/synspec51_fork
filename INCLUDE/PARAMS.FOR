@@ -28,12 +28,12 @@ C
      *           MI1   = MION0,
      *           MLINH = 78,
      *           MHT   = 7,
-     *           MHE  = 20,
+     *           MHE   = 20,
      *           MHWL  = 65,
-     *           MLHE = 70,
-     *           MWHE = 1153,
-     *           MTHE = 3,
-     *           MDHE = 25)
+     *           MLHE = 46, ! max. number of lines in HeI table
+     *           MWHE = 1153, ! max. number of wavelengths per HeI line
+     *           MTHE = 3, ! max. number of temp. for HeI table
+     *           MDHE = 25) ! max. number of electron densities per HeI line
 C
 C     Basic physical constants
 C
@@ -165,12 +165,12 @@ c
      *              ILIN0(4,22),
      *              ILEMKE
 c
-      COMMON/HE1PRF/NLHE,NTHE,NDHE,THE(MTHE),DHE(MDHE),
+      COMMON/HE1PRF/NLHE,NTHE,NDHE(MLHE),THE(MTHE),DHE(MLHE,MDHE),
      *              NWHE(MLHE),D0HE(MLHE),ILOWHE(MLHE),IUPHE(MLHE),
      *              FHE(MLHE),WAVHE(MLHE),WSHE(MLHE,MTHE),
      *              DSHE(MLHE,MTHE),ASHE(MLHE,MTHE),DREFHE(MLHE),
      *              WHE(MLHE,MWHE),PROFHE(MLHE,MTHE,MDHE,MWHE),
-     *              THEL(MTHE),DHEL(MDHE),D1HE(MLHE)
+     *              THEL(MTHE),DHEL(MLHE,MDHE),D1HE(MLHE)
 c
       COMMON/AUXHYD/XK,FXK,BETAD,DBETA,BERGFC,CUTLYM,CUTBAL
       COMMON/HHEPRF/IHYDPR,IHE1PR,IHE2PR
