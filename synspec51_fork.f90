@@ -24464,7 +24464,7 @@ C        use two components for HeI 4471
 C         IF(ILINE.EQ.1) PHE1=(8.*phi+voigthe(agam,v1))/9.
          factor = 2.*pi
          phi = phi*factor
-         if(ifirst.eq.1) write(*,*) 'approx. phi', phi
+C         if(ifirst.eq.1) write(*,*) 'approx. phi', phi
 C
       else
 C
