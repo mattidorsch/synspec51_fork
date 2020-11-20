@@ -6382,7 +6382,7 @@ C      COMMON/PRO439/PRF439(53,4,6),DLM439(53,6),XNE439(6)
 C
 C     use Beauchamp tables
       if(ihe1pr.eq.2)then
-         call readhe1_irrgang
+         call readhe1irrgang
 C         to use BCSS 4471, 4922 do not return
 C         also no need to return, if fort.67 exists
          return
@@ -19300,21 +19300,6 @@ C
 C     ****************************************************************
 C
 C
-      DOUBLE PRECISION FUNCTION PARTFZR4(T,DNE,U)
-      INCLUDE 'INCLUDE/PARAMS.FOR'
-      DOUBLE PRECISION T, DNE
-      DOUBLE PRECISION U
-      WRITE(*,*)'ZR4:T= ',T
-      WRITE(*,*)'ZR4:NE=',DNE
-      U = 100
-      PARTFZR4 = U
-      WRITE(*,*)'ZR4:U=',U
-      RETURN
-      END
-C
-C     ****************************************************************
-C
-C
       subroutine pfni(ion,t,pf,dut,dun)
 c     =================================
 c
@@ -24163,7 +24148,7 @@ C
 C     ******************************************************************
 C
 C
-      subroutine readhe1_irrgang
+      subroutine readhe1irrgang
 C     Read combined and updated HeI tables. These tables are based on
 C     the tables of Beauchamp+ (1997), but have been extended with 
 C     results for HeI 4471 from Gigosos+ (2009) and HeI 4922 from
@@ -24522,6 +24507,7 @@ C         if(abs(dwav).lt.1.d-4) write(*,*) 'prof0(:20)', prof0(:20)
          wav0 = cas / fr000
          wavi = cas / fr
          dwav = wavi - wav0
+         write(*,*) 'nnnwhe', nnnwhe
          write(*,*) 'wavi_before', wavi
          write(*,*) 'wav0_before', wav0
          write(*,*) 'dwav_before', dwav
