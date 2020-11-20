@@ -24332,7 +24332,7 @@ C
       INCLUDE 'INCLUDE/LINDAT.FOR'
       parameter(cas=2.997925d18,pi=3.14159265359d0,os0=0.02654,
      *          f13=1./3.,f43=4./3.,f49=4./9.,f89=8./9.)
-      dimension prft(mthe),prfd(mdhe),coeff(1200)
+      dimension prft(mthe),prfd(mdhe),coeff(100)
       common/hepars/ idold,ilold,fr000,t,ane,t0,ane0,abtra,emtra,f,
      *               ws0,ds0,as0,nnnwhe,dwav0(mwhe),prof0(mwhe),
      *               dhel0(mdhe)
@@ -24507,10 +24507,11 @@ C         if(abs(dwav).lt.1.d-4) write(*,*) 'prof0(:20)', prof0(:20)
          wav0 = cas / fr000
          wavi = cas / fr
          dwav = wavi - wav0
-         write(*,*) 'nnnwhe', nnnwhe
-         write(*,*) 'wavi_before', wavi
-         write(*,*) 'wav0_before', wav0
-         write(*,*) 'dwav_before', dwav
+C         write(*,*) 'nnnwhe', nnnwhe
+C         write(*,*) 'dwav0', dwav0
+C         write(*,*) 'wavi_before', wavi
+C         write(*,*) 'wav0_before', wav0
+C         write(*,*) 'dwav_before', dwav
          if(abs(dwav).lt.1.d-4) dwav=1.d-4
 C        phi is the interpolated intensity at the current wavelength
 C        above wavelength grid
@@ -24522,20 +24523,27 @@ C        below wavelength grid
          else
 C           interpolate intensity to current wavelength 
 C           (more coeff -> better interp.)
-            call spline(dwav0,prof0,nnnwhe,coeff)
-            call splint(dwav0,prof0,coeff,nnnwhe,dwav,phi)
+C           spline interpolation does not work here
+C           changes value of wavi, wav0, dwav
+C           there must be error somewhere here.
+C           see here: https://stackoverflow.com/questions/17073496/fortran-variables-changing-on-their-own
+C           for now replaced by linear interpolation
+C           this is sufficient for the fine new He I tables
+C            call spline(dwav0,prof0,nnnwhe,coeff)
+C            call splint(dwav0,prof0,coeff,nnnwhe,dwav,phi)
+            phi = YLINTP(dwav,dwav0,prof0,nnnwhe,mwhe)
          endif
 C        wavi are WRONG! should be cwave in AA
-         write(*,*) 'wavi_after', wavi
-         write(*,*) 'wav0_after', wav0
-         write(*,*) 'dwav_after', dwav
-         wav0 = cas / fr000
-         wavi = cas / fr
-         dwav = wavi - wav0
-         write(*,*) 'wavi_new', wavi
-         write(*,*) 'wav0_new', wav0
-         write(*,*) 'dwav_new', dwav
-         write(*,*) 'phi', phi
+C         write(*,*) 'wavi_after', wavi
+C         write(*,*) 'wav0_after', wav0
+C         write(*,*) 'dwav_after', dwav
+C         wav0 = cas / fr000
+C         wavi = cas / fr
+C         dwav = wavi - wav0
+C         write(*,*) 'wavi_new', wavi
+C         write(*,*) 'wav0_new', wav0
+C         write(*,*) 'dwav_new', dwav
+C         write(*,*) 'phi', phi
 C         if(abs(dwav).lt.1.d-4) write(*,*) 'phil', phi
          phi = 10.**phi
 C         if(abs(dwav).lt.1.d-4) write(*,*) 'phi', phi
