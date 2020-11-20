@@ -24489,7 +24489,7 @@ C
 C           for original tables: skip first two densities.
             nnndhe = ndhe(iline)
 C           1d-array of electron densities for specific line
-            dhel0 = dhel(iline,:)
+            dhel0 = dhel(iline,:nnndhe)
 C            write(*,*) 'dhel0', dhel0
 C            write(*,*) 'nnndhe', nnndhe
             t0l = dlog10(t0)
@@ -24499,6 +24499,7 @@ C            write(*,*) 'nnndhe', nnndhe
             enddo
  188        it0 = itt
             xxxt = (t0l-thel(it0-1))/(thel(it0)-thel(it0-1))
+C            write(*,*) 'profhe(iline,1,1,:)', profhe(iline,1,1,:)
             do iww=1,nnnwhe
                dwav0(iww)=whe(iline,iww)
                do idd=1,nnndhe
@@ -24520,8 +24521,10 @@ C
          wavi=cas/fr
          dwav=wavi-wav0
          if(abs(dwav).lt.1.d-4) dwav=1.d-4
+C        above wavelength grid
          if(dwav.ge.dwav0(nnnwhe))then
             phi=2.5*dlog10(dwav0(nnnwhe)/dwav)+prof0(nnnwhe)
+C        below wavelength grid
          elseif(dwav.le.dwav0(1))then
             phi=2.5*dlog10(dwav0(1)/dwav)+prof0(1)
          else
@@ -24530,17 +24533,17 @@ C           (more coeff -> better interp.)
             call spline(dwav0,prof0,nnnwhe,coeff)
             call splint(dwav0,prof0,coeff,nnnwhe,dwav,phi)
          endif
-         phi=10.**phi
-         factor=wavi**2./cas
-         phi=phi*factor
+         phi = 10.**phi
+         factor = wavi**2. / cas
+         phi = phi * factor
 C
       endif
 C
-      sig=os0*f*phi
-      xkf=dexp(-4.79928d-11*fr/t)
-      xkfb=xkf*1.4743d-2*(fr/1.d15)**3.
-      abl=sig*(abtra-emtra*xkf)
-      eml=sig*emtra*xkfb
+      sig = os0 * f * phi
+      xkf = dexp(-4.79928d-11 * fr / t)
+      xkfb = xkf * 1.4743d-2 * (fr/1.d15)**3.
+      abl = sig * (abtra-emtra*xkf)
+      eml = sig * emtra * xkfb
 C
       return
       end
@@ -24576,18 +24579,18 @@ c
             ss=3.31*abs(xxk)**0.25
          else
             do jj=1,nw-1
-               if(abs(xxk).ge.xk(jj).and.abs(xxk).lt.xk(jj+1))then
-	          if(abs(xxk).ne.xk(jj))then
+              if(abs(xxk).ge.xk(jj).and.abs(xxk).lt.xk(jj+1))then
+                  if(abs(xxk).ne.xk(jj))then
                      ww=wiminus(jj)+(abs(xxk)-xk(jj))/(xk(jj+1)-xk(jj))*
      *                    (wiminus(jj+1)-wiminus(jj))
                      ss=sminus(jj)+(abs(xxk)-xk(jj))/(xk(jj+1)-xk(jj))*
      *                    (sminus(jj+1)-sminus(jj))
-		  else
+                  else
                      ww=wiminus(jj)
                      ss=sminus(jj)
                   endif
-		  return
-               endif
+                  return
+              endif
             enddo
          endif
       else
@@ -24597,16 +24600,16 @@ c
          else
             do jj=1,nw-1
                if(xxk.ge.xk(jj).and.xxk.lt.xk(jj+1))then
-	 	  if(xxk.ne.xk(jj))then
+          if(xxk.ne.xk(jj))then
                      ww=wiplus(jj)+(xxk-xk(jj))/(xk(jj+1)-xk(jj))*
      *                    (wiplus(jj+1)-wiplus(jj))
                      ss=splus(jj)+(xxk-xk(jj))/(xk(jj+1)-xk(jj))*
      *                    (splus(jj+1)-splus(jj))
-		  else
+          else
                      ww=wiplus(jj)
                      ss=splus(jj)
-		  endif
-		  return
+          endif
+          return
                endif
             enddo
          endif
@@ -24619,8 +24622,8 @@ C
       double precision function voigthe(aa,xx)
 c     ========================================
 c
-c     computes normalized voigt function for any x and any positive a
-C     Created by Antoine Bedard
+c     computes normalized voigt function for any x and any positive a.
+C     Created by Antoine Bedard.
 c
       implicit real*8(a-h,o-z)
       equivalence(z,zzz(1))
