@@ -24531,7 +24531,10 @@ C           for now replaced by linear interpolation
 C           this is sufficient for the fine new He I tables
 C            call spline(dwav0,prof0,nnnwhe,coeff)
 C            call splint(dwav0,prof0,coeff,nnnwhe,dwav,phi)
+C           this interpolation is the run time "bottleneck"
             phi = YLINTP(dwav,dwav0,prof0,nnnwhe,mwhe)
+C           this one produces a warning, is slow and less accurate
+C            CALL INTERP(dwav0,prof0,dwav,phi,nnnwhe,1,1,0,0)
          endif
 C        wavi are WRONG! should be cwave in AA
 C         write(*,*) 'wavi_after', wavi
