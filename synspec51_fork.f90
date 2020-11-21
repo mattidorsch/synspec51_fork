@@ -6382,7 +6382,7 @@ C      COMMON/PRO439/PRF439(53,4,6),DLM439(53,6),XNE439(6)
 C
 C     use Beauchamp tables
       if(ihe1pr.eq.2)then
-         call readhe1irrgang
+         call readhe1_irrgang
 C         to use BCSS 4471, 4922 do not return
 C         also no need to return, if fort.67 exists
          return
@@ -24148,7 +24148,7 @@ C
 C     ******************************************************************
 C
 C
-      subroutine readhe1irrgang
+      subroutine readhe1_irrgang
 C     Read combined and updated HeI tables. These tables are based on
 C     the tables of Beauchamp+ (1997), but have been extended with 
 C     results for HeI 4471 from Gigosos+ (2009) and HeI 4922 from
@@ -24475,7 +24475,7 @@ C
 C           for original tables: skip first two densities.
             nnndhe = ndhe(iline)
 C           1d-array of electron densities for specific line
-            dhel0 = dhel(iline,:nnndhe)
+            dhel0 = dhel(iline,:)
 C            write(*,*) 'dhel0', dhel0
 C            write(*,*) 'nnndhe', nnndhe
             t0l = dlog10(t0)
