@@ -494,22 +494,22 @@ updates
             SiIV 1122.485: -7.07 (Kurucz) -> -5.82 (old synspec)
             SiIV 1128.340: -7.08 (Kurucz) -> -5.82 (old synspec)
 
-2020-11-09:
+2020-09-11:
         changed loggf:
             ZrIV 1183.973: -0.930 (Kurucz, TOSS) -> 0.00 (Chayer 2006, also better for HZ44)
 
-2020-12-09:
+2020-09-12:
         changed Stark broadening constants for IUE SiIV to old values
         to match optical Si abundance for BD+25_4655:
             SiIV 1393.755: -6.94 (Kurucz) -> -6.00 (old synspec)
             SiIV 1402.770: -6.94 (Kurucz) -> -6.00 (old synspec)
 
-2020-13-10:
+2020-10-13:
         removed all exact duplicate lines: 250165 (or 11%!)
         updated positons:
             Pb IV  4175.579 -> 4174.453
             Pb IV  4535.730 -> 4534.421
             Pb IV  4536.130 -> 4534.821
 
-2020-13-10:
-        added more optical Pb III lines from Alonso-Medina+ (2009)
+2020-12-01:
+        added 13 optical Pb III lines from Alonso-Medina+ (2009)
