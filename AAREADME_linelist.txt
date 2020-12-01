@@ -512,4 +512,4 @@ updates
             Pb IV  4536.130 -> 4534.821
 
 2020-12-01:
-        added 13 optical Pb III lines from Alonso-Medina+ (2009)
+        added 18 optical Pb III lines from Alonso-Medina+ (2009)
