@@ -180,14 +180,13 @@ TlIII
     Safronova & Johnson 2004
 
 PbIII
-    Morton 2000
-    Alonso-Medina+ 2009
+    Morton 2000 (1 FUV)
+    Alonso-Medina+ 2009 (rest, optical)
 
 PbIV
-    Naslim+ 2013
-    Safronova & Johnson 2004
-    Alonso-Medina+ 2013
-    Morton 2000
+    Safronova & Johnson 2004 (some UV, 3962.467,  4049.832)
+    Alonso-Medina+ 2013 (rest)
+    Morton 2000 (1313)
 
 PbV
     Colon+ 2014
@@ -516,3 +515,7 @@ updates
 
 2020-12-02:
         added 5 optical Pb IV lines from Alonso-Medina+ (2011)
+
+2020-12-02:
+        loggf for PbIV 4496 from Naslim+ (2013) to 
+        Alonso-Medina+ (2011) value (-0.237 -> -0.437)
