@@ -195,6 +195,7 @@ C
       IF(IMODE.LT.-90) THEN
          IMODE=-IMODE-100
          IFWIN=1
+         write(6,*) 'running in wind mode'
       END IF
       if(imode.gt.5) then
          imode=imode-10
@@ -1903,7 +1904,7 @@ C
       go to 120
       end if
   602 format(//' velmax (velocity for line rejection)',
-     *       ' itrad,nltoff,iemoff',f10.1,2i3)
+     *       ' itrad,nltoff,iemoff',f10.1,3i3)
 C
 C     Set up rays and weights
 C
@@ -21993,7 +21994,14 @@ C
 C
 C     Read data for spherical atmosphere and velocity law
 C
+      write(6,*) 'reading wind parameters'
       READ(8,*,END=9,ERR=9) RCORE,NDRAD,NRCORE,INRV,NFIRY,NDF
+      write(6,*) 'RCORE=', RCORE
+      write(6,*) 'NDRAD=', NDRAD
+      write(6,*) 'NRCORE=', NRCORE
+      write(6,*) 'INRV=', INRV
+      write(6,*) 'NFIRY=', NFIRY
+      write(6,*) 'NDF=', NDF
       IF(RCORE.LT.1.E5) RCORE=RCORE*RSUN
       IF(NDRAD.GT.MDEPTH) CALL quit('NDRAD too large')
       READ(8,*) XMDOT,BETAV,VINF
