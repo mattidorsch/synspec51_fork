@@ -2697,7 +2697,7 @@ c
 C
 C ********************************************************************
 C
-      SUBROUTINE OUTPRI
+      recursive SUBROUTINE OUTPRI
 C
 C     Output of synthetic spectrum
 C
@@ -8854,7 +8854,7 @@ C
 C ********************************************************************
 C
 C
-      SUBROUTINE IDTAB
+      recursive SUBROUTINE IDTAB
 C     ================
 C
 C     output of selected line parameters (identification table)
