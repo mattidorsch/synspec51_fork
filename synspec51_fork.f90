@@ -1793,15 +1793,15 @@ C              value overwrites the value given by the standard input
 C
       read(55,*,err=20,end=20) VTB
       if(ifwin.le.0) then
-      if(vtb.ge.0.) then
-         WRITE(6,608) VTB
-  608    FORMAT(//' TURBULENT VELOCITY  -  CHANGED TO   VTURB =',
-     *    1PE10.3,'  KM/S'/
-     *            ' ------------------'/)
-      do 10 id=1,nd
-           vturb(id)=vtb*vtb*1.e10
-   10 continue
-      end if
+        if(vtb.ge.0.) then
+           WRITE(6,608) VTB
+  608      FORMAT(//' TURBULENT VELOCITY  -  CHANGED TO   VTURB =',
+     *      1PE10.3,'  KM/S'/
+     *              ' ------------------'/)
+        do 10 id=1,nd
+             vturb(id)=vtb*vtb*1.e10
+   10   continue
+        end if
       end if
 C
       TSTD=TEMP(IDSTD)
@@ -1899,19 +1899,19 @@ C
         itrad=1
         read(55,*,end=110,err=110) velmax,ITRAD,nltoff,iemoff
   110   write(6,602) velmax,itrad,nltoff,iemoff
-      if(velmax.lt.0.) then
-        velmax=3.e5
-        go to 120
-      end if
-  602 format(//' velmax (velocity for line rejection)',
-     *       ' itrad,nltoff,iemoff'/,f10.1,3i3)
+        if(velmax.lt.0.) then
+          velmax=3.e5
+          go to 120
+        end if
+  602   format(//' velmax (velocity for line rejection)',
+     *         ' itrad,nltoff,iemoff'/,e10.2,3i3)
 C
-C     Set up rays and weights
+C       Set up rays and weights
 C
-      call velset
-      call radtem
-      CALL SETRAY
-      CALL WGTJH1
+        call velset
+        call radtem
+        CALL SETRAY
+        CALL WGTJH1
 C
       end if
 C
@@ -1951,13 +1951,13 @@ C
 C
         spacon=cutofs
         IF(SPACON.EQ.0) SPACON=3.
-        XFR=(ALAST-ALAM0)/SPACON 
+        XFR=(ALAST-ALAM0)/SPACON
         NFREQC=int(XFR)+1
         NFREQC=MIN(NFREQC,MFREQC)
         NFREQC=MAX(NFREQC,2)
         DLAMLO=LOG10(ALAST/ALAM0)/(NFREQC-1)
         AL0L=LOG10(ALAM0)
-        alambe=alam0  
+        alambe=alam0
         DO IJ=1,NFREQC
            AL=AL0L+(IJ-1)*DLAMLO
            ALAM=EXP(2.3025851*AL)
@@ -2003,19 +2003,19 @@ c     calculate the characteristic standard opacity
 c
       IF(IMODE.LE.2) THEN
          if(ifwin.le.0) then
-         CALL CROSET(CROSS)
-         DO ID=1,ND
-            CALL OPAC(ID,CROSS,ABSO,EMIS,SCAT)
-            ABSTD(ID)=MIN(ABSO(1),ABSO(2))
-         END DO
+           CALL CROSET(CROSS)
+           DO ID=1,ND
+              CALL OPAC(ID,CROSS,ABSO,EMIS,SCAT)
+              ABSTD(ID)=MIN(ABSO(1),ABSO(2))
+           END DO
          else
-         CALL CROSEW(CROSS)
-         DO ID=1,ND
-            CALL OPACW(ID,CROSS,ABSO,EMIS,ABSOC,EMISC,SCATC,0)
-            DO IJ=1,NFREQC
-               ABSTDW(IJ,ID)=ABSOC(IJ)/DENSCON(ID)
-            END DO
-         END DO
+           CALL CROSEW(CROSS)
+           DO ID=1,ND
+              CALL OPACW(ID,CROSS,ABSO,EMIS,ABSOC,EMISC,SCATC,0)
+              DO IJ=1,NFREQC
+                 ABSTDW(IJ,ID)=ABSOC(IJ)/DENSCON(ID)
+              END DO
+           END DO
          end if
       END IF
 C
@@ -4239,7 +4239,7 @@ C
 C
 C        Additional opacities
 C
-         CALL OPADD(0,IJ,ID,FR,CROSS,ABAD,EMAD,SCAD)   
+         CALL OPADD(0,IJ,ID,FR,CROSS,ABAD,EMAD,SCAD)
          IF(IOPHLI.NE.0) CALL LYMLIN(ID,FR,ABLY,EMLY,SCLY)
 C
 C        Total opacity and emissivity
@@ -4254,9 +4254,9 @@ C
          EML1(IJ)=EMLY
          SCL1(IJ)=SCLY
   200 CONTINUE
-c       
+c
       if(modc.eq.0) return
-c       
+c
       IF(NFREQ.LE.2.OR.IMODE.EQ.-1) RETURN
 C
 C     interpolated continuum and hydrogen line opacity and emissivity
@@ -22207,7 +22207,7 @@ c          IDK=IDK+1
       END DO
 C
 C    remaining rays (without finer grid)
-C      
+C
       IF(NFIRY.LT.KMU) THEN
         IU=KMU
         KRAY(IU,1)=2
@@ -22246,6 +22246,8 @@ C
         IF(IU.LE.NREXT) IUD=2*NUDF(IU)-1
         NFTOT=NFTOT+IUD
       ENDDO
+C
+      write(6,*) 'SETRAY: NFTOT =',NFTOT
       write(10,*) 'NFTOT=',NFTOT
 C
       RETURN
@@ -23296,15 +23298,15 @@ C
          CALL INTERP(DENS,RREl,DENSA,RRELA,ND,NDA,3,1,1)
          CALL INTERP(DENS,VEL0,DENSA,VEL0A,ND,NDA,3,1,1)
          do id=1,nda
-         write(6,603) id,tempa(id),eleca(id),densa(id),rda(id),
-     *                rrela(id),vel0a(id)
-         write(96,603) id,tempa(id),eleca(id),densa(id),rda(id),
-     *                rrela(id),vel0a(id)
+           write(6,603) id,tempa(id),eleca(id),densa(id),rda(id),
+     *                  rrela(id),vel0a(id)
+           write(96,603) id,tempa(id),eleca(id),densa(id),rda(id),
+     *                   rrela(id),vel0a(id)
          end do
       end if
   603 format(1h ,i3,0pf8.0,1p3e12.3,0pf10.4,0p2f8.2)
 C
-  100 write(6,*) 'no wind param. in fort.55, skipping VELSET'
+  100 write(6,*) 'VELSET END'
       continue
       return
       end
