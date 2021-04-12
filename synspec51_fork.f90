@@ -1933,50 +1933,50 @@ C
 C     continuum frequencies
 C
       if(ifwin.le.0) then
-      ALAMC=(ALAM0+ALAST)*0.5
-      SPACF=2.997925E18/ALAMC/ALAMC*SPACE
-      WRITE(6,601) ALAM0,ALAST,CUTOF0,RELOP,SPACF,SPACE
-      CUTOF0=0.1*CUTOF0
-      SPACE0=SPACE*0.1
-      ALAM0=1.D-1*ALAM0
-      ALAST=1.D-1*ALAST
-      ALAMC=ALAMC*0.1
-      ALST00=ALAST
-      FRLAST=2.997925D17/ALAST
-      NFREQ=2
-      FREQ(1)=2.997925D17/ALAM0
-      FREQ(2)=FRLAST
+        ALAMC=(ALAM0+ALAST)*0.5
+        SPACF=2.997925E18/ALAMC/ALAMC*SPACE
+        WRITE(6,601) ALAM0,ALAST,CUTOF0,RELOP,SPACF,SPACE
+        CUTOF0=0.1*CUTOF0
+        SPACE0=SPACE*0.1
+        ALAM0=1.D-1*ALAM0
+        ALAST=1.D-1*ALAST
+        ALAMC=ALAMC*0.1
+        ALST00=ALAST
+        FRLAST=2.997925D17/ALAST
+        NFREQ=2
+        FREQ(1)=2.997925D17/ALAM0
+        FREQ(2)=FRLAST
 C
       else
 C
-      spacon=cutofs
-      IF(SPACON.EQ.0) SPACON=3.
-      XFR=(ALAST-ALAM0)/SPACON 
-      NFREQC=int(XFR)+1
-      NFREQC=MIN(NFREQC,MFREQC)
-      NFREQC=MAX(NFREQC,2)
-      DLAMLO=LOG10(ALAST/ALAM0)/(NFREQC-1)
-      AL0L=LOG10(ALAM0)
-      alambe=alam0  
-      DO IJ=1,NFREQC
-         AL=AL0L+(IJ-1)*DLAMLO
-         ALAM=EXP(2.3025851*AL)
-         WLAMC(IJ)=ALAM
-         FREQC(IJ)=2.997925E18/ALAM
-      END DO
-      ALAMC=(ALAM0+ALAST)*0.5
-      SPACF=2.997925E18/ALAMC/ALAMC*SPACE
-      WRITE(6,601) ALAM0,ALAST,CUTOF0,RELOP,SPACF,SPACE
-      CUTOF0=0.1*CUTOF0
-      SPACE0=SPACE*0.1
-      ALAM0=1.D-1*ALAM0
-      ALAST=1.D-1*ALAST
-      ALAMC=ALAMC*0.1
-      ALST00=ALAST
-      FRLAST=2.997925D17/ALAST
-      NFREQ=2
-      FREQ(1)=2.997925D17/ALAM0
-      FREQ(2)=FRLAST
+        spacon=cutofs
+        IF(SPACON.EQ.0) SPACON=3.
+        XFR=(ALAST-ALAM0)/SPACON 
+        NFREQC=int(XFR)+1
+        NFREQC=MIN(NFREQC,MFREQC)
+        NFREQC=MAX(NFREQC,2)
+        DLAMLO=LOG10(ALAST/ALAM0)/(NFREQC-1)
+        AL0L=LOG10(ALAM0)
+        alambe=alam0  
+        DO IJ=1,NFREQC
+           AL=AL0L+(IJ-1)*DLAMLO
+           ALAM=EXP(2.3025851*AL)
+           WLAMC(IJ)=ALAM
+           FREQC(IJ)=2.997925E18/ALAM
+        END DO
+        ALAMC=(ALAM0+ALAST)*0.5
+        SPACF=2.997925E18/ALAMC/ALAMC*SPACE
+        WRITE(6,601) ALAM0,ALAST,CUTOF0,RELOP,SPACF,SPACE
+        CUTOF0=0.1*CUTOF0
+        SPACE0=SPACE*0.1
+        ALAM0=1.D-1*ALAM0
+        ALAST=1.D-1*ALAST
+        ALAMC=ALAMC*0.1
+        ALST00=ALAST
+        FRLAST=2.997925D17/ALAST
+        NFREQ=2
+        FREQ(1)=2.997925D17/ALAM0
+        FREQ(2)=FRLAST
 c
       end if
 c
@@ -7935,13 +7935,13 @@ C
       IJMAX=0
       IMOD1L=0
       if(ifwin.le.0) then
-      CUTOFF=CUTOF0
-      DOPSTD=1.E7/ALAM0*DSTD
-      DISTAN=0.15*DOPSTD
-      SPAC=3.E16/ALAM0/ALAM0*SPACE
-      DISTA0=0.14*SPAC
-      ASTD=0.01
-      AVAB=ABSTD(IDSTD)*RELOP
+        CUTOFF=CUTOF0
+        DOPSTD=1.E7/ALAM0*DSTD
+        DISTAN=0.15*DOPSTD
+        SPAC=3.E16/ALAM0/ALAM0*SPACE
+        DISTA0=0.14*SPAC
+        ASTD=0.01
+        AVAB=ABSTD(IDSTD)*RELOP
       end if
       FRLI0=FRMIN
       IF(IBLANK.GE.2.AND.IMODE.EQ.-1) IL0=ILLAST
@@ -8082,10 +8082,10 @@ C
       NFREQ=MFREQ
   240 IF(FREQ(IJMAX).LE.FRLAST) NBLANK=IBLANK
       if(ifwin.le.0) then
-      FREQ(1)=FREQ(3)
-      FREQ(2)=FREQ(IJMAX)
-      W(1)=0.5*(FREQ(1)-FREQ(2))
-      W(2)=W(1)
+        FREQ(1)=FREQ(3)
+        FREQ(2)=FREQ(IJMAX)
+        W(1)=0.5*(FREQ(1)-FREQ(2))
+        W(2)=W(1)
       end if
 C
 C     truncate the interval if the required end is reached
@@ -8095,8 +8095,8 @@ C
       IF(FREQ(ijmx).LT.FRLAST) THEN
          FREQ(ijmx)=FRLAST
          if(ifwin.le.0) then
-         W(1)=0.5*(FREQ(1)-FREQ(2))
-         W(2)=W(1)
+           W(1)=0.5*(FREQ(1)-FREQ(2))
+           W(2)=W(1)
          end if
          DO 245 IJ=IJ0,NFREQ
             IF(FREQ(IJ).LT.FRLAST) GO TO 247
@@ -8112,31 +8112,31 @@ C     frequency interpolation coefficients
 C
       IF(IMODE.NE.-1) THEN
       if(ifwin.le.0) then
-      XX=FREQ(2)-FREQ(1)
-      DO IJ=1,NFREQ
-         WLAM(IJ)=2.997925E18/FREQ(IJ)
-         FRX1(IJ)=(FREQ(IJ)-FREQ(1))/XX
-         FRX2(IJ)=(FREQ(2)-FREQ(IJ))/XX
-      END DO
+        XX=FREQ(2)-FREQ(1)
+        DO IJ=1,NFREQ
+           WLAM(IJ)=2.997925E18/FREQ(IJ)
+           FRX1(IJ)=(FREQ(IJ)-FREQ(1))/XX
+           FRX2(IJ)=(FREQ(2)-FREQ(IJ))/XX
+        END DO
       else
-      DO IJ=1,NFREQ
-         WLAM(IJ)=CAS/FREQ(IJ)
-         frqobs(ij)=freq(ij)
-         wlobs(ij)=wlam(ij)
-         fr=freq(ij)
-         BNUE(IJ)=BN*fr*fr*fr
-         DO IJCI=1,NFREQC-1
-            IF(WLAM(IJ).LE.WLAMC(IJCI)) GO TO 248
-         END DO
-  248    CONTINUE
-         IJC=IJCI
-         IJCINT(IJ)=MAX(IJC-1,1)
-         IJCI=IJCINT(IJ)
-         FRX1(IJ)=(FREQ(IJ)-FREQC(IJCI+1))/
-     *            (FREQC(IJCI)-FREQC(IJCI+1))
-      END DO
-      nfrobs=nfreq
-      xx=freq(nfreq)-freq(1)
+        DO IJ=1,NFREQ
+           WLAM(IJ)=CAS/FREQ(IJ)
+           frqobs(ij)=freq(ij)
+           wlobs(ij)=wlam(ij)
+           fr=freq(ij)
+           BNUE(IJ)=BN*fr*fr*fr
+           DO IJCI=1,NFREQC-1
+              IF(WLAM(IJ).LE.WLAMC(IJCI)) GO TO 248
+           END DO
+  248      CONTINUE
+           IJC=IJCI
+           IJCINT(IJ)=MAX(IJC-1,1)
+           IJCI=IJCINT(IJ)
+           FRX1(IJ)=(FREQ(IJ)-FREQC(IJCI+1))/
+     *              (FREQC(IJCI)-FREQC(IJCI+1))
+        END DO
+        nfrobs=nfreq
+        xx=freq(nfreq)-freq(1)
       end if
 c
 c     frequency indices of the line centers
@@ -8178,13 +8178,11 @@ c
       END IF
 C
       if(ifwin.gt.0) then
-C
-c     set up switches for hydrogen and He II line opacity
-c
-      DO  IJ=1,NFREQ
-         call hylsew(ij)
-         call he2sew(ij)
-      end do
+c       set up switches for hydrogen and He II line opacity
+        do IJ=1,NFREQ
+           call hylsew(ij)
+           call he2sew(ij)
+        end do
       end if
 C
       NSP=0
@@ -8198,10 +8196,10 @@ C
          INDLIP(IL)=INDLIN(IL)
   260 CONTINUE
       if(ifwin.le.0) then
-      ILLAST=INDLIN(NLIN)
+        ILLAST=INDLIN(NLIN)
       else
-      ILLAST=0
-      IF(NLIN.GT.0) ILLAST=INDLIN(NLIN)
+        ILLAST=0
+        IF(NLIN.GT.0) ILLAST=INDLIN(NLIN)
       end if
 C
       CALL READPH
@@ -8625,14 +8623,14 @@ C     and upper levels
 C     (for winds)
 C
       if(ifwin.gt.0) then
-      IJCONT(IL)=IJC
-      if(excl.ge.enhe2) then
-         ipotl(il)=3
-       else if(excl.ge.enhe1) then
-         ipotl(il)=2
-       else
-         ipotl(il)=1
-      end if
+        IJCONT(IL)=IJC
+        if(excl.ge.enhe2) then
+          ipotl(il)=3
+        else if(excl.ge.enhe1) then
+          ipotl(il)=2
+        else
+          ipotl(il)=1
+        end if
       end if
 C
 C     ****** line broadening parameters *****
@@ -9857,16 +9855,16 @@ C        LPR = .FALSE. -> special HeI broadening
          FR0=FREQ0(IL)
          IF(INNLT.EQ.0) THEN
             if(itrad.le.0) then
-            AB0=EXP(GF0(IL)-EXCL0(IL)*TEM1)*RRR(ID,ION,IAT)*
-     *          DOP1*(1.-exp(-hkt*fr0))
+              AB0=EXP(GF0(IL)-EXCL0(IL)*TEM1)*RRR(ID,ION,IAT)*
+     *            DOP1*(1.-exp(-hkt*fr0))
             else
-            trl=trad(ipotl(il),id)
-            xx=exp(-hkt*fr0)
-            AB0=EXP(GF0(IL)-EXCL0(IL)/trl)*RRR(ID,ION,IAT)*
-     *          DOP1*(1.-xx)
-            if(excl0(il).gt.2000.) ab0=ab0*wdil(id)
-            pla=1.4743e-2*(fr0*1.e-15)**3*xx/(1.-xx)
-            sl0=pla*wdil(id)
+              trl=trad(ipotl(il),id)
+              xx=exp(-hkt*fr0)
+              AB0=EXP(GF0(IL)-EXCL0(IL)/trl)*RRR(ID,ION,IAT)*
+     *            DOP1*(1.-xx)
+              if(excl0(il).gt.2000.) ab0=ab0*wdil(id)
+              pla=1.4743e-2*(fr0*1.e-15)**3*xx/(1.-xx)
+              sl0=pla*wdil(id)
             end if
           ELSE IF(INNLT.GT.0) THEN
             AB0=ABCENT(INNLT,ID)
@@ -22632,18 +22630,18 @@ C
 C
 C     overall loop over continuum frequencies
 C
-      DO 500 IJ=1,NFREQC       
+      DO 500 IJ=1,NFREQC
       FR=FREQC(IJ)
 C
 C     Initialisation of J=B
 C
       if(ij.eq.1) then
-      FR15=FR*1.D-15
-      BNU=BN*FR15*FR15*FR15
-      HKFR=HK*FR
-      DO ID=1,ND
-        RAD00(ID)=BNU/(EXP(HKFR/TEMP(ID))-UN)
-      END DO
+        FR15=FR*1.D-15
+        BNU=BN*FR15*FR15*FR15
+        HKFR=HK*FR
+        DO ID=1,ND
+          RAD00(ID)=BNU/(EXP(HKFR/TEMP(ID))-UN)
+        END DO
       end if
 C
 C     Loop over electron scattering
@@ -22704,9 +22702,9 @@ C
             DTAU(ID)=DT(ID)*DELZ(IU,ID)
           END DO
         END IF
-C               
+C
 C        incoming intensity   (TAUMIN=0.)
-C   
+C
         rim(1)=0.
         aim(1)=0.
         do id=1,iud-1
@@ -22735,7 +22733,7 @@ C
 C        Outgoing intensity
 C          symmetric boundary condition (rim(iud)=riin(iud))
 C       or diffusion approx. for core rays
-C 
+C
         IF(IU.GT.NREXT) THEN
           PLAND=BNU/(EXP(HKFR/TEMP(ND))-UN)
           DPLAN=PLAND-BNU/(EXP(HKFR/TEMP(ND-1))-UN)
@@ -22822,7 +22820,8 @@ c        DELTAJ=RAD1(ID)-RAD00(ID)
       END DO
       write(6,1600) ij,2.997925e18/fr,itrali,djtot,djmax
       IF(DJTOT.GT.DJMAX.AND.ITRALI.LE.NTRALI) GO TO 10
- 1600 format(' IJ,LAM,ITRALI,DJ',i5,f10.2,i5,1p2e12.3)
+ 1600 format(' IJ,LAM,ITRALI,DJTOT,DJMAX',i5,f10.2,i5,1p2e12.3)
+C 1600 format(//' IJ,LAM,ITRALI,DJ'/,i5,f10.2,i5,1p2e12.3)
 C
 C     end loop for electron scattering
 C
@@ -23198,9 +23197,9 @@ c
    10 continue
       v1=vel0(idc)
       r0=(r0+r00)*0.5
-      if(r0.lt.rc) v2=vinf*(un-r0/rc)**beta 
+      if(r0.lt.rc) v2=vinf*(un-r0/rc)**beta
       write(6,602) numid0,idc,rc,r0,v1,v2
-  602 format('numid  idc rc        r0        v1        v2'/,
+  602 format(' numid idc rc        r0        v1        v2'/,
      *       2i4,4f10.5 /)
 c
       do id=nd+nrext0-1,1,-1
@@ -23276,11 +23275,15 @@ C
      *                rrel(id),vel0(id),vel00(id)
       end do
   600 format('    ID    M      TEMP       ELEC      DENS             ',
-     *       'R       Rrel     VEL'/)
+     *       'R       Rrel     VEL')
   601 format(1h ,i3,1pe10.3,0pf8.0,1p3e12.3,0pf10.4,0p2f8.2)
 C
 C
+  606 format(/' nda =',I3,':'/
+     *       '  ID  TEMP     ELEC        DENS        ',
+     *       'R            Rrel    VEL')
       if(nda.gt.0) then
+         write(6,606) nda
          XR1=LOG(DENS(1))
          XR2=LOG(DENS(ND))
          DXR=(XR2-XR1)/FLOAT(NDA-1)
@@ -23362,7 +23365,8 @@ c           IF(II.GT.100000) THEN
       do id=1,nd
          write(6,601) id,temp(id),trad(1,id),trad(2,id),trad(3,id)
       end do
-  600 format(/' radiation temperatures/')
+  600 format(/' radiation temperatures'/
+     *       '   ID   TEMP      TRAD1     TRAD2     TRAD3')
   601 format(i5,4f10.1)
       RETURN
       END
