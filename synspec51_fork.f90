@@ -1842,69 +1842,69 @@ C
         wdil(id)=un
       end do
       if(ifwin.le.0) then
-      READ(55,*,end=100,err=100) NMU0,ANG0,IFLUX
+        READ(55,*,end=100,err=100) NMU0,ANG0,IFLUX
 C
-C     determinantion of the angle points and weights
+C       determinantion of the angle points and weights
 C
-      IF(NMU0.LT.0) THEN
-         NMU0=IABS(NMU0)
-         READ(55,*) (ANGL(IMU),IMU=1,NMU0)
-         DO 30 IMU=2,NMU0-1
-   30       WANGL(IMU)=0.5*(ANGL(IMU-1)+ANGL(IMU+1))
-         WANGL(1)=0.5*(ANGL(1)-ANGL(2))
-         WANGL(NMU0)=0.5*(ANGL(NMU0-1)-ANGL(NMU0))
-       ELSE
-         IF(ANG0.GT.0.) THEN
-            IF(NMU0.GT.1) THEN
-            DMU=(1.-ANG0)/(NMU0-1)
-            DO 40 IMU=1,NMU0
-               ANGL(IMU)=1.-(IMU-1)*DMU
-               WANGL(IMU)=DMU
-   40       CONTINUE
-            WANGL(1)=0.5*DMU
-            WANGL(NMU0-1)=0.5*DMU
-            WANGL(NMU0)=2.*DMU
-            END IF 
-          ELSE
-            ANGH=0.70710678
-            DMU=ANGH/(NMU0-1)
-            DO 50 IMU=1,NMU0
-               ANGL(IMU)=(IMU-1)*DMU
-               ANGL(IMU)=SQRT(1.-ANGL(IMU)**2)
-               IF(IMU.GT.1.AND.IMU.LT.NMU0) 
-     *            WANGL(IMU)=0.5*(ANGL(IMU-1)+ANGL(IMU+1))
-   50       CONTINUE
-            WANGL(1)=0.5*(ANGL(1)-ANGL(2))
-            WANGL(NMU0)=0.5*(ANGL(NMU0-1)-ANGL(NMU0))
-            IF(ANG0.LT.0.) DMU=(ANGH+ANG0)/(NMU0-1)
-            DO 60 IMU=1,NMU0-2
-               ANGL(IMU+NMU0)=ANGH-IMU*DMU
-               WANGL(IMU+NMU0)=DMU
-   60       CONTINUE
-            WANGL(NMU0)=WANGL(NMU0)+0.5*DMU
-            WANGL(2*NMU0-3)=0.5*DMU
-            WANGL(2*NMU0-2)=2.*DMU
-            NMU0=2*NMU0-2
-         END IF
-      END IF
-      IF(NMU0.LE.0) GO TO 100
-      WRITE(6,609) NMU0,(ANGL(I),I=1,NMU0)
-  609 FORMAT(//' SPECIFIC INTENSITIES COMPUTED FOR',I3,
-     *         ' ANGLES  mu=cos(theta) ='/
-     *         ' ---------------------------------',
-     *         '------------------------'//
-     *         (10F7.2))
-  100 CONTINUE
+        IF(NMU0.LT.0) THEN
+           NMU0=IABS(NMU0)
+           READ(55,*) (ANGL(IMU),IMU=1,NMU0)
+           DO 30 IMU=2,NMU0-1
+   30         WANGL(IMU)=0.5*(ANGL(IMU-1)+ANGL(IMU+1))
+           WANGL(1)=0.5*(ANGL(1)-ANGL(2))
+           WANGL(NMU0)=0.5*(ANGL(NMU0-1)-ANGL(NMU0))
+        ELSE
+           IF(ANG0.GT.0.) THEN
+              IF(NMU0.GT.1) THEN
+              DMU=(1.-ANG0)/(NMU0-1)
+              DO 40 IMU=1,NMU0
+                 ANGL(IMU)=1.-(IMU-1)*DMU
+                 WANGL(IMU)=DMU
+   40         CONTINUE
+              WANGL(1)=0.5*DMU
+              WANGL(NMU0-1)=0.5*DMU
+              WANGL(NMU0)=2.*DMU
+              END IF 
+            ELSE
+              ANGH=0.70710678
+              DMU=ANGH/(NMU0-1)
+              DO 50 IMU=1,NMU0
+                 ANGL(IMU)=(IMU-1)*DMU
+                 ANGL(IMU)=SQRT(1.-ANGL(IMU)**2)
+                 IF(IMU.GT.1.AND.IMU.LT.NMU0) 
+     *              WANGL(IMU)=0.5*(ANGL(IMU-1)+ANGL(IMU+1))
+   50         CONTINUE
+              WANGL(1)=0.5*(ANGL(1)-ANGL(2))
+              WANGL(NMU0)=0.5*(ANGL(NMU0-1)-ANGL(NMU0))
+              IF(ANG0.LT.0.) DMU=(ANGH+ANG0)/(NMU0-1)
+              DO 60 IMU=1,NMU0-2
+                 ANGL(IMU+NMU0)=ANGH-IMU*DMU
+                 WANGL(IMU+NMU0)=DMU
+   60         CONTINUE
+              WANGL(NMU0)=WANGL(NMU0)+0.5*DMU
+              WANGL(2*NMU0-3)=0.5*DMU
+              WANGL(2*NMU0-2)=2.*DMU
+              NMU0=2*NMU0-2
+           END IF
+        END IF
+        IF(NMU0.LE.0) GO TO 100
+        WRITE(6,609) NMU0,(ANGL(I),I=1,NMU0)
+  609   FORMAT(//' SPECIFIC INTENSITIES COMPUTED FOR',I3,
+     *           ' ANGLES  mu=cos(theta) ='/
+     *           ' ---------------------------------',
+     *           '------------------------'//
+     *           (10F7.2))
+  100   CONTINUE
       else
-      itrad=1
-      read(55,*,end=110,err=110) velmax,ITRAD,nltoff,iemoff
-  110 write(6,602) velmax,itrad,nltoff,iemoff
+        itrad=1
+        read(55,*,end=110,err=110) velmax,ITRAD,nltoff,iemoff
+  110   write(6,602) velmax,itrad,nltoff,iemoff
       if(velmax.lt.0.) then
-      velmax=3.e5
-      go to 120
+        velmax=3.e5
+        go to 120
       end if
   602 format(//' velmax (velocity for line rejection)',
-     *       ' itrad,nltoff,iemoff',f10.1,3i3)
+     *       ' itrad,nltoff,iemoff'/,f10.1,3i3)
 C
 C     Set up rays and weights
 C
@@ -9994,7 +9994,7 @@ C
 C ********************************************************************
 C
 C
-      SUBROUTINE PROFIL(IL,IAT,ID,AGAM)
+      recursive SUBROUTINE PROFIL(IL,IAT,ID,AGAM)
 C     =================================
 C
       INCLUDE 'INCLUDE/PARAMS.FOR'
@@ -21994,17 +21994,18 @@ C
 C
 C     Read data for spherical atmosphere and velocity law
 C
-      write(6,*) 'reading wind parameters'
+C      write(6,*) 'reading wind parameters'
       READ(8,*,END=9,ERR=9) RCORE,NDRAD,NRCORE,INRV,NFIRY,NDF
-      write(6,*) 'RCORE=', RCORE
-      write(6,*) 'NDRAD=', NDRAD
-      write(6,*) 'NRCORE=', NRCORE
-      write(6,*) 'INRV=', INRV
-      write(6,*) 'NFIRY=', NFIRY
-      write(6,*) 'NDF=', NDF
+C      READ(8,*) RCORE,NDRAD,NRCORE,INRV,NFIRY,NDF
+  604 format(//' RCORE,NDRAD,NRCORE,INRV,NFIRY,NDF'/,
+     *       f6.2, 5i3)
+      write(6,604) RCORE,NDRAD,NRCORE,INRV,NFIRY,NDF
       IF(RCORE.LT.1.E5) RCORE=RCORE*RSUN
       IF(NDRAD.GT.MDEPTH) CALL quit('NDRAD too large')
       READ(8,*) XMDOT,BETAV,VINF
+  605 format(//' XMDOT,BETAV,VINF'/,
+     *       e8.1,f4.1,e8.1)
+      write(6,605) XMDOT,BETAV,VINF
       XMDOT=6.30289D25*XMDOT
       VINF=1.D5*VINF
       ND=NDRAD
@@ -22031,7 +22032,8 @@ C
       CALL SETRAY
       CALL WGTJH1
 C
-    9 continue
+    9 write(6,*) 'no wind param in fort.8, skipping SETWIN'
+      continue
       RETURN
       END
 C
@@ -23121,6 +23123,12 @@ c
       two=2.
       read(55,*,err=100,end=100) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda
+  604 format(//' rstar  rmax amloss  vinf    beta'/,
+     *         ' ndrad nrcore nfiry ndf nda'/,
+     *        2f6.2, 2e8.1, f5.2 / 5i3 /)
+      write(6,604) rstar,rmax,amloss,vinf,beta,
+     *             ndrad,nrcore,nfiry,ndf,nda
+
       rstr=rstar
       if(rstar.lt.1.e5) rstr=rstar*6.9598e10
       amdot=amloss*6.3029e25
@@ -23192,7 +23200,8 @@ c
       r0=(r0+r00)*0.5
       if(r0.lt.rc) v2=vinf*(un-r0/rc)**beta 
       write(6,602) numid0,idc,rc,r0,v1,v2
-  602 format('numid,idc,rc,r0,v1,v2 ',2i4,4f10.5)
+  602 format('numid  idc rc        r0        v1        v2'/,
+     *       2i4,4f10.5 /)
 c
       do id=nd+nrext0-1,1,-1
          if(rrel(id).gt.rc.and.rrel(id).gt.r0) 
@@ -23292,7 +23301,8 @@ C
       end if
   603 format(1h ,i3,0pf8.0,1p3e12.3,0pf10.4,0p2f8.2)
 C
-  100 continue
+  100 write(6,*) 'no wind param. in fort.55, skipping VELSET'
+      continue
       return
       end
 C
@@ -23333,17 +23343,17 @@ c        WDIL(ID)=0.5*(1.-sqrt(1.-rx*rx))
             TRAD(ITRD,ID)=TEMP(ID)
             IF(II.GT.0) THEN
 c           IF(II.GT.100000) THEN
-            AA=POPUL(JJ,ID)/POPUL(II,ID)*ELEC(ID)*CON
-            AA=AA*G(II)/G(JJ)/WDIL(ID)/SQRT(TEMP(ID))
-            TR=TEMP(ID)
-            ITER=0
-   10       ITER=ITER+1
-            XX=ENION(II)/BOLK/TR
-            DTR=(AA*EXP(XX)-TR)/(1.+XX)
-            DTRR=DTR/TR
-            TR=TR+DTR
-            IF(ABS(DTRR).GT.1.E-3.AND.ITER.LT.100) GO TO 10
-            TRAD(ITRD,ID)=TR
+              AA=POPUL(JJ,ID)/POPUL(II,ID)*ELEC(ID)*CON
+              AA=AA*G(II)/G(JJ)/WDIL(ID)/SQRT(TEMP(ID))
+              TR=TEMP(ID)
+              ITER=0
+   10         ITER=ITER+1
+              XX=ENION(II)/BOLK/TR
+              DTR=(AA*EXP(XX)-TR)/(1.+XX)
+              DTRR=DTR/TR
+              TR=TR+DTR
+              IF(ABS(DTRR).GT.1.E-3.AND.ITER.LT.100) GO TO 10
+              TRAD(ITRD,ID)=TR
             END IF
          END DO
          end if
