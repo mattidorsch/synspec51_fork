@@ -1764,7 +1764,7 @@ c     write(*,*) 'ihydpr',ihydpr
 
 C     if ALAST.lt.0 - set up vacuum wavelengths everywhere
 C
-      vaclim=2000.
+      vaclim=2999.
       if(alast.lt.0.) then
          alast=abs(alast)
          vaclim=1.e18
@@ -3002,8 +3002,8 @@ C
             ELSE
               FR0=GAMBF(II)
             END IF
-            IF(FR.LT.FR0) RETURN        
-         END IF 
+            IF(FR.LT.FR0) RETURN
+         END IF
          FREL=FR0/FR
          SIGK=PEACH(FREL,S0BF(II),ALFBF(II),BETBF(II))
        ELSE IF(IB.EQ.3) THEN
@@ -5869,7 +5869,7 @@ C
          IF(JMIN.LE.10) THEN
             FIJ=FSTARK(JMIN,I)
             FIJ0=FOSC0(JMIN,I)
-          ELSE 
+          ELSE
             CFIJ=((TWEN*I+HUND)*J/(I+TEN)/(JJ-II))
             FIJ=FSTARK(10,I)*CFIJ*CFIJ*CFIJ
             FIJ0=0.
@@ -5878,7 +5878,7 @@ C
          IF(JMIN.LE.5) THEN
             FIJ=FADD(JMIN,I-4)
             FIJ0=0.
-          ELSE 
+          ELSE
             CFIJ=((TEN*I+25.)*J/(I+5.)/(JJ-II))
             FIJ=FADD(5,I-4)*CFIJ*CFIJ*CFIJ
             FIJ0=0.
@@ -5895,10 +5895,10 @@ C
       if(izz.eq.2) w0=wi2
       WL0=W0/(UN/II-UN/JJ)
       IF(WL0.GT.vaclim) THEN
-         ALM=1.E8/(WL0*WL0) 
+         ALM=1.E8/(WL0*WL0)
          XN1=64.328+29498.1/(146.-ALM)+255.4/(41.-ALM)
          WL0=WL0/(XN1*1.D-6+UN)
-      END IF        
+      END IF
       RETURN
       END
 C
@@ -8514,15 +8514,15 @@ c
          AGAM=0.
       END IF
 C
-c     change wavelength to vacuum for lambda > 2000
+c     change wavelength to vacuum for lambda > 2999
 c
-      if(alam.gt.200..and.vaclim.gt.2000.) then
+      if(alam.gt.299..and.vaclim.gt.2999.) then
          wl0=alam*10.
-         ALM=1.E8/(WL0*WL0) 
+         ALM=1.E8/(WL0*WL0)
          XN1=64.328+29498.1/(146.-ALM)+255.4/(41.-ALM)
          WL0=WL0*(XN1*1.D-6+UN)
          alam=wl0*0.1
-      END IF        
+      END IF
 C
 C     first selection : for a given interval a atomic number
 C
@@ -20627,15 +20627,15 @@ c
    10 continue
       READ(IUNIT,*,END=100,err=8) ALAM,ANUM,GF,EXCL,GR,GS,GW
 C
-c     change wavelength to vacuum for lambda > 2000
+c     change wavelength to vacuum for lambda > 2999
 c
-      if(alam.gt.200..and.vaclim.gt.2000.) then
+      if(alam.gt.299..and.vaclim.gt.2999.) then
          wl0=alam*10.
-         ALM=1.E8/(WL0*WL0) 
+         ALM=1.E8/(WL0*WL0)
          XN1=64.328+29498.1/(146.-ALM)+255.4/(41.-ALM)
          WL0=WL0*(XN1*1.D-6+UN)
          alam=wl0*0.1
-      END IF        
+      END IF
 C
 C     first selection : for a given interval
 C
