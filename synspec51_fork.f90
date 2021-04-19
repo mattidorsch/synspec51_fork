@@ -5534,7 +5534,9 @@ C
          XJJ=UN/JJ
          ABTRA=PJ(I)*WNHE2(J,ID)
          EMTRA=PJ(J)*WNHE2(I,ID)*II*XJJ*EXP(CPJ*(XII-XJJ)*T1)
-         IF(I.LE.2) THEN
+C        HeII 1640; air -> vacuum
+C        directly affects HeII wl for SB lines
+         IF((I.LE.2).or.(I.LE.3.and.J.GE.6)) THEN
             WLINE=227.838/(XII-1./JJ)
           ELSE 
             WLINE=227.7776/(XII-1./JJ)
@@ -5744,6 +5746,7 @@ C
          XJJ=UN/JJ
          ABTRA=PJ(I)*WNHE2(J,ID)
          EMTRA=PJ(J)*WNHE2(I,ID)*II*XJJ*EXP(CPJ*(XII-XJJ)*T1)
+C        HeII 1640AA; air -> vacuum
          IF(I.LE.2) THEN
             WLINE=227.838/(XII-1./JJ)
           ELSE 
@@ -7352,21 +7355,29 @@ C
       IH=67
       OPEN(UNIT=IH,FILE='./data/he2prf.dat',STATUS='OLD')
 C
+C     iterate over all lines in table (1640 to 10124)
       DO ILINE=1,NLINE1
 C
 C     read the Schoening and Butler tables, which have to be stored
-C     in file he23prf.dat
+C     in file he2prf.dat
 C
+C        lower, upper line index
          READ(IH,501) ILHE2(ILINE),IUHE2(ILINE)
+C        HeII 1640AA; air -> vacuum
          IF(ILHE2(ILINE).LE.2) THEN
             WL00=227.838
           ELSE
             WL00=227.7776
          END IF
+C        central wavelengths
          WL0=WL00/(1./ILHE2(ILINE)**2-1./IUHE2(ILINE)**2)
+C        wavelength grid
          READ(IH,*) NWL2,(WL2(I,ILINE),I=1,NWL2)
+C        temperatures
          READ(IH,503) NT2,(XT2(I),I=1,NT2)
+C        electron densities
          READ(IH,504) NE2,(XNE2(I,ILINE),I=1,NE2)
+C        empty line
          READ(IH,500)
          NWLHE2(ILINE)=NWL2
 C
@@ -7377,7 +7388,9 @@ C
 C
          DO IE=1,NE2
             DO IT=1,NT2
+C              empty line
                READ(IH,500)
+C              profile values
                READ(IH,505) (PRF2(IWL,IT,IE),IWL=1,NWL2)
             END DO
          END DO
@@ -7587,6 +7600,7 @@ C
       J=IUHE2(ILINE)
       II=I*I
       JJ=J*J
+C     HeII 1640; air -> vacuum
       IF(I.LE.2) THEN
          WLINE=227.838/(1./II-1./JJ)
        ELSE
