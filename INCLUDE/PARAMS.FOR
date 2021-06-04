@@ -45,8 +45,7 @@ C
      *           BN    = 1.4743D-2,     
      *           SIGE  = 6.6516D-25,   
      *           PI4H  = 1.8966D27,   
-     *           HMASS = 1.67333D-24,
-     *           BMAGN = 9.274009994D-21) ! Bohr magneton in erg / G
+     *           HMASS = 1.67333D-24)
 C
 C     Unit number
 C

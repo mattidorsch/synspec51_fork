@@ -172,7 +172,7 @@ C     ICHEMC     - switch indicating that new chemical composition will
 C                  be read from unit 56
 C     IOPHLI     - switch for treatment the Lyman line wings -see LYMLIN
 C
-      bfield=0.342 ! magnetic field in MGauss
+      bfield=3.42D5 ! magnetic field in Gauss
       mode=0
       read(1,*,err=10,end=10) mode
    10 continue
@@ -4852,16 +4852,34 @@ c
             DO  IWL=1,NWL
                PRF0(IWL)=PRFHYD(ILINE,ID,IWL)
             END DO
-C            write(6,*) ' bfield hydrogen',bfield
 C           find number of splits and energy shift
             IF(bfield.GT.0) THEN
-                nsplit = 3
+                mlomax = I-1
+                mhimax = J-1
+            ELSE
+                mlomax = 0
+                mhimax = 0
             END IF
-            DO IMJ=1,nsplit
+            nsplit = 0
+            DO mlo=-mlomax,mlomax
+            DO mhi=-mhimax,mhimax
+            if(abs(mlo-mhi).LE.1) then
+            nsplit = nsplit +1
+            END IF
+            END DO
+            END DO
+C            write(6,*) 'nsplit',nsplit
+            DO mlo=-mlomax,mlomax
+            DO mhi=-mhimax,mhimax
+C            DO IMJ=1,nsplit
+            if(abs(mlo-mhi).LE.1) then
             DO IJ=I0,I1
 C               AL=ABS(WLAM(IJ)-WLINE(I,J))
-               WSHIFTM = (IMJ-2)*3.6
-               AL=ABS(WLAM(IJ)-WLINE(I,J)+WSHIFTM)
+C               WSHIFTM = (IMJ-2)*3.6
+               eshift = 4.66853663D-05 * bfield * (mlo-mhi)
+               cenwave = 1D8 / ((1D8 / WLINE(I,J)) + eshift)
+C               write(6,*) 'cenwave',cenwave
+               AL=ABS(WLAM(IJ)-cenwave)
                IF(AL.LT.1.E-4) AL=1.E-4
                IF(ILEMKE.EQ.1) AL=AL/F00
                AL=LOG10(AL)
@@ -4880,7 +4898,10 @@ c              if(lquasi) sg=sg*0.5
                ABSO(IJ)=ABSO(IJ)+SG*ABTRA
                EMIS(IJ)=EMIS(IJ)+SG*EMTRA
             END DO
+            END IF
             END DO
+            END DO
+C            END DO
 c
 c         XENOMORPH data for selected lines
 c
@@ -5569,10 +5590,33 @@ C        directly affects HeII wl for SB lines
             END DO
             FID=CID*OSCHE2(ILINE)
 C           loop over split comp.
-            DO IMJ=1,3
+            if(bfield.GT.0) then
+                mlomax = I-1
+                mhimax = J-1
+            else
+                mlomax = 0
+                mhimax = 0
+            end if
+            nsplit = 0
+            do mlo=-mlomax,mlomax
+             do mhi=-mhimax,mhimax
+              if(abs(mlo-mhi).LE.1) then
+               nsplit = nsplit +1
+              end if
+             end do
+            end do
+C            DO IMJ=1,3
+            do mlo=-mlomax,mlomax
+            do mhi=-mhimax,mhimax
+C            DO IMJ=1,nsplit
+            if(abs(mlo-mhi).le.1) then
             DO 50 IJ=I0,I1
-               WSHIFTM = (IMJ-2)*3.6
-               AL=ABS(WLAM(IJ)-WLINE+WSHIFTM)
+C               WSHIFTM = (IMJ-2)*3.6
+C               AL=ABS(WLAM(IJ)-WLINE+WSHIFTM)
+               eshift = 4.66853663D-05 * bfield * (mlo-mhi)
+               cenwave = 1D8 / ((1D8 / WLINE) + eshift)
+C               write(6,*) 'cenwave',cenwave
+               AL=ABS(WLAM(IJ)-cenwave)
                IF(AL.LT.1.E-4) AL=1.E-4
                AL=LOG10(AL)
                DO IWL=1,NWL-1
@@ -5584,11 +5628,14 @@ C           loop over split comp.
      *             (AL-WLHE2(ILINE,IW0)))/
      *             (WLHE2(ILINE,IW1)-WLHE2(ILINE,IW0))
 C              mag. split: divide osc. strength by number of split lines
-               SG=EXP(PRFF*AL10)*FID/3.
+               SG=EXP(PRFF*AL10)*FID/nsplit
                ABSO(IJ)=ABSO(IJ)+SG*ABTRA
                EMIS(IJ)=EMIS(IJ)+SG*EMTRA
    50       CONTINUE
-            END DO
+C            END DO
+            end if
+            end do
+            end do
           ELSE
             CALL STARK0(I,J,izz,XKIJ,WL0,FIJ,FIJ0)
             FXK=F00*XKIJ
