@@ -45,7 +45,8 @@ C
      *           BN    = 1.4743D-2,     
      *           SIGE  = 6.6516D-25,   
      *           PI4H  = 1.8966D27,   
-     *           HMASS = 1.67333D-24)
+     *           HMASS = 1.67333D-24,
+     *           BMAGN = 9.274009994D-21) ! Bohr magneton in erg / G
 C
 C     Unit number
 C
@@ -189,3 +190,5 @@ c     Parameters for the He2+ free-free opacity
 c
       common/ophe2p/ nwav,ntemp,xwav(40),xtemp(8),he2pff(40,8)
 
+C     parameters for magnetic field
+      COMMON/BFIELDPAR/bfield
