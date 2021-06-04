@@ -172,6 +172,7 @@ C     ICHEMC     - switch indicating that new chemical composition will
 C                  be read from unit 56
 C     IOPHLI     - switch for treatment the Lyman line wings -see LYMLIN
 C
+      bfield=0.342 ! magnetic field in MGauss
       mode=0
       read(1,*,err=10,end=10) mode
    10 continue
@@ -4851,8 +4852,16 @@ c
             DO  IWL=1,NWL
                PRF0(IWL)=PRFHYD(ILINE,ID,IWL)
             END DO
+C            write(6,*) ' bfield hydrogen',bfield
+C           find number of splits and energy shift
+            IF(bfield.GT.0) THEN
+                nsplit = 3
+            END IF
+            DO IMJ=1,nsplit
             DO IJ=I0,I1
-               AL=ABS(WLAM(IJ)-WLINE(I,J))
+C               AL=ABS(WLAM(IJ)-WLINE(I,J))
+               WSHIFTM = (IMJ-2)*3.6
+               AL=ABS(WLAM(IJ)-WLINE(I,J)+WSHIFTM)
                IF(AL.LT.1.E-4) AL=1.E-4
                IF(ILEMKE.EQ.1) AL=AL/F00
                AL=LOG10(AL)
@@ -4864,12 +4873,13 @@ c
                PRFF=(PRF0(IW0)*(WLHYD(ILINE,IW1)-AL)+PRF0(IW1)*
      *             (AL-WLHYD(ILINE,IW0)))/
      *             (WLHYD(ILINE,IW1)-WLHYD(ILINE,IW0))
-               SG=EXP(PRFF*AL10)*FID
+               SG=EXP(PRFF*AL10)*FID/nsplit
                IF(ILEMKE.EQ.1) SG=SG*WLINE(I,J)**2*CINV/F00
 c              IF(ILEMKE.EQ.1) SG=SG*WLAM(IJ)**2*CINV/F00
 c              if(lquasi) sg=sg*0.5
                ABSO(IJ)=ABSO(IJ)+SG*ABTRA
                EMIS(IJ)=EMIS(IJ)+SG*EMTRA
+            END DO
             END DO
 c
 c         XENOMORPH data for selected lines
@@ -5273,6 +5283,7 @@ C
       IHE2L=1
       MHE10=60
       MHE20=60
+C     set lower level quantum numbers
       IF(AL1.LT.91.) THEN
          ILWHE2=1
        ELSE IF(AL0.LT.204.) THEN
@@ -5298,6 +5309,7 @@ C
        ELSE
          ILWHE2=12
       END IF
+C     ionization freq of lower level
       FRION=FRHE(ILWHE2)
       FR1=FRION*ILWHE2*ILWHE2
       IF(FRION.GT.FREQ(2)) MHE10=int(SQRT(FR1/(FRION-FREQ(2))))
@@ -5529,7 +5541,7 @@ C
 C     loop over lines which contribute at given wavelength region
 C
       DO 100 J=M1,M2
-         ILINE=0   
+         ILINE=0
          JJ=J*J
          XJJ=UN/JJ
          ABTRA=PJ(I)*WNHE2(J,ID)
@@ -5556,8 +5568,11 @@ C        directly affects HeII wl for SB lines
                PRF0(IWL)=PRFHE2(ILINE,ID,IWL)
             END DO
             FID=CID*OSCHE2(ILINE)
+C           loop over split comp.
+            DO IMJ=1,3
             DO 50 IJ=I0,I1
-               AL=ABS(WLAM(IJ)-WLINE)
+               WSHIFTM = (IMJ-2)*3.6
+               AL=ABS(WLAM(IJ)-WLINE+WSHIFTM)
                IF(AL.LT.1.E-4) AL=1.E-4
                AL=LOG10(AL)
                DO IWL=1,NWL-1
@@ -5568,10 +5583,12 @@ C        directly affects HeII wl for SB lines
                PRFF=(PRF0(IW0)*(WLHE2(ILINE,IW1)-AL)+PRF0(IW1)*
      *             (AL-WLHE2(ILINE,IW0)))/
      *             (WLHE2(ILINE,IW1)-WLHE2(ILINE,IW0))
-               SG=EXP(PRFF*AL10)*FID
+C              mag. split: divide osc. strength by number of split lines
+               SG=EXP(PRFF*AL10)*FID/3.
                ABSO(IJ)=ABSO(IJ)+SG*ABTRA
                EMIS(IJ)=EMIS(IJ)+SG*EMTRA
    50       CONTINUE
+            END DO
           ELSE
             CALL STARK0(I,J,izz,XKIJ,WL0,FIJ,FIJ0)
             FXK=F00*XKIJ
@@ -7659,7 +7676,9 @@ C
          if((popi-popj).le.0. .and. lasdel) goto 50
          ABLIN(IJ)=ABLIN(IJ)+SG*(POPI-POPJ)
          EMLIN(IJ)=EMLIN(IJ)+SG*POPJ*1.4747E-2*(FREQ(IJ)*1.E-15)**3
+C   60 CONTINUE
    50 CONTINUE
+
       RETURN
       END
 C
