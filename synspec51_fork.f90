@@ -781,7 +781,7 @@ C
       IF(MODE.EQ.0) GO TO 20
 C
 C  -----------------------------------------------------------
-C  Additional input parameters for "clasical" line transitions
+C  Additional input parameters for "classical" line transitions
 C   (i.e. those not represented by ODF's - ie ABS(MODE)=1)
 C  -----------------------------------------------------------
 C
@@ -9781,7 +9781,6 @@ C
        ELSE
          IF(LPR) THEN
 C
-C
            if(bfield.gt.0) then
             JLO = QL0(IL)
             JHI = QU0(IL)
@@ -9789,6 +9788,7 @@ C
             gjhi = 1.
 C           gjlo = 1 + (jlo*(jlo+1) - l_lo*(l_lo+1) + s_lo*(s_lo+1)) / (2*jlo*(jlo+1))
 C           gjhi = 1 + (jhi*(jhi+1) - l_hi*(l_hi+1) + s_hi*(s_hi+1)) / (2*jhi*(jhi+1))
+C           from model atom: NQUANT(I),TYPLEV(I)
             nsplit = 0
             do mlo=NINT(-JLO*2.),NINT(JLO*2.),2
              do mhi=NINT(-JHI*2.),NINT(JHI*2.),2
