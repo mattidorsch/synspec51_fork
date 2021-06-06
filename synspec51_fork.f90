@@ -8697,6 +8697,9 @@ C
       GF0(IL)=real(GFP)
       EXTIN(IL)=real(EXTIN0)
       INDAT(IL)=100*IAT+ION
+C     MD: for lin. Zeeman effect: store QL, QU = J
+      QL0(IL)=real(QL)
+      QU0(IL)=real(QU)
 C
 C     indices for corresponding excitation temperatures of the lower
 C     and upper levels
@@ -9653,6 +9656,7 @@ C
       COMMON/PRFQUA/DOPA1(MATOM,MDEPTH),VDWC(MDEPTH)
       COMMON/NLTPOP/PNLT(MATOM,MION,MDEPTH)
       common/lasers/lasdel
+      real*8 JLO,JHI
 C
       DO 10 IJ=1,NFREQ
          ABLIN(IJ)=0.
@@ -9777,6 +9781,34 @@ C
        ELSE
          IF(LPR) THEN
 C
+C
+           if(bfield.gt.0) then
+            JLO = QL0(IL)
+            JHI = QU0(IL)
+            nsplit = 0
+            do mlo=NINT(-JLO*2.),NINT(JLO*2.),2
+             do mhi=NINT(-JHI*2.),NINT(JHI*2.),2
+              if(abs(mlo-mhi).LE.2) then
+               nsplit = nsplit +1
+              end if
+             end do
+            end do
+           else
+            JLO = 0.
+            JHI = 0.
+            nsplit = 1
+           end if
+C            do mlo=NINT(-jlo*2),NINT(jlo*2),2
+C             do mhi=NINT(-jhi*2),NINT(jhi*2),2
+C              if(abs(mlo-mhi).LE.2) then
+C
+C               eshift = 4.66853663D-05 * bfield * float(mlo-mhi)/2.
+C               XF=ABS(FREQ(IJ)-(FR0+CL*eshift))*DOP1
+C               XF=ABS(FREQ(IJ)-(CAS/(CAS/FR0-10.)))*DOP1
+C            DO IJ=IJ1,IJ2
+C
+C
+
             DO 80 IJ=IJ1,IJ2
                XF=ABS(FREQ(IJ)-FR0)*DOP1
 c               ABL=AB0*VOIGTE(AGAM,XF)
