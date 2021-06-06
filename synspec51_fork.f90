@@ -9798,24 +9798,25 @@ C
             JHI = 0.
             nsplit = 1
            end if
-C            do mlo=NINT(-jlo*2),NINT(jlo*2),2
-C             do mhi=NINT(-jhi*2),NINT(jhi*2),2
-C              if(abs(mlo-mhi).LE.2) then
-C
-C               eshift = 4.66853663D-05 * bfield * float(mlo-mhi)/2.
-C               XF=ABS(FREQ(IJ)-(FR0+CL*eshift))*DOP1
-C               XF=ABS(FREQ(IJ)-(CAS/(CAS/FR0-10.)))*DOP1
-C            DO IJ=IJ1,IJ2
-C
+            do mlo=NINT(-jlo*2),NINT(jlo*2),2
+             do mhi=NINT(-jhi*2),NINT(jhi*2),2
+              if(abs(mlo-mhi).LE.2) then
 C
 
-            DO 80 IJ=IJ1,IJ2
-               XF=ABS(FREQ(IJ)-FR0)*DOP1
+C            DO 80 IJ=IJ1,IJ2
+            DO IJ=IJ1,IJ2
+C               XF=ABS(FREQ(IJ)-FR0)*DOP1
+               eshift = 4.66853663D-05 * bfield * float(mlo-mhi)/2.
+               XF=ABS(FREQ(IJ)-(FR0+CL*eshift))*DOP1
 c               ABL=AB0*VOIGTE(AGAM,XF)
                ABL=AB0*VOIGTK(AGAM,XF)
-               ABLINN(IJ)=ABLINN(IJ)+ABL
-               EMLIN(IJ)=EMLIN(IJ)+ABL*SL0
-   80       CONTINUE
+               ABLINN(IJ)=ABLINN(IJ) + ABL / nsplit
+               EMLIN(IJ)=EMLIN(IJ) + ABL*SL0 / nsplit
+            END DO
+C   80       CONTINUE
+              end if
+             end do
+            end do
 C
 C        again, special expressions for He I lines
 C
