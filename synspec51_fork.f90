@@ -6622,7 +6622,7 @@ C
 C ********************************************************************
 C
  
-      FUNCTION PHE1(ID,FREQ,ILINE)
+      FUNCTION PHE1(ID,FREQ,ILINE,wshiftm)
 C     ============================
 C
 C     Absorption profile for four lines of He I, given by
@@ -6657,7 +6657,7 @@ C
       ANE=ELEC(ID)
       ANEL=LOG10(ANE)
       ALAM=2.997925E18/FREQ
-      DLAM=ALAM-WLAM0(ILINE)
+      DLAM=ALAM-WLAM0(ILINE)+wshiftm
       DOPL=SQRT(4.125E7*T)*WLAM0(ILINE)/2.997925E10
 C
       IF(TL.GT.XT0(NT)+0.1) GO TO 5
@@ -9037,7 +9037,8 @@ C
      *           TEN    = 10.,
      *           C3     = 1.4387886,
      *           XET    = 8067.6,
-     *           XET3   = XET*C3)
+     *           XET3   = XET*C3,
+     *           cas    = 2.997925d18)
       DIMENSION ABLIN(MFREQ),EMLIN(MFREQ),ABLINN(MFREQ)
       COMMON/PRFQUA/DOPA1(MATOM,MDEPTH),VDWC(MDEPTH)
       COMMON/NLTPOP/PNLT(MATOM,MION,MDEPTH)
@@ -9150,7 +9151,7 @@ C
             DO 60 IJ=3,NFREQ
                FR=FREQ(IJ)
                if(isp.gt.0)then
-                  ABL=AB0*PHE1(ID,FR,ISP-1)
+                  ABL=AB0*PHE1(ID,FR,ISP-1,0.D0)
                elseif(isp.lt.0)then
                   isp2=-isp
                   call absohe(id,fr,isp2,il,abl,eml)
@@ -9212,18 +9213,57 @@ C
 C        again, special expressions for He I lines
 C
          ELSE
-            DO 90 IJ=3,NFREQ
+C
+C           normal Zeeman -> find main quantum number
+C           find number of splits and energy shift
+            if(bfield.GT.0) then
+C            old HeI tables: all lines between n=2 and n=4
+             if(isp.gt.0)then
+              mlomax = 2 - 1
+              mlomax = 4 - 1
+             elseif(isp.lt.0)then
+              ihe = ilowhe(-isp) + nfirst(ielhe1) - 1
+              jhe = iuphe(-isp) + nfirst(ielhe1) - 1
+              mlomax = NQUANT(ihe)-1
+              mhimax = NQUANT(jhe)-1
+             end if
+            else
+             mlomax = 0
+             mhimax = 0
+            end if
+C           write(6,*) 'mlomax,mhimax',mlomax,mhimax
+            nsplit = 0
+            do mlo=-mlomax,mlomax
+             do mhi=-mhimax,mhimax
+              if(abs(mlo-mhi).LE.1) then
+               nsplit = nsplit +1
+              end if
+             end do
+            end do
+C
+C            DO 90 IJ=3,NFREQ
+            do mlo=-mlomax,mlomax
+             do mhi=-mhimax,mhimax
+              if(abs(mlo-mhi).LE.1) then
+                eshift = 4.66853663D-05*bfield*(mlo-mhi)
+                wshiftm = cas/(FR0+CL*eshift) - cas/FR0
+C                write(6,*) 'F,w,n,cas',FR0,wshiftm,nsplit,cas
+            DO IJ=3,NFREQ
                FR=FREQ(IJ)
                if(isp.gt.0)then
-                  ABL=AB0*PHE1(ID,FR,ISP-1)
+                  ABL=AB0*PHE1(ID,FR,ISP-1,wshiftm)
                   eml=abl*sl0
                elseif(isp.lt.0)then
                   isp2=-isp
                   call absohe(id,fr,isp2,il,abl,eml)
                endif
-               ABLINN(IJ)=ABLINN(IJ)+ABL
-               EMLIN(IJ)=EMLIN(IJ)+eml
-   90       CONTINUE
+               ABLINN(IJ)=ABLINN(IJ) + ABL / nsplit
+               EMLIN(IJ)=EMLIN(IJ) + eml / nsplit
+            END DO
+              end if
+             end do
+            end do
+C   90       CONTINUE
          END IF
       END IF
   100 CONTINUE
@@ -9439,7 +9479,7 @@ C
          ELSE
             DO 60 IJ=1,NFREQ
                FR=FREQ(IJ)
-               ABL=AB0*PHE1(ID,FR,ISP-1)
+               ABL=AB0*PHE1(ID,FR,ISP-1,0.D0)
                ABLIN(IJ)=ABLIN(IJ)+ABL
    60       CONTINUE
          END IF
@@ -9464,7 +9504,7 @@ C
          ELSE
             DO 90 IJ=1,NFREQ
                FR=FREQ(IJ)
-               ABL=AB0*PHE1(ID,FR,ISP-1)
+               ABL=AB0*PHE1(ID,FR,ISP-1,0.D0)
                ABLINN(IJ)=ABLINN(IJ)+ABL
                if(ilne(id).gt.0) go to 90
                EMLIN(IJ)=EMLIN(IJ)+ABL*SL0
