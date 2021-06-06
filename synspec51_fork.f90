@@ -6417,35 +6417,14 @@ C     or Shamey, unpublished PhD thesis, 1969 (for other lines)
 C
 C     This procedure is quite analogous to HYDINI for hydrogen lines
 C
-C     Added lines from Beauchamp (1997ApJS..108..559B)
-C     but only for those denisities where the intgral is 1 +- 0.1
-C
 C     Modified by Antoine Bedard
 C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
       COMMON/PROHE1/PRFHE1(50,4,8,3),DLMHE1(50,8,3),XNEHE1(8),
-     *              NWLAM(8,20)
+     *              NWLAM(8,4)
 C     NWLAM(8,4):8 is max number electron denisities,  4 for 4 lines!
       COMMON/PRO447/PRF447(80,4,7),DLM447(80,7),XNE447(7)
-      COMMON/PRO370/PRF370(60,4,5),DLM370(60,5),XNE370(5)
-      COMMON/PRO382/PRF382(60,4,6),DLM382(60,6),XNE382(6)
-      COMMON/PRO387/PRF387(56,4,6),DLM387(56,6),XNE387(6)
-      COMMON/PRO389/PRF389(74,4,5),DLM389(74,5),XNE389(5)
-      COMMON/PRO396/PRF396(55,4,7),DLM396(55,7),XNE396(7)
-      COMMON/PRO401/PRF401(43,4,5),DLM401(43,5),XNE401(5)
-      COMMON/PRO402/PRF402(52,4,5),DLM402(52,5),XNE402(5)
-      COMMON/PRO412/PRF412(61,4,6),DLM412(61,6),XNE412(6)
-      COMMON/PRO414/PRF414(52,4,6),DLM414(52,6),XNE414(6)
-      COMMON/PRO417/PRF417(51,4,6),DLM417(51,6),XNE417(6)
-      COMMON/PRO444/PRF444(60,4,5),DLM444(60,5),XNE444(5)
-      COMMON/PRO471/PRF471(68,4,6),DLM471(68,6),XNE471(6)
-      COMMON/PRO502/PRF502(71,4,6),DLM502(71,6),XNE502(6)
-      COMMON/PRO505/PRF505(60,4,6),DLM505(60,6),XNE505(6)
-      COMMON/PRO588/PRF588(69,4,5),DLM588(69,5),XNE588(5)
-      COMMON/PRO668/PRF668(54,4,6),DLM668(54,6),XNE668(6)
-C      COMMON/PRO403/PRF403(57,4,7),DLM403(57,7),XNE403(7)
-C      COMMON/PRO439/PRF439(53,4,6),DLM439(53,6),XNE439(6)
       DATA NT /4/
 C
 C     use Beauchamp tables
@@ -6456,7 +6435,6 @@ C         also no need to return, if fort.67 exists
          return
       endif
 
-C      WRITE(*,*)'HE1INI: ALAM = ',ALAM
 C
 C     80 and 50 correspond to max nwl in table +1!
 C     NWL = 59 for HeI 5058 -> use 60?!
@@ -6493,198 +6471,6 @@ C
             END DO
          END DO
       END DO
-C
-C        read the Beauchamp tables,
-C        which have to be appended to file unit IH
-C
-      NE=5
-C     iterate over electron densities
-      DO IE=1,NE
-C        this reads the block header, 501 specifies format
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-C        NWLAM(IE,ILINE)
-         NWLAM(IE,5)=NWL
-         XNE370(IE)=LOG10(XXNE)
-C        iterate over wavelength points
-         DO I=1,NWL
-C           DLM = ? PRF = NT x NE matrix for intensities
-            READ(IH,502) DLM370(I,IE),
-     *                (PRF370(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-C
-      NE=6
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,6)=NWL
-         XNE382(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM382(I,IE),
-     *                (PRF382(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-C
-      NE=6
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,7)=NWL
-         XNE387(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM387(I,IE),
-     *                (PRF387(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-      NE=5
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,8)=NWL
-         XNE389(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM389(I,IE),
-     *                (PRF389(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-      NE=7
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,9)=NWL
-         XNE396(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM396(I,IE),
-     *                (PRF396(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-      NE=5
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,10)=NWL
-         XNE401(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM401(I,IE),
-     *                (PRF401(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-      NE=5
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,11)=NWL
-         XNE402(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM402(I,IE),
-     *                (PRF402(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-      NE=6
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,12)=NWL
-         XNE412(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM412(I,IE),
-     *                (PRF412(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-      NE=6
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,13)=NWL
-         XNE414(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM414(I,IE),
-     *                (PRF414(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-      NE=6
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,14)=NWL
-         XNE417(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM417(I,IE),
-     *                (PRF417(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-      NE=5
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,15)=NWL
-         XNE444(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM444(I,IE),
-     *                (PRF444(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-      NE=6
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,16)=NWL
-         XNE471(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM471(I,IE),
-     *                (PRF471(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-      NE=6
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,17)=NWL
-         XNE502(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM502(I,IE),
-     *                (PRF502(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-      NE=6
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,18)=NWL
-         XNE505(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM505(I,IE),
-     *                (PRF505(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-      NE=5
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,19)=NWL
-         XNE588(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM588(I,IE),
-     *                (PRF588(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-      NE=6
-      DO IE=1,NE
-         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-         NWLAM(IE,20)=NWL
-         XNE668(IE)=LOG10(XXNE)
-         DO I=1,NWL
-            READ(IH,502) DLM668(I,IE),
-     *                (PRF668(I,IT,IE),IT=1,NT)
-         END DO
-      END DO
-      NE=7
-C      DO IE=1,NE
-C         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-C         NWLAM(IE,21)=NWL
-C         XNE403(IE)=LOG10(XXNE)
-C         DO I=1,NWL
-C            READ(IH,502) DLM403(I,IE),
-C     *                (PRF403(I,IT,IE),IT=1,NT)
-C         END DO
-C      END DO
-C      NE=6
-C      DO IE=1,NE
-C         READ(IH,501) IL,WL0,IE1,XXNE,NWL
-C         NWLAM(IE,22)=NWL
-C         XNE439(IE)=LOG10(XXNE)
-C         DO I=1,NWL
-C            READ(IH,502) DLM439(I,IE),
-C     *                (PRF439(I,IT,IE),IT=1,NT)
-C         END DO
-C      END DO
-C
       CLOSE(IH)
 C
   501 FORMAT(/9X,I2,7X,F10.3,13X,I2,6X,E8.1,7X,I3/)
@@ -6848,8 +6634,7 @@ C            FREQ  - frequency
 C            ILINE - index of the line ( = 1  for 4471,
 C                                        = 2  for 4387,
 C                                        = 3  for 4026,
-C                                        = 4  for 4922
-C                                        = 5- for beau)
+C                                        = 4  for 4922)
 C
 C     Output: PHE1 - profile coefficient in frequency units,
 C                    normalized to sqrt(pi) [not unity]
@@ -6857,67 +6642,15 @@ C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
       PARAMETER (NT=4)
-C      COMMON/PROHE1/PRFHE1(50,NT,8,3),DLMHE1(50,8,3),XNEHE1(8),
-C     *              NWLAM(8,NT)
-      COMMON/PROHE1/PRFHE1(50,4,8,3),DLMHE1(50,8,3),XNEHE1(8),
-     *              NWLAM(8,20)
+      COMMON/PROHE1/PRFHE1(50,NT,8,3),DLMHE1(50,8,3),XNEHE1(8),
+     *              NWLAM(8,NT)
       COMMON/PRO447/PRF447(80,NT,7),DLM447(80,7),XNE447(7)
-      COMMON/PRO370/PRF370(60,4,5),DLM370(60,5),XNE370(5)
-      COMMON/PRO382/PRF382(60,4,6),DLM382(60,6),XNE382(6)
-      COMMON/PRO387/PRF387(56,4,6),DLM387(56,6),XNE387(6)
-      COMMON/PRO389/PRF389(74,4,5),DLM389(74,5),XNE389(5)
-      COMMON/PRO396/PRF396(55,4,7),DLM396(55,7),XNE396(7)
-      COMMON/PRO401/PRF401(43,4,5),DLM401(43,5),XNE401(5)
-      COMMON/PRO402/PRF402(52,4,5),DLM402(52,5),XNE402(5)
-      COMMON/PRO412/PRF412(61,4,6),DLM412(61,6),XNE412(6)
-      COMMON/PRO414/PRF414(52,4,6),DLM414(52,6),XNE414(6)
-      COMMON/PRO417/PRF417(51,4,6),DLM417(51,6),XNE417(6)
-      COMMON/PRO444/PRF444(60,4,5),DLM444(60,5),XNE444(5)
-      COMMON/PRO471/PRF471(68,4,6),DLM471(68,6),XNE471(6)
-      COMMON/PRO502/PRF502(71,4,6),DLM502(71,6),XNE502(6)
-      COMMON/PRO505/PRF505(60,4,6),DLM505(60,6),XNE505(6)
-      COMMON/PRO588/PRF588(69,4,5),DLM588(69,5),XNE588(5)
-      COMMON/PRO668/PRF668(54,4,6),DLM668(54,6),XNE668(6)
-C      COMMON/PRO403/PRF403(57,4,7),DLM403(57,7),XNE403(7)
-C      COMMON/PRO439/PRF439(53,4,6),DLM439(53,6),XNE439(6)
-      DIMENSION WLAM0(20),XT0(NT),XX(3),WX(3),YY(2),PP(2),ZZ(3),WZ(3)
-      DATA WLAM0 / 4471.50, 4387.93, 4026.20, 4921.93,
-     +     3704.996, 3819.607, 3867.477, 3888.649,
-     +     3964.730, 4009.257, 4023.980, 4120.800,
-     +     4143.759, 4168.972,4437.550, 4713.146,
-     +     5015.678, 5047.738, 5875.650, 6678.151/
-C     +     4026.20, 4387.93/
+      DIMENSION WLAM0(4),XT0(NT),XX(3),WX(3),YY(2),PP(2),ZZ(3),WZ(3)
+      DATA WLAM0 / 4471.50, 4387.93, 4026.20, 4921.93/
       DATA XT0/ 3.699, 4.000, 4.301, 4.602/
 C
 C     temperature is modified in order to account for the
 C     effect of turbulent velocity on the Doppler width
-C
-C      IF (ILINE.GT.103.AND.ILINE.LT.121)
-C     +     WRITE(*,*)'PHE1: ILINE = ',ILINE
-C     disable shamey tables
-C      IF (ILINE.EQ.2) ILINE = 22
-C      IF (ILINE.EQ.3) ILINE = 21
-C
-C      IF (ILINE.GT.0.AND.ILINE.LT.6)
-C     +     WRITE(*,*)'PHE1: ILINE = ',ILINE
-      IF (ILINE.EQ.104) ILINE = 5
-      IF (ILINE.EQ.105) ILINE = 6
-      IF (ILINE.EQ.106) ILINE = 7
-      IF (ILINE.EQ.107) ILINE = 8
-      IF (ILINE.EQ.108) ILINE = 9
-      IF (ILINE.EQ.109) ILINE = 10
-      IF (ILINE.EQ.110) ILINE = 11
-      IF (ILINE.EQ.111) ILINE = 12
-      IF (ILINE.EQ.112) ILINE = 13
-      IF (ILINE.EQ.113) ILINE = 14
-      IF (ILINE.EQ.114) ILINE = 15
-      IF (ILINE.EQ.115) ILINE = 16
-      IF (ILINE.EQ.116) ILINE = 17
-      IF (ILINE.EQ.117) ILINE = 18
-      IF (ILINE.EQ.118) ILINE = 19
-      IF (ILINE.EQ.119) ILINE = 20
-C      IF (ILINE.EQ.120) ILINE = 21
-C      IF (ILINE.EQ.121) ILINE = 22
 C
       T=TEMP(ID)+2.42E-8*VTURB(ID)
       TL=LOG10(T)
@@ -6928,26 +6661,8 @@ C
       DOPL=SQRT(4.125E7*T)*WLAM0(ILINE)/2.997925E10
 C
       IF(TL.GT.XT0(NT)+0.1) GO TO 5
-      IF(ILINE.GT.1.AND.ILINE.LT.5.AND.ANEL.GE.XNEHE1(1)) GO TO 10
       IF(ILINE.EQ.1.AND.ANEL.GE.XNE447(1)) GO TO 10
-      IF(ILINE.EQ.5.AND.ANEL.GE.XNE370(1)) GO TO 10
-      IF(ILINE.EQ.6.AND.ANEL.GE.XNE382(1)) GO TO 10
-      IF(ILINE.EQ.7.AND.ANEL.GE.XNE387(1)) GO TO 10
-      IF(ILINE.EQ.8.AND.ANEL.GE.XNE389(1)) GO TO 10
-      IF(ILINE.EQ.9.AND.ANEL.GE.XNE396(1)) GO TO 10
-      IF(ILINE.EQ.10.AND.ANEL.GE.XNE401(1)) GO TO 10
-      IF(ILINE.EQ.11.AND.ANEL.GE.XNE402(1)) GO TO 10
-      IF(ILINE.EQ.12.AND.ANEL.GE.XNE412(1)) GO TO 10
-      IF(ILINE.EQ.13.AND.ANEL.GE.XNE414(1)) GO TO 10
-      IF(ILINE.EQ.14.AND.ANEL.GE.XNE417(1)) GO TO 10
-      IF(ILINE.EQ.15.AND.ANEL.GE.XNE444(1)) GO TO 10
-      IF(ILINE.EQ.16.AND.ANEL.GE.XNE471(1)) GO TO 10
-      IF(ILINE.EQ.17.AND.ANEL.GE.XNE502(1)) GO TO 10
-      IF(ILINE.EQ.18.AND.ANEL.GE.XNE505(1)) GO TO 10
-      IF(ILINE.EQ.19.AND.ANEL.GE.XNE588(1)) GO TO 10
-      IF(ILINE.EQ.20.AND.ANEL.GE.XNE668(1)) GO TO 10
-C      IF(ILINE.EQ.21.AND.ANEL.GE.XNE403(1)) GO TO 10
-C      IF(ILINE.EQ.22.AND.ANEL.GE.XNE439(1)) GO TO 10
+      IF(ILINE.NE.1.AND.ANEL.GE.XNEHE1(1)) GO TO 10
 C
 C     isolated line approximation for low electron densities
 C
@@ -6955,8 +6670,6 @@ C
       V=ABS(DLAM)/DOPL
       V1=ABS(ALAM-4471.682)/DOPL
       PHE1=VOIGTK(A,V)
-C     NOT for forbidden component of 4471; 
-C     actually not forbidden component, this is line splitting with stat. weight
       IF(ILINE.EQ.1) PHE1=(8.*PHE1+VOIGTK(A,V1))/9.
       RETURN
 C
@@ -6968,49 +6681,13 @@ C
       NE=8
       ILNE=ILINE-1
       IF(ILINE.EQ.1) NE=7
-      IF(ILINE.EQ.5) NE=5
-      IF(ILINE.EQ.6) NE=6
-      IF(ILINE.EQ.7) NE=6
-      IF(ILINE.EQ.8) NE=5
-      IF(ILINE.EQ.9) NE=7
-      IF(ILINE.EQ.10) NE=5
-      IF(ILINE.EQ.11) NE=5
-      IF(ILINE.EQ.12) NE=6
-      IF(ILINE.EQ.13) NE=6
-      IF(ILINE.EQ.14) NE=6
-      IF(ILINE.EQ.15) NE=5
-      IF(ILINE.EQ.16) NE=6
-      IF(ILINE.EQ.17) NE=6
-      IF(ILINE.EQ.18) NE=6
-      IF(ILINE.EQ.19) NE=5
-      IF(ILINE.EQ.20) NE=6
-C      IF(ILINE.EQ.21) NE=7
-C      IF(ILINE.EQ.22) NE=6
 C
 C     Interpolation in electron density
 C
       DO JZ=1,NE-1
          IPZ=JZ
-         IF(ILINE.GT.1.AND.ILINE.LT.5.AND.ANEL.LE.XNEHE1(JZ+1)) GO TO 30
          IF(ILINE.EQ.1.AND.ANEL.LE.XNE447(JZ+1)) GO TO 30
-         IF(ILINE.EQ.5.AND.ANEL.LE.XNE370(JZ+1)) GO TO 30
-         IF(ILINE.EQ.6.AND.ANEL.LE.XNE382(JZ+1)) GO TO 30
-         IF(ILINE.EQ.7.AND.ANEL.LE.XNE387(JZ+1)) GO TO 30
-         IF(ILINE.EQ.8.AND.ANEL.LE.XNE389(JZ+1)) GO TO 30
-         IF(ILINE.EQ.9.AND.ANEL.LE.XNE396(JZ+1)) GO TO 30
-         IF(ILINE.EQ.10.AND.ANEL.LE.XNE401(JZ+1)) GO TO 30
-         IF(ILINE.EQ.11.AND.ANEL.LE.XNE402(JZ+1)) GO TO 30
-         IF(ILINE.EQ.12.AND.ANEL.LE.XNE412(JZ+1)) GO TO 30
-         IF(ILINE.EQ.13.AND.ANEL.LE.XNE414(JZ+1)) GO TO 30
-         IF(ILINE.EQ.14.AND.ANEL.LE.XNE417(JZ+1)) GO TO 30
-         IF(ILINE.EQ.15.AND.ANEL.LE.XNE444(JZ+1)) GO TO 30
-         IF(ILINE.EQ.16.AND.ANEL.LE.XNE471(JZ+1)) GO TO 30
-         IF(ILINE.EQ.17.AND.ANEL.LE.XNE502(JZ+1)) GO TO 30
-         IF(ILINE.EQ.18.AND.ANEL.LE.XNE505(JZ+1)) GO TO 30
-         IF(ILINE.EQ.19.AND.ANEL.LE.XNE588(JZ+1)) GO TO 30
-         IF(ILINE.EQ.20.AND.ANEL.LE.XNE668(JZ+1)) GO TO 30
-C         IF(ILINE.EQ.21.AND.ANEL.LE.XNE403(JZ+1)) GO TO 30
-C         IF(ILINE.EQ.22.AND.ANEL.LE.XNE439(JZ+1)) GO TO 30
+         IF(ILINE.NE.1.AND.ANEL.LE.XNEHE1(JZ+1)) GO TO 30
       END DO
    30 N0Z=IPZ-NZ/2+1
       IF(N0Z.LT.1) N0Z=1
@@ -7018,26 +6695,8 @@ C         IF(ILINE.EQ.22.AND.ANEL.LE.XNE439(JZ+1)) GO TO 30
       N1Z=N0Z+NZ-1
       DO 300 JZ=N0Z,N1Z
          I0Z=JZ-N0Z+1
-         IF(ILINE.GT.1.AND.ILINE.LT.5) ZZ(I0Z)=XNEHE1(JZ)
          IF(ILINE.EQ.1) ZZ(I0Z)=XNE447(JZ)
-         IF(ILINE.EQ.5) ZZ(I0Z)=XNE370(JZ)
-         IF(ILINE.EQ.6) ZZ(I0Z)=XNE382(JZ)
-         IF(ILINE.EQ.7) ZZ(I0Z)=XNE387(JZ)
-         IF(ILINE.EQ.8) ZZ(I0Z)=XNE389(JZ)
-         IF(ILINE.EQ.9) ZZ(I0Z)=XNE396(JZ)
-         IF(ILINE.EQ.10) ZZ(I0Z)=XNE401(JZ)
-         IF(ILINE.EQ.11) ZZ(I0Z)=XNE402(JZ)
-         IF(ILINE.EQ.12) ZZ(I0Z)=XNE412(JZ)
-         IF(ILINE.EQ.13) ZZ(I0Z)=XNE414(JZ)
-         IF(ILINE.EQ.14) ZZ(I0Z)=XNE417(JZ)
-         IF(ILINE.EQ.15) ZZ(I0Z)=XNE444(JZ)
-         IF(ILINE.EQ.16) ZZ(I0Z)=XNE471(JZ)
-         IF(ILINE.EQ.17) ZZ(I0Z)=XNE502(JZ)
-         IF(ILINE.EQ.18) ZZ(I0Z)=XNE505(JZ)
-         IF(ILINE.EQ.19) ZZ(I0Z)=XNE588(JZ)
-         IF(ILINE.EQ.20) ZZ(I0Z)=XNE668(JZ)
-C         IF(ILINE.EQ.21) ZZ(I0Z)=XNE403(JZ)
-C         IF(ILINE.EQ.22) ZZ(I0Z)=XNE439(JZ)
+         IF(ILINE.NE.1) ZZ(I0Z)=XNEHE1(JZ)
 C
 C        Interpolation in temperature
 C
@@ -7070,8 +6729,7 @@ C
      *                PRF447(NLST,IX,JZ))
                   GO TO 150
                END IF
-            END IF
-            IF(ILINE.GT.1.AND.ILINE.LT.5) THEN
+             ELSE
                D1=DLMHE1(1,JZ,ILNE)
                D2=DLMHE1(NLST,JZ,ILNE)
                IF(DLAM.LT.D1) THEN
@@ -7084,249 +6742,15 @@ C
                   GO TO 150
                END IF
             END IF
-            IF(ILINE.EQ.5) THEN
-               D1=DLM370(1,JZ)
-               D2=DLM370(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF370(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF370(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.6) THEN
-               D1=DLM382(1,JZ)
-               D2=DLM382(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF382(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF382(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.7) THEN
-               D1=DLM387(1,JZ)
-               D2=DLM387(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF387(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF387(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.8) THEN
-               D1=DLM389(1,JZ)
-               D2=DLM389(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF389(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF389(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.9) THEN
-               D1=DLM396(1,JZ)
-               D2=DLM396(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF396(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF396(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.10) THEN
-               D1=DLM401(1,JZ)
-               D2=DLM401(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF401(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF401(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.11) THEN
-               D1=DLM402(1,JZ)
-               D2=DLM402(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF402(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF402(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.12) THEN
-               D1=DLM412(1,JZ)
-               D2=DLM412(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF412(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF412(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.13) THEN
-               D1=DLM414(1,JZ)
-               D2=DLM414(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF414(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF414(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.14) THEN
-               D1=DLM417(1,JZ)
-               D2=DLM417(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF417(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF417(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.15) THEN
-               D1=DLM444(1,JZ)
-               D2=DLM444(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF444(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF444(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.16) THEN
-               D1=DLM471(1,JZ)
-               D2=DLM471(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF471(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF471(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.17) THEN
-               D1=DLM502(1,JZ)
-               D2=DLM502(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF502(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF502(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.18) THEN
-               D1=DLM505(1,JZ)
-               D2=DLM505(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF505(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF505(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.19) THEN
-               D1=DLM588(1,JZ)
-               D2=DLM588(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF588(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF588(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-            IF(ILINE.EQ.20) THEN
-               D1=DLM668(1,JZ)
-               D2=DLM668(NLST,JZ)
-               IF(DLAM.LT.D1) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF668(1,IX,JZ))
-                  GO TO 150
-                ELSE IF(DLAM.GT.D2) THEN
-                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-     *                PRF668(NLST,IX,JZ))
-                  GO TO 150
-               END IF
-            END IF
-C            IF(ILINE.EQ.21) THEN
-C               D1=DLM403(1,JZ)
-C               D2=DLM403(NLST,JZ)
-C               IF(DLAM.LT.D1) THEN
-C                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF403(1,IX,JZ))
-C                  GO TO 150
-C                ELSE IF(DLAM.GT.D2) THEN
-C                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-C    *                 PRF403(NLST,IX,JZ))
-C                  GO TO 150
-C               END IF
-C            END IF
-C            IF(ILINE.EQ.22) THEN
-C               D1=DLM439(1,JZ)
-C               D2=DLM439(NLST,JZ)
-C               IF(DLAM.LT.D1) THEN
-C                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D1,PRF439(1,IX,JZ))
-C                  GO TO 150
-C                ELSE IF(DLAM.GT.D2) THEN
-C                  PRF0=EXTPRF(DLAM,IX,ILINE,ZZ(I0Z),D2,
-C      *                PRF439(NLST,IX,JZ))
-C                  GO TO 150
-C               END IF
-C            END IF
 C
 C           normal linear interpolation in wavelength
 C           (for 4471, linear interpolation in logarithms)
 C
             DO IY=1,NLST-1
                IPY=IY
-               IF(ILINE.GT.1.AND.ILINE.LT.5.AND.
-     *         DLAM.LE.DLMHE1(IY+1,JZ,ILNE)) GO TO 70
                IF(ILINE.EQ.1.AND.DLAM.LE.DLM447(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.5.AND.DLAM.LE.DLM370(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.6.AND.DLAM.LE.DLM382(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.7.AND.DLAM.LE.DLM387(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.8.AND.DLAM.LE.DLM389(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.9.AND.DLAM.LE.DLM396(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.10.AND.DLAM.LE.DLM401(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.11.AND.DLAM.LE.DLM402(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.12.AND.DLAM.LE.DLM412(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.13.AND.DLAM.LE.DLM414(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.14.AND.DLAM.LE.DLM417(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.15.AND.DLAM.LE.DLM444(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.16.AND.DLAM.LE.DLM471(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.17.AND.DLAM.LE.DLM502(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.18.AND.DLAM.LE.DLM505(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.19.AND.DLAM.LE.DLM588(IY+1,JZ)) GO TO 70
-               IF(ILINE.EQ.20.AND.DLAM.LE.DLM668(IY+1,JZ)) GO TO 70
-C               IF(ILINE.EQ.21.AND.DLAM.LE.DLM403(IY+1,JZ)) GO TO 70
-C               IF(ILINE.EQ.22.AND.DLAM.LE.DLM439(IY+1,JZ)) GO TO 70
+               IF(ILINE.NE.1.AND.DLAM.LE.DLMHE1(IY+1,JZ,ILNE))
+     *            GO TO 70
             END DO
    70       N0Y=IPY-NY/2+1
             IF(N0Y.LT.1) N0Y=1
@@ -7336,53 +6760,15 @@ C               IF(ILINE.EQ.22.AND.DLAM.LE.DLM439(IY+1,JZ)) GO TO 70
                I0=IY-N0Y+1
                IF(ILINE.EQ.1) YY(I0)=DLM447(IY,JZ)
                IF(ILINE.EQ.1) PP(I0)=LOG(PRF447(IY,IX,JZ))
-               IF(ILINE.EQ.5) YY(I0)=DLM370(IY,JZ)
-               IF(ILINE.EQ.5) PP(I0)=LOG(PRF370(IY,IX,JZ))
-               IF(ILINE.EQ.6) YY(I0)=DLM382(IY,JZ)
-               IF(ILINE.EQ.6) PP(I0)=LOG(PRF382(IY,IX,JZ))
-               IF(ILINE.EQ.7) YY(I0)=DLM387(IY,JZ)
-               IF(ILINE.EQ.7) PP(I0)=LOG(PRF387(IY,IX,JZ))
-               IF(ILINE.EQ.8) YY(I0)=DLM389(IY,JZ)
-               IF(ILINE.EQ.8) PP(I0)=LOG(PRF389(IY,IX,JZ))
-               IF(ILINE.EQ.9) YY(I0)=DLM396(IY,JZ)
-               IF(ILINE.EQ.9) PP(I0)=LOG(PRF396(IY,IX,JZ))
-               IF(ILINE.EQ.10) YY(I0)=DLM401(IY,JZ)
-               IF(ILINE.EQ.10) PP(I0)=LOG(PRF401(IY,IX,JZ))
-               IF(ILINE.EQ.11) YY(I0)=DLM402(IY,JZ)
-               IF(ILINE.EQ.11) PP(I0)=LOG(PRF402(IY,IX,JZ))
-               IF(ILINE.EQ.12) YY(I0)=DLM412(IY,JZ)
-               IF(ILINE.EQ.12) PP(I0)=LOG(PRF412(IY,IX,JZ))
-               IF(ILINE.EQ.13) YY(I0)=DLM414(IY,JZ)
-               IF(ILINE.EQ.13) PP(I0)=LOG(PRF414(IY,IX,JZ))
-               IF(ILINE.EQ.14) YY(I0)=DLM417(IY,JZ)
-               IF(ILINE.EQ.14) PP(I0)=LOG(PRF417(IY,IX,JZ))
-               IF(ILINE.EQ.15) YY(I0)=DLM444(IY,JZ)
-               IF(ILINE.EQ.15) PP(I0)=LOG(PRF444(IY,IX,JZ))
-               IF(ILINE.EQ.16) YY(I0)=DLM471(IY,JZ)
-               IF(ILINE.EQ.16) PP(I0)=LOG(PRF471(IY,IX,JZ))
-               IF(ILINE.EQ.17) YY(I0)=DLM502(IY,JZ)
-               IF(ILINE.EQ.17) PP(I0)=LOG(PRF502(IY,IX,JZ))
-               IF(ILINE.EQ.18) YY(I0)=DLM505(IY,JZ)
-               IF(ILINE.EQ.18) PP(I0)=LOG(PRF505(IY,IX,JZ))
-               IF(ILINE.EQ.19) YY(I0)=DLM588(IY,JZ)
-               IF(ILINE.EQ.19) PP(I0)=LOG(PRF588(IY,IX,JZ))
-               IF(ILINE.EQ.20) YY(I0)=DLM668(IY,JZ)
-               IF(ILINE.EQ.20) PP(I0)=LOG(PRF668(IY,IX,JZ))
-C               IF(ILINE.EQ.21) YY(I0)=DLM403(IY,JZ)
-C               IF(ILINE.EQ.21) PP(I0)=LOG(PRF403(IY,IX,JZ))
-C               IF(ILINE.EQ.22) YY(I0)=DLM439(IY,JZ)
-C               IF(ILINE.EQ.22) PP(I0)=LOG(PRF439(IY,IX,JZ))
-               IF(ILINE.GT.1.AND.ILINE.LT.5) YY(I0)=DLMHE1(IY,JZ,ILNE)
-               IF(ILINE.GT.1.AND.ILINE.LT.5)
-     *         PP(I0)=PRFHE1(IY,IX,JZ,ILNE)
+               IF(ILINE.NE.1) YY(I0)=DLMHE1(IY,JZ,ILNE)
+               IF(ILINE.NE.1) PP(I0)=PRFHE1(IY,IX,JZ,ILNE)
            END DO
-           IF(ILINE.GT.1.AND.ILINE.LT.5) THEN
+           IF(ILINE.NE.1) THEN
               WX(I0X)=(PP(2)*(DLAM-YY(1))+PP(1)*(YY(2)-DLAM))/
      *                (YY(2)-YY(1))
             ELSE
              WX(I0X)=(PP(2)*(DLAM-YY(1))+PP(1)*(YY(2)-DLAM))/
      *                (YY(2)-YY(1))
-C           CHECK THIS
              WX(I0X)=EXP(WX(I0X))
            END IF
            GO TO 200
