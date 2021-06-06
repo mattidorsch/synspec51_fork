@@ -9656,7 +9656,7 @@ C
       COMMON/PRFQUA/DOPA1(MATOM,MDEPTH),VDWC(MDEPTH)
       COMMON/NLTPOP/PNLT(MATOM,MION,MDEPTH)
       common/lasers/lasdel
-      real*8 JLO,JHI
+      real*8 JLO,JHI,gjlo,gjhi,eshift
 C
       DO 10 IJ=1,NFREQ
          ABLIN(IJ)=0.
@@ -9785,6 +9785,10 @@ C
            if(bfield.gt.0) then
             JLO = QL0(IL)
             JHI = QU0(IL)
+            gjlo = 1.
+            gjhi = 1.
+C           gjlo = 1 + (jlo*(jlo+1) - l_lo*(l_lo+1) + s_lo*(s_lo+1)) / (2*jlo*(jlo+1))
+C           gjhi = 1 + (jhi*(jhi+1) - l_hi*(l_hi+1) + s_hi*(s_hi+1)) / (2*jhi*(jhi+1))
             nsplit = 0
             do mlo=NINT(-JLO*2.),NINT(JLO*2.),2
              do mhi=NINT(-JHI*2.),NINT(JHI*2.),2
@@ -9796,17 +9800,18 @@ C
            else
             JLO = 0.
             JHI = 0.
+            gjlo = 1.
+            gjhi = 1.
             nsplit = 1
            end if
             do mlo=NINT(-jlo*2),NINT(jlo*2),2
              do mhi=NINT(-jhi*2),NINT(jhi*2),2
               if(abs(mlo-mhi).LE.2) then
-C
-
+               eshift = 4.66853663D-05*bfield*
+     *                  (float(mlo)*gjlo-float(mhi)*gjhi)/2
 C            DO 80 IJ=IJ1,IJ2
             DO IJ=IJ1,IJ2
 C               XF=ABS(FREQ(IJ)-FR0)*DOP1
-               eshift = 4.66853663D-05 * bfield * float(mlo-mhi)/2.
                XF=ABS(FREQ(IJ)-(FR0+CL*eshift))*DOP1
 c               ABL=AB0*VOIGTE(AGAM,XF)
                ABL=AB0*VOIGTK(AGAM,XF)
