@@ -14,6 +14,8 @@ C
        REAL*4       EXCL0(MLIN0),
      *              EXCU0(MLIN0),
      *              GF0(MLIN0),
+     *              QL0(MLIN0), ! store Js for lin. Zeeman effect
+     *              QU0(MLIN0),
      *              EXTIN(MLIN0),
      *              BNUL(MLIN0),
      *              GAMR0(MPRF),
@@ -30,6 +32,8 @@ C
       COMMON/LINTOT/FREQ0(MLIN0),
      *              EXCL0,
      *              EXCU0,
+     *              QL0,
+     *              QU0,
      *              GF0,
      *              EXTIN,
      *              BNUL,
