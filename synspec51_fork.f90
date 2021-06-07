@@ -4683,16 +4683,16 @@ C
       SUBROUTINE HYDLIN(ID,I0,I1,ABSOH,EMISH)
 C     =======================================
 C
-C     opacity and emissivity of hydrogen lines  
+C     opacity and emissivity of hydrogen lines
 C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
       INCLUDE 'INCLUDE/SYNTHP.FOR'
       PARAMETER (FRH1=3.28805E15,FRH2=FRH1/4.,UN=1.,SIXTH=1./6.)
-      PARAMETER (CPP=4.1412E-16,CPJ=157803.) 
+      PARAMETER (CPP=4.1412E-16,CPJ=157803.)
       PARAMETER (C00=1.25E-9,CDOP=1.284523E12,CID=0.02654,TWO=2.)
       PARAMETER (CPJ4=CPJ/4.,AL10=2.3025851,CINV=UN/2.997925E18)
-      PARAMETER (CID1=0.01497)
+      PARAMETER (CID1=0.01497,cas=2.997925d18)
       logical lquasi
       common/quasun/nunalp,nunbet,nungam,nunbal
       DIMENSION PJ(40),PRF0(54),WLINE(4,22),OSCH(4,22),
@@ -4836,6 +4836,25 @@ c
                EMIS(IJ)=EMIS(IJ)+SG*EMTRA
             END DO
          end if
+C
+C           find number of splits and energy shift
+C
+         if(bfield.GT.0) then
+          mlomax = I-1
+          mhimax = J-1
+          nsplit = 0
+          do mlo=-mlomax,mlomax
+           do mhi=-mhimax,mhimax
+            if(abs(mlo-mhi).le.1) then
+             nsplit = nsplit +1
+            end if
+           end do
+          end do
+         else
+          mlomax = 0
+          mhimax = 0
+          nsplit = 1
+         end if
 c
 c        lines with special Stark broadening tables
 c
@@ -4852,33 +4871,13 @@ c
             DO  IWL=1,NWL
                PRF0(IWL)=PRFHYD(ILINE,ID,IWL)
             END DO
-C           find number of splits and energy shift
-            IF(bfield.GT.0) THEN
-                mlomax = I-1
-                mhimax = J-1
-            ELSE
-                mlomax = 0
-                mhimax = 0
-            END IF
-            nsplit = 0
-            DO mlo=-mlomax,mlomax
-            DO mhi=-mhimax,mhimax
-            if(abs(mlo-mhi).LE.1) then
-            nsplit = nsplit +1
-            END IF
-            END DO
-            END DO
-C            write(6,*) 'nsplit',nsplit
-            DO mlo=-mlomax,mlomax
-            DO mhi=-mhimax,mhimax
-C            DO IMJ=1,nsplit
-            if(abs(mlo-mhi).LE.1) then
+            do mlo=-mlomax,mlomax
+             do mhi=-mhimax,mhimax
+              if(abs(mlo-mhi).le.1) then
             DO IJ=I0,I1
 C               AL=ABS(WLAM(IJ)-WLINE(I,J))
-C               WSHIFTM = (IMJ-2)*3.6
                eshift = 4.66853663D-05 * bfield * (mlo-mhi)
                cenwave = 1D8 / ((1D8 / WLINE(I,J)) + eshift)
-C               write(6,*) 'cenwave',cenwave
                AL=ABS(WLAM(IJ)-cenwave)
                IF(AL.LT.1.E-4) AL=1.E-4
                IF(ILEMKE.EQ.1) AL=AL/F00
@@ -4898,10 +4897,9 @@ c              if(lquasi) sg=sg*0.5
                ABSO(IJ)=ABSO(IJ)+SG*ABTRA
                EMIS(IJ)=EMIS(IJ)+SG*EMTRA
             END DO
-            END IF
-            END DO
-            END DO
-C            END DO
+              end if
+             end do
+            end do
 c
 c         XENOMORPH data for selected lines
 c
@@ -4948,15 +4946,28 @@ c           FID0=CID1*FIJ0/DOP
             CALL DIVSTR(AD,DIV)
             fac=two
             if(lquasi) fac=un
+C
+            do mlo=-mlomax,mlomax
+             do mhi=-mhimax,mhimax
+              if(abs(mlo-mhi).le.1) then
+               eshift = 4.66853663D-05 * bfield * (mlo-mhi)
+               wshiftm = cas/(cas/WL0+CL*eshift) - WL0
+C
             DO IJ=I0,I1
                fr=freq(ij)
-               BETA=ABS(WLAM(IJ)-WL0)*FXK1
+               BETA=ABS(WLAM(IJ)-WL0-wshiftm)*FXK1
                SG=STARKA(BETA,AD,DIV,fac)*FID
                if(iophli.eq.2.and.i.eq.1.and.j.eq.2) 
      *               sg=sg*feautr(fr,id)
-               ABSO(IJ)=ABSO(IJ)+SG*ABTRA
-               EMIS(IJ)=EMIS(IJ)+SG*EMTRA
+               ABSO(IJ)=ABSO(IJ)+SG*ABTRA / nsplit
+               EMIS(IJ)=EMIS(IJ)+SG*EMTRA / nsplit
             END DO
+C
+              end if
+             end do
+            end do
+
+C
          END IF
   100 CONTINUE
   200 CONTINUE
