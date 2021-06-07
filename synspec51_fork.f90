@@ -5452,7 +5452,7 @@ C
       PARAMETER (CPP=4.1412E-16,CPJ=631479.)
       PARAMETER (C00=1.25E-9,CDOP=1.284523E12,CID=0.02654,TWO=2.)
       PARAMETER (CPJ4=CPJ/4.,AL10=2.3025851,CINV=UN/2.997925E18)
-      PARAMETER (CID1=0.01497)
+      PARAMETER (CID1=0.01497,cas=2.997925d18)
       DIMENSION PJ(80),FRHE(12),OSCHE2(19),PRF0(36),
      *          ABSO(MFREQ),EMIS(MFREQ),ABSOH(MFREQ),EMISH(MFREQ)
       COMMON/HE2PRF/PRFHE2(19,MDEPTH,36),WLHE2(19,36),NWLHE2(19),
@@ -5583,32 +5583,33 @@ C        directly affects HeII wl for SB lines
             IF(J.LE.7.AND.IHE2PR.GT.0) ILINE=J+12
             IF(J.GE.8.AND.J.LE.15.AND.IHE2PR.GT.0) ILINE=J+1
          END IF
+C
+C        loop over split comp.
+         if(bfield.GT.0) then
+          mlomax = I-1
+          mhimax = J-1
+          nsplit = 0
+          do mlo=-mlomax,mlomax
+           do mhi=-mhimax,mhimax
+            if(abs(mlo-mhi).LE.1) then
+             nsplit = nsplit +1
+            end if
+           end do
+          end do
+         else
+          mlomax = 0
+          mhimax = 0
+          nsplit = 1.D0
+         end if
+C
          IF(ILINE.GT.0) THEN
             NWL=NWLHE2(ILINE)
             DO IWL=1,NWL
                PRF0(IWL)=PRFHE2(ILINE,ID,IWL)
             END DO
             FID=CID*OSCHE2(ILINE)
-C           loop over split comp.
-            if(bfield.GT.0) then
-                mlomax = I-1
-                mhimax = J-1
-            else
-                mlomax = 0
-                mhimax = 0
-            end if
-            nsplit = 0
-            do mlo=-mlomax,mlomax
-             do mhi=-mhimax,mhimax
-              if(abs(mlo-mhi).LE.1) then
-               nsplit = nsplit +1
-              end if
-             end do
-            end do
-C            DO IMJ=1,3
             do mlo=-mlomax,mlomax
             do mhi=-mhimax,mhimax
-C            DO IMJ=1,nsplit
             if(abs(mlo-mhi).le.1) then
             DO 50 IJ=I0,I1
 C               WSHIFTM = (IMJ-2)*3.6
@@ -5637,6 +5638,7 @@ C            END DO
             end do
             end do
           ELSE
+C            WL00 = WL0
             CALL STARK0(I,J,izz,XKIJ,WL0,FIJ,FIJ0)
             FXK=F00*XKIJ
             FXK1=UN/FXK
@@ -5646,16 +5648,26 @@ C            END DO
             FID=CID*FIJ*DBETA
 c           FID0=CID1*FIJ0/DOP
             CALL DIVHE2(AD,DIV)
+C
+            do mlo=-mlomax,mlomax
+             do mhi=-mhimax,mhimax
+              if(abs(mlo-mhi).le.1) then
+               eshift = 4.66853663D-05 * bfield * (mlo-mhi)
+               wshiftm = cas/(cas/WL0+CL*eshift) - WL0
+C
             DO IJ=I0,I1
-               BETA=ABS(WLAM(IJ)-WL0)*FXK1
+               BETA=ABS(WLAM(IJ)-WL0-wshiftm)*FXK1
                SG=STARKA(BETA,AD,DIV,UN)*FID
 c              if(fid0.gt.0.) then
 c                 xd=beta/betad
 c                 if(xd.lt.5.) sg=sg+exp(-xd*xd)*fid0
 c              end if
-               ABSO(IJ)=ABSO(IJ)+SG*ABTRA
-               EMIS(IJ)=EMIS(IJ)+SG*EMTRA
+               ABSO(IJ)=ABSO(IJ)+SG*ABTRA / nsplit
+               EMIS(IJ)=EMIS(IJ)+SG*EMTRA / nsplit
             END DO
+             end if
+            end do
+           end do
          END IF
   100 CONTINUE
   200 CONTINUE
