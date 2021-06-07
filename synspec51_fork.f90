@@ -9154,7 +9154,7 @@ C
                   ABL=AB0*PHE1(ID,FR,ISP-1,0.D0)
                elseif(isp.lt.0)then
                   isp2=-isp
-                  call absohe(id,fr,isp2,il,abl,eml)
+                  call absohe(id,fr,isp2,il,abl,eml,0.D0)
                endif
                ABLIN(IJ)=ABLIN(IJ)+ABL
    60       CONTINUE
@@ -9255,7 +9255,7 @@ C                write(6,*) 'F,w,n,cas',FR0,wshiftm,nsplit,cas
                   eml=abl*sl0
                elseif(isp.lt.0)then
                   isp2=-isp
-                  call absohe(id,fr,isp2,il,abl,eml)
+                  call absohe(id,fr,isp2,il,abl,eml,wshiftm)
                endif
                ABLINN(IJ)=ABLINN(IJ) + ABL / nsplit
                EMLIN(IJ)=EMLIN(IJ) + eml / nsplit
@@ -23882,7 +23882,7 @@ C      end
 C
 C
 C
-      subroutine absohe(id,fr,iline,il,abl,eml)
+      subroutine absohe(id,fr,iline,il,abl,eml,wshiftm)
 C     =========================================
 C
 C     He I line profiles after Beauchamp et al. (1997).
@@ -23934,6 +23934,14 @@ C        ane0 is used as electron density from here on.
          f=exp(gf0(il)+4.2014672)/g(i)
       endif
 C
+C     shift central freq. by wshiftm
+      fr000 = cas / (cas/freq0(il) + wshiftm)
+C     fr000 = freq0(il)
+C     correct ws for new freq.
+C     ws0 = ws00 * (fr000/freq0(il))**2.
+C     ws0 = ws00
+C     write(6,*) 'cas/fr000, ws0', cas/fr000, ws0
+C
 C     nwhe = number of wl points, d0he min. elec. -density
 C     defined d1he as max. d0he min. elec. -density
 C      if(ane0.gt.d1he(iline))then
@@ -23966,11 +23974,12 @@ C           as well as scaling to correct ne
      *              (xxxt*ashe(iline,itt)+(1.d0-xxxt)*ashe(iline,itt-1))
 C           conversion of ws0 from lambda to omega
 C           2*pi*f*f/c = 2*pi*f/lambda = omega/lambda
-            factor=2.*pi*fr000**2./cas
+            factor=2.*pi*freq0(il)**2./cas
             ws0=ws0*factor
 C           why invert sign?
             ds0=-ds0
          endif
+C
 C
 C        conversion from f to omega
          afreq0=2.*pi*fr000
