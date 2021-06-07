@@ -7983,14 +7983,20 @@ c
       IPRF=0
       GS=0.
       GW=0.
+C     initialize negative LS quantum numbers
+C      QSL=-1.
+C      QLL=-1.
+C      QSH=-1.
+C      QLH=-1.
       IF(INLIST.EQ.0) THEN
          READ(19,*,END=100,err=8) ALAM,ANUM,GF,EXCL,QL,EXCU,QU,AGAM,
      *                        GS,GW,INEXT
-         IF(INEXT.NE.0) READ(19,*) WGR1,WGR2,WGR3,WGR4,ILWN,IUN,IPRF
+         IF(INEXT.GT.0) READ(19,*) WGR1,WGR2,WGR3,WGR4,ILWN,IUN,IPRF
+C         IF(INEXT.LT.0) READ(19,*,END=100,err=8) QSL,QLL,QSH,QLH
        ELSE IF(INLIST.EQ.-1) THEN
          READ(19,501,END=100,err=8) ALAM,ANUM,GF,EXCL,QL,EXCU,QU,AGAM,
      *                        GS,GW,INEXT
-         IF(INEXT.NE.0) READ(19,*) WGR1,WGR2,WGR3,WGR4,ILWN,IUN,IPRF
+         IF(INEXT.GT.0) READ(19,*) WGR1,WGR2,WGR3,WGR4,ILWN,IUN,IPRF
   501    FORMAT(F10.4,F6.2,F7.3,F12.3,F4.1,F12.3,F4.1,3F7.2,I2)
        ELSE IF(INLIST.EQ.1) THEN
          READ(19,511,END=100) ALAM,ANUM,GF,EXCL,QL,EXCU,QU,AGAM,
@@ -8109,6 +8115,10 @@ C
 C     MD: for lin. Zeeman effect: store QL, QU = J
       QL0(IL)=real(QL)
       QU0(IL)=real(QU)
+C      QSL0(IL)=real(QSL)
+C      QSU0(IL)=real(QLL)
+C      QLL0(IL)=real(QSH)
+C      QLU0(IL)=real(QLH)
 C
 C     indices for corresponding excitation temperatures of the lower
 C     and upper levels
@@ -9067,6 +9077,9 @@ C
       COMMON/NLTPOP/PNLT(MATOM,MION,MDEPTH)
       common/lasers/lasdel
       real*8 JLO,JHI,gjlo,gjhi,eshift
+C     L and S for 24-lev HeI ion (-> Zeeman split)
+C      DATA HE1L / 4471.50, 4387.93, 4026.20, 4921.93/
+C      DATA HE1S / 4471.50, 4387.93, 4026.20, 4921.93/
 C
       DO 10 IJ=1,NFREQ
          ABLIN(IJ)=0.
@@ -9191,13 +9204,43 @@ C
        ELSE
          IF(LPR) THEN
 C
+C          lines from line list
            if(bfield.gt.0) then
             JLO = QL0(IL)
             JHI = QU0(IL)
-            gjlo = 1.
-            gjhi = 1.
-C           gjlo = 1 + (jlo*(jlo+1) - l_lo*(l_lo+1) + s_lo*(s_lo+1)) / (2*jlo*(jlo+1))
-C           gjhi = 1 + (jhi*(jhi+1) - l_hi*(l_hi+1) + s_hi*(s_hi+1)) / (2*jhi*(jhi+1))
+C            SLO = QSL0(IL)
+C            SHI = QSU0(IL)
+C            LLO = QLL0(IL)
+C            LHI = QLU0(IL)
+            if((abs(EXCL0(IL)/C3-377284.812).lt.1d03).and.
+     *         (INDAT(IL).eq.704)) then
+             QSLO = 1.d0
+             QLLO = 0.d0
+            else
+             QSLO = -1.
+             QLLO = -1.
+            end if
+            if((abs(EXCU0(IL)/C3-405987.500).lt.2d2).and.
+     *         (INDAT(IL).eq.704)) then
+             QSHI = 1.d0
+             QLHI = 1.d0
+            else
+             QSHI = -1.
+             QLHI = -1.
+            end if
+C           j must be larger than 0; else div by 0, anyway no split
+            if((QSLO.GE.0).and.(QSHI.GE.0).and.
+     *         (jlo.gt.0).and.(jhi.gt.0)) then
+             gjlo = 1 + (jlo*(jlo+1) - qllo*(qllo+1) + qslo*(qslo+1))/
+     *                  (2*jlo*(jlo+1))
+             gjhi = 1 + (jhi*(jhi+1) - qlhi*(qlhi+1) + qshi*(qshi+1))/
+     *                  (2*jhi*(jhi+1))
+             write(6,*) 'SLO,SHI,LLO,LHI,gjlo,gjhi',
+     *                   qSLO,qSHI,qLLO,qLHI,gjlo,gjhi
+            else
+             gjlo = 1.
+             gjhi = 1.
+            end if
 C           from model atom: NQUANT(I),TYPLEV(I)
             nsplit = 0
             do mlo=NINT(-JLO*2.),NINT(JLO*2.),2
@@ -9240,11 +9283,12 @@ C
 C           normal Zeeman -> find main quantum number
 C           find number of splits and energy shift
             if(bfield.GT.0) then
-C            old HeI tables: all lines between n=2 and n=4
              if(isp.gt.0)then
+C             old HeI tables: all lines between n=2 and n=4
               mlomax = 2 - 1
               mlomax = 4 - 1
              elseif(isp.lt.0)then
+C             beauchamp tables
               ihe = ilowhe(-isp) + nfirst(ielhe1) - 1
               jhe = iuphe(-isp) + nfirst(ielhe1) - 1
               mlomax = NQUANT(ihe)-1
