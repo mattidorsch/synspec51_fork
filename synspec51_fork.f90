@@ -7347,7 +7347,7 @@ C
             IF(NQ.EQ.10.AND.IG.EQ.400) IUN=I
          END IF 
    10 CONTINUE
-      print *, 'il,iprof,ilw,iupn',il,iprf,ilw,iun
+C      print *, 'il,iprof,ilw,iupn',il,iprf,ilw,iun
       ILWN=ILW
       IUPN=IUN
 C
@@ -9421,8 +9421,8 @@ C           j must be larger than 0; else div by 0, mj=0, so mj*gj = 0
             if((QSHI.GE.0.).and.(QLHI.ge.0).and.(jhi.gt.0)) then
              gjhi = 1 + (jhi*(jhi+1) - qlhi*(qlhi+1) + qshi*(qshi+1))/
      *                  (2*jhi*(jhi+1))
-             write(6,*) 'SLO,SHI,LLO,LHI,gjlo,gjhi',
-     *                   qSLO,qSHI,qLLO,qLHI,gjlo,gjhi
+C             write(6,*) 'SLO,SHI,LLO,LHI,gjlo,gjhi',
+C     *                   qSLO,qSHI,qLLO,qLHI,gjlo,gjhi
             end if
 C           from model atom: NQUANT(I),TYPLEV(I)
 C
