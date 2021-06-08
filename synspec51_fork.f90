@@ -173,7 +173,7 @@ C                  be read from unit 56
 C     IOPHLI     - switch for treatment the Lyman line wings -see LYMLIN
 C
       bfield=3.42D5 ! magnetic field in Gauss
-      bangle=7.5D1 ! angle between the magnetic fieldaxis and the line of sight
+      bangle=8.5D1 ! angle between the magnetic fieldaxis and the line of sight
       mode=0
       read(1,*,err=10,end=10) mode
    10 continue
@@ -5624,26 +5624,27 @@ C        loop over split comp.
           fangle = 1.
          end if
 C
+         do mlo=-mlomax,mlomax
+          do mhi=-mhimax,mhimax
+           mdiff = mlo-mhi
+           if(abs(mdiff).le.1) then
+            if(bfield.gt.0) then
+             if(mdiff.eq.0) then ! pi; rel. int -> factor 2
+              fangle = sin(bangle*dtorad)*sin(bangle*dtorad) * 2.
+             else ! +- sig
+              fangle = 1+cos(bangle*dtorad)*cos(bangle*dtorad)
+             end if
+C            write(6,*) 'fangle,bangle,dtorad',fangle,bangle,dtorad
+            else
+             fangle = 1.
+            end if
+C
          IF(ILINE.GT.0) THEN
             NWL=NWLHE2(ILINE)
             DO IWL=1,NWL
                PRF0(IWL)=PRFHE2(ILINE,ID,IWL)
             END DO
             FID=CID*OSCHE2(ILINE)
-            do mlo=-mlomax,mlomax
-             do mhi=-mhimax,mhimax
-              mdiff = mlo-mhi
-              if(abs(mdiff).le.1) then
-               if(bfield.gt.0) then
-                if(mdiff.eq.0) then ! pi
-                 fangle = sin(bangle*dtorad)*sin(bangle*dtorad) * 2.
-                else ! +- sig
-                 fangle = 1+cos(bangle*dtorad)*cos(bangle*dtorad)
-                end if
-C                write(6,*) 'fangle,bangle,dtorad',fangle,bangle,dtorad
-               else
-                fangle = 1.
-               end if
             DO 50 IJ=I0,I1
 C               WSHIFTM = (IMJ-2)*3.6
 C               AL=ABS(WLAM(IJ)-WLINE+WSHIFTM)
@@ -5667,9 +5668,6 @@ C              mag. split: divide osc. strength by number of split lines
                EMIS(IJ)=EMIS(IJ)+SG*EMTRA
    50       CONTINUE
 C            END DO
-            end if
-            end do
-            end do
           ELSE
 C            WL00 = WL0
             CALL STARK0(I,J,izz,XKIJ,WL0,FIJ,FIJ0)
@@ -5682,11 +5680,8 @@ C            WL00 = WL0
 c           FID0=CID1*FIJ0/DOP
             CALL DIVHE2(AD,DIV)
 C
-            do mlo=-mlomax,mlomax
-             do mhi=-mhimax,mhimax
-              if(abs(mlo-mhi).le.1) then
-               eshift = 4.66853663D-05 * bfield * (mlo-mhi)
-               wshiftm = cas/(cas/WL0+CL*eshift) - WL0
+            eshift = 4.66853663D-05 * bfield * (mlo-mhi)
+            wshiftm = cas/(cas/WL0+CL*eshift) - WL0
 C
             DO IJ=I0,I1
                BETA=ABS(WLAM(IJ)-WL0-wshiftm)*FXK1
@@ -5695,13 +5690,14 @@ c              if(fid0.gt.0.) then
 c                 xd=beta/betad
 c                 if(xd.lt.5.) sg=sg+exp(-xd*xd)*fid0
 c              end if
-               ABSO(IJ)=ABSO(IJ)+SG*ABTRA / nsplit
-               EMIS(IJ)=EMIS(IJ)+SG*EMTRA / nsplit
+               ABSO(IJ)=ABSO(IJ)+SG*ABTRA / nsplit*fangle
+               EMIS(IJ)=EMIS(IJ)+SG*EMTRA / nsplit*fangle
             END DO
-             end if
-            end do
-           end do
          END IF
+           end if
+          end do
+         end do
+
   100 CONTINUE
   200 CONTINUE
 C
