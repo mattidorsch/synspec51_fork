@@ -9208,38 +9208,107 @@ C          lines from line list
            if(bfield.gt.0) then
             JLO = QL0(IL)
             JHI = QU0(IL)
+            iation = INDAT(IL)
+            elo = EXCL0(IL)/C3
+            ehi = EXCU0(IL)/C3
 C            SLO = QSL0(IL)
 C            SHI = QSU0(IL)
 C            LLO = QLL0(IL)
 C            LHI = QLU0(IL)
-            if((abs(EXCL0(IL)/C3-377284.812).lt.1d03).and.
-     *         (INDAT(IL).eq.704)) then
+            QSLO = -1.
+            QLLO = -1.
+            QSHI = -1.
+            QLHI = -1.
+C
+C           lower levels
+C
+            if((abs(elo-322009.594).lt.1d2).and.
+     *         (iation.eq.603)) then ! CIII 4070
+             QSLO = 1.d0
+             QLLO = 3.d0
+            end if
+            if((abs(elo-302847.812).lt.1d2).and.
+     *         (iation.eq.604)) then ! CIV 5800
+             QSLO = 5.d-1
+             QLLO = 0.d0
+            end if
+            if((abs(elo-377284.812).lt.1d03).and.
+     *         (iation.eq.704)) then ! NIV 3480
              QSLO = 1.d0
              QLLO = 0.d0
-            else
-             QSLO = -1.
-             QLLO = -1.
             end if
-            if((abs(EXCU0(IL)/C3-405987.500).lt.2d2).and.
-     *         (INDAT(IL).eq.704)) then
+            if((abs(elo-221302.2).lt.1d0).and.
+     *         (iation.eq.703)) then ! NIII 4100
+             QSLO = 5.d-1
+             QLLO = 0.d0
+            end if
+            if((abs(elo-245701.297).lt.3d2).and.
+     *         (iation.eq.703)) then ! NIII 4640
+             QSLO = 5.d-1
+             QLLO = 1.d0
+            end if
+            if((abs(elo-193978.891).lt.1d0).and.
+     *         (iation.eq.1404)) then ! SiIV 4100
+             QSLO = 5.d-1
+             QLLO = 0.d0
+            end if
+            if((abs(elo-293719.000).lt.1d1).and.
+     *         (iation.eq.1404)) then ! SiIV 4631
+             QSLO = 5.d-1
+             QLLO = 3.d0
+            end if
+C
+C           the same for upper levels
+C
+            if((abs(ehi-346579.219).lt.2d2).and.
+     *         (iation.eq.603)) then ! CIII 4070
+             QSHI = 1.d0
+             QLHI = 4.d0
+            end if
+            if((abs(ehi-320080.406).lt.2d2).and.
+     *         (iation.eq.604)) then ! CIV 5800
+             QSHI = 5.d-1
+             QLHI = 1.d0
+            end if
+            if((abs(ehi-405987.500).lt.2d2).and.
+     *         (iation.eq.704)) then ! NIV 3480
              QSHI = 1.d0
              QLHI = 1.d0
-            else
-             QSHI = -1.
-             QLHI = -1.
             end if
-C           j must be larger than 0; else div by 0, anyway no split
-            if((QSLO.GE.0).and.(QSHI.GE.0).and.
-     *         (jlo.gt.0).and.(jhi.gt.0)) then
+            if((abs(ehi-245665.406).lt.2d2).and.
+     *         (iation.eq.703)) then ! NIII 4100
+             QSHI = 5.d-1
+             QLHI = 1.d0
+            end if
+            if((abs(ehi-267244.000).lt.2d2).and.
+     *         (iation.eq.703)) then ! NIII 4640
+             QSHI = 5.d-1
+             QLHI = 2.d0
+            end if
+            if((abs(ehi-218428.672).lt.3d2).and.
+     *         (iation.eq.1404)) then ! SiIV 4100
+             QSHI = 5.d-1
+             QLHI = 1.d0
+            end if
+            if((abs(ehi-315305.281).lt.3d2).and.
+     *         (iation.eq.1404)) then ! SiIV 4631
+             QSHI = 5.d-1
+             QLHI = 4.d0
+            end if
+C
+C
+C           j must be larger than 0; else div by 0, mj=0, so mj*gj = 0
+            gjlo = 1.
+            gjhi = 1.
+            if((QSLO.GE.0).and.(QLLO.ge.0).and.(jlo.gt.0)) then
              gjlo = 1 + (jlo*(jlo+1) - qllo*(qllo+1) + qslo*(qslo+1))/
      *                  (2*jlo*(jlo+1))
+            end if
+            if((QSHI.GE.0).and.(QLHI.ge.0).and.(jhi.gt.0)) then
              gjhi = 1 + (jhi*(jhi+1) - qlhi*(qlhi+1) + qshi*(qshi+1))/
      *                  (2*jhi*(jhi+1))
              write(6,*) 'SLO,SHI,LLO,LHI,gjlo,gjhi',
      *                   qSLO,qSHI,qLLO,qLHI,gjlo,gjhi
-            else
-             gjlo = 1.
-             gjhi = 1.
             end if
 C           from model atom: NQUANT(I),TYPLEV(I)
             nsplit = 0
