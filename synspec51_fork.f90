@@ -173,6 +173,7 @@ C                  be read from unit 56
 C     IOPHLI     - switch for treatment the Lyman line wings -see LYMLIN
 C
       bfield=3.42D5 ! magnetic field in Gauss
+      bangle=9.D1 ! angle between the magnetic fieldaxis and the line of sight
       mode=0
       read(1,*,err=10,end=10) mode
    10 continue
@@ -9055,42 +9056,48 @@ C ********************************************************************
 C
 C
 C
-      function zeerint(jlo,jdiff,mjlo,mjdiff)
+      function zeerint(jlo,jdiff,mjlo,mjdiff,psi)
 C     ==============================
 C
 C     relative intensities for linear Zeeman effect
 C     after Kawka & Vennes (2011)
 C
-      real*8 jlo,jdiff,mjlo,mjdiff,rint,zeerint
+C     psi: angle between the magnetic fieldaxis and the line of sight
+C          in degree
 C
+      real*8 jlo,jdiff,mjlo,mjdiff,psi,rint,zeerint,fpi,fsig,dtorad
+      PARAMETER (dtorad=1.7453292519943D-2)
+C
+      fpi = sin(psi*dtorad)*sin(psi*dtorad)
+      fsig = 1+cos(psi*dtorad)*cos(psi*dtorad)
       if(jdiff.eq.0) then
        if(mjdiff.eq.0) then ! pi comp
-        rint = imlo*imlo ! this can be = 0
+        rint = (imlo*imlo)*fpi ! this can be = 0
        elseif(mjdiff.eq.1) then ! sig+
-        rint = (jlo-mjlo)*(jlo-mjlo+1)/4
+        rint = (jlo-mjlo)*(jlo-mjlo+1)/4*fsig
        elseif(mjdiff.eq.-1) then ! sig-
-        rint = (jlo+mjlo)*(jlo+mjlo+1)/4
+        rint = (jlo+mjlo)*(jlo+mjlo+1)/4*fsig
        end if
       elseif(jdiff.eq.1) then ! j -> j+1
        if(mjdiff.eq.0) then ! pi
-        rint = (jlo+1)**2 - mjlo**2
+        rint = ((jlo+1)**2 - mjlo**2)*fpi
        elseif(mjdiff.eq.1) then ! sig+
-        rint = (jlo+mjlo+1)*(jlo+mjlo+2)/4
+        rint = (jlo+mjlo+1)*(jlo+mjlo+2)/4*fsig
        elseif(mjdiff.eq.-1) then ! sig-
-        rint = (jlo-mjlo+1)*(jlo-mjlo+2)/4
+        rint = (jlo-mjlo+1)*(jlo-mjlo+2)/4*fsig
        end if
       elseif(jdiff.eq.-1) then ! j -> j-1
        if(mjdiff.eq.0) then ! pi
-        rint = jlo**2 - mjlo**2
+        rint = (jlo**2 - mjlo**2)*fpi
        elseif(mjdiff.eq.1) then ! sig+
-        rint = (jlo-mjlo)*(jlo-mjlo-1)/4
+        rint = (jlo-mjlo)*(jlo-mjlo-1)/4*fsig
        elseif(mjdiff.eq.-1) then ! sig-
-        rint = (jlo+mjlo)*(jlo+mjlo-1)/4
+        rint = (jlo+mjlo)*(jlo+mjlo-1)/4*fsig
        end if
       else
        rint = 1.
       end if
-      zeerint = abs(rint)
+      zeerint = rint
 C      write(6,*) 'zrint',zeerint
       RETURN
       END
@@ -9408,7 +9415,7 @@ C
                mjlo = real(imlo)/2.
                mjhi = real(imhi)/2.
                mjdiff = mjhi-mjlo
-               rint = zeerint(jlo,jdiff,mjlo,mjdiff)
+               rint = zeerint(jlo,jdiff,mjlo,mjdiff,bangle)
 C               write(6,*) 'zrint',rint
                rintsum = rintsum + rint
                nsplit = nsplit+1
@@ -9434,7 +9441,7 @@ C               write(6,*) 'zrint',rint
 C             relative intensities after Condon & Shortley (1963)
 C             as described by Kawka & Vennes (2011)
               if(bfield.gt.0) then
-               rint = zeerint(jlo,jdiff,mjlo,mjdiff)
+               rint = zeerint(jlo,jdiff,mjlo,mjdiff,bangle)
               else
                rint = rintsum
               end if

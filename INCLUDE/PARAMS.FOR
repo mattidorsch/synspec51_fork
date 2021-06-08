@@ -190,4 +190,4 @@ c
       common/ophe2p/ nwav,ntemp,xwav(40),xtemp(8),he2pff(40,8)
 
 C     parameters for magnetic field
-      COMMON/BFIELDPAR/bfield
+      COMMON/BFIELDPAR/bfield,bangle
