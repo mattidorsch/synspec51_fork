@@ -9054,7 +9054,51 @@ C
 C ********************************************************************
 C
 C
- 
+C
+      function zeerint(jlo,jdiff,mjlo,mjdiff)
+C     ==============================
+C
+C     relative intensities for linear Zeeman effect
+C     after Kawka & Vennes (2011)
+C
+      real*8 jlo,jdiff,mjlo,mjdiff,rint,zeerint
+C
+      if(jdiff.eq.0) then
+       if(mjdiff.eq.0) then ! pi comp
+        rint = imlo*imlo ! this can be = 0
+       elseif(mjdiff.eq.1) then ! sig+
+        rint = (jlo-mjlo)*(jlo-mjlo+1)/4
+       elseif(mjdiff.eq.-1) then ! sig-
+        rint = (jlo+mjlo)*(jlo+mjlo+1)/4
+       end if
+      elseif(jdiff.eq.1) then ! j -> j+1
+       if(mjdiff.eq.0) then ! pi
+        rint = (jlo+1)**2 - mjlo**2
+       elseif(mjdiff.eq.1) then ! sig+
+        rint = (jlo+mjlo+1)*(jlo+mjlo+2)/4
+       elseif(mjdiff.eq.-1) then ! sig-
+        rint = (jlo-mjlo+1)*(jlo-mjlo+2)/4
+       end if
+      elseif(jdiff.eq.-1) then ! j -> j-1
+       if(mjdiff.eq.0) then ! pi
+        rint = jlo**2 - mjlo**2
+       elseif(mjdiff.eq.1) then ! sig+
+        rint = (jlo-mjlo)*(jlo-mjlo-1)/4
+       elseif(mjdiff.eq.-1) then ! sig-
+        rint = (jlo+mjlo)*(jlo+mjlo-1)/4
+       end if
+      else
+       rint = 1.
+      end if
+      zeerint = abs(rint)
+C      write(6,*) 'zrint',zeerint
+      RETURN
+      END
+C
+C ********************************************************************
+C
+C
+C
       SUBROUTINE LINOP(ID,ABLIN,EMLIN,AVAB)
 C     =====================================
 C
@@ -9077,6 +9121,7 @@ C
       COMMON/NLTPOP/PNLT(MATOM,MION,MDEPTH)
       common/lasers/lasdel
       real*8 JLO,JHI,gjlo,gjhi,eshift
+      real*8 mjlo,mjhi,mjdiff,jdiff,rint,rintsum
 C     L and S for 24-lev HeI ion (-> Zeeman split)
 C      DATA HE1L / 4471.50, 4387.93, 4026.20, 4921.93/
 C      DATA HE1S / 4471.50, 4387.93, 4026.20, 4921.93/
@@ -9215,107 +9260,158 @@ C            SLO = QSL0(IL)
 C            SHI = QSU0(IL)
 C            LLO = QLL0(IL)
 C            LHI = QLU0(IL)
-            QSLO = -1.
-            QLLO = -1.
-            QSHI = -1.
-            QLHI = -1.
+C            QSLO = -1.
+C            QLLO = -1.
+C            QSHI = -1.
+C            QLHI = -1.
 C
 C           lower levels
 C
             if((abs(elo-322009.594).lt.1d2).and.
-     *         (iation.eq.603)) then ! CIII 4070
+     *         (iation.eq.603)) then ! CIII 4070 (F-G)
              QSLO = 1.d0
              QLLO = 3.d0
-            end if
-            if((abs(elo-302847.812).lt.1d2).and.
+            elseif((abs(elo-238213.000).lt.1d2).and.
+     *         (iation.eq.603)) then ! CIII 4650
+             QSLO = 0.5
+             QLLO = 0.
+            elseif((abs(elo-302847.812).lt.1d2).and.
      *         (iation.eq.604)) then ! CIV 5800
              QSLO = 5.d-1
              QLLO = 0.d0
-            end if
-            if((abs(elo-377284.812).lt.1d03).and.
-     *         (iation.eq.704)) then ! NIV 3480
-             QSLO = 1.d0
-             QLLO = 0.d0
-            end if
-            if((abs(elo-221302.2).lt.1d0).and.
+            elseif((abs(elo-287706.906).lt.1d2).and.
+     *         (iation.eq.703)) then ! NIII 3771
+             QSLO = 1.5
+             QLLO = 1.
+            elseif((abs(elo-221302.2).lt.1d0).and.
      *         (iation.eq.703)) then ! NIII 4100
              QSLO = 5.d-1
              QLLO = 0.d0
-            end if
-            if((abs(elo-245701.297).lt.3d2).and.
+            elseif((abs(elo-320288.312).lt.1d2).and.
+     *         (iation.eq.703)) then ! NIII 4379 (F-G)
+             QSLO = 0.5
+             QLLO = 3.
+            elseif((abs(elo-245701.297).lt.3d2).and.
      *         (iation.eq.703)) then ! NIII 4640
              QSLO = 5.d-1
              QLLO = 1.d0
-            end if
-            if((abs(elo-193978.891).lt.1d0).and.
+            elseif((abs(elo-377284.812).lt.1d3).and.
+     *         (iation.eq.704)) then ! NIV 3480
+             QSLO = 1.d0
+             QLLO = 0.d0
+            elseif((abs(elo-404522.406).lt.1d2).and.
+     *         (iation.eq.704)) then ! NIV 4060
+             QSLO = 0.d0
+             QLLO = 1.d0
+            elseif((abs(elo-267634.000).lt.6d2).and.
+     *         (iation.eq.803)) then ! OIII 3760
+             QSLO = 1.d0
+             QLLO = 1.d0
+            elseif((abs(elo-193978.891).lt.1d0).and.
      *         (iation.eq.1404)) then ! SiIV 4100
              QSLO = 5.d-1
              QLLO = 0.d0
-            end if
-            if((abs(elo-293719.000).lt.1d1).and.
-     *         (iation.eq.1404)) then ! SiIV 4631
+            elseif((abs(elo-293719.000).lt.1d1).and.
+     *         (iation.eq.1404)) then ! SiIV 4631 (F-G)
              QSLO = 5.d-1
              QLLO = 3.d0
+            elseif((abs(elo-218428.672).lt.5d2).and.
+     *         (iation.eq.1404)) then ! SiIV 3165
+             QSLO = 5.d-1
+             QLLO = 1.d0
+            else
+             QSLO = -1.
+             QLLO = -1.
             end if
 C
 C           the same for upper levels
 C
             if((abs(ehi-346579.219).lt.2d2).and.
-     *         (iation.eq.603)) then ! CIII 4070
+     *         (iation.eq.603)) then ! CIII 4070 (F-G)
              QSHI = 1.d0
              QLHI = 4.d0
-            end if
-            if((abs(ehi-320080.406).lt.2d2).and.
+            elseif((abs(ehi-259724.297).lt.2d2).and.
+     *         (iation.eq.603)) then ! CIII 4650
+             QSHI = 0.5
+             QLHI = 1.
+            elseif((abs(ehi-320080.406).lt.2d2).and.
      *         (iation.eq.604)) then ! CIV 5800
              QSHI = 5.d-1
              QLHI = 1.d0
-            end if
-            if((abs(ehi-405987.500).lt.2d2).and.
-     *         (iation.eq.704)) then ! NIV 3480
-             QSHI = 1.d0
-             QLHI = 1.d0
-            end if
-            if((abs(ehi-245665.406).lt.2d2).and.
+            elseif((abs(ehi-314217.312).lt.1d2).and.
+     *         (iation.eq.703)) then ! NIII 3771
+             QSHI = 1.5
+             QLHI = 0.
+            elseif((abs(ehi-245665.406).lt.2d2).and.
      *         (iation.eq.703)) then ! NIII 4100
              QSHI = 5.d-1
              QLHI = 1.d0
-            end if
-            if((abs(ehi-267244.000).lt.2d2).and.
+            elseif((abs(ehi-343117.094).lt.2d2).and.
+     *         (iation.eq.703)) then ! NIII 4379 (F-G)
+             QSHI = 0.5
+             QLHI = 4.
+            elseif((abs(ehi-267244.000).lt.2d2).and.
      *         (iation.eq.703)) then ! NIII 4640
              QSHI = 5.d-1
              QLHI = 2.d0
-            end if
-            if((abs(ehi-218428.672).lt.3d2).and.
+            elseif((abs(ehi-405987.500).lt.2d2).and.
+     *         (iation.eq.704)) then ! NIV 3480
+             QSHI = 1.d0
+             QLHI = 1.d0
+            elseif((abs(ehi-429159.594).lt.2d2).and.
+     *         (iation.eq.704)) then ! NIV 4060
+             QSHI = 0.d0
+             QLHI = 2.d0
+            elseif((abs(ehi-294223.062).lt.8d2).and.
+     *         (iation.eq.803)) then ! OIII 3760
+             QSHI = 1.d0
+             QLHI = 2.d0
+            elseif((abs(ehi-218428.672).lt.3d2).and.
      *         (iation.eq.1404)) then ! SiIV 4100
              QSHI = 5.d-1
              QLHI = 1.d0
-            end if
-            if((abs(ehi-315305.281).lt.3d2).and.
-     *         (iation.eq.1404)) then ! SiIV 4631
+            elseif((abs(ehi-315305.281).lt.3d2).and.
+     *         (iation.eq.1404)) then ! SiIV 4631 (F-G)
              QSHI = 5.d-1
              QLHI = 4.d0
+            elseif((abs(ehi-250008.141).lt.1d2).and.
+     *         (iation.eq.1404)) then ! SiIV 3165
+             QSHI = 5.d-1
+             QLHI = 2.d0
+            else
+             QSHI = -1.
+             QLHI = -1.
             end if
 C
 C
 C           j must be larger than 0; else div by 0, mj=0, so mj*gj = 0
             gjlo = 1.
             gjhi = 1.
-            if((QSLO.GE.0).and.(QLLO.ge.0).and.(jlo.gt.0)) then
+            if((QSLO.GE.0.).and.(QLLO.ge.0).and.(jlo.gt.0)) then
              gjlo = 1 + (jlo*(jlo+1) - qllo*(qllo+1) + qslo*(qslo+1))/
      *                  (2*jlo*(jlo+1))
             end if
-            if((QSHI.GE.0).and.(QLHI.ge.0).and.(jhi.gt.0)) then
+            if((QSHI.GE.0.).and.(QLHI.ge.0).and.(jhi.gt.0)) then
              gjhi = 1 + (jhi*(jhi+1) - qlhi*(qlhi+1) + qshi*(qshi+1))/
      *                  (2*jhi*(jhi+1))
              write(6,*) 'SLO,SHI,LLO,LHI,gjlo,gjhi',
      *                   qSLO,qSHI,qLLO,qLHI,gjlo,gjhi
             end if
 C           from model atom: NQUANT(I),TYPLEV(I)
+C
+            jdiff = JHI-JLO
             nsplit = 0
-            do mlo=NINT(-JLO*2.),NINT(JLO*2.),2
-             do mhi=NINT(-JHI*2.),NINT(JHI*2.),2
-              if(abs(mlo-mhi).LE.2) then
-               nsplit = nsplit +1
+            rintsum = 0.
+            do imlo=NINT(-JLO*2.),NINT(JLO*2.),2
+             do imhi=NINT(-JHI*2.),NINT(JHI*2.),2
+              if(abs(imlo-imhi).LE.2) then
+               mjlo = real(imlo)/2.
+               mjhi = real(imhi)/2.
+               mjdiff = mjhi-mjlo
+               rint = zeerint(jlo,jdiff,mjlo,mjdiff)
+C               write(6,*) 'zrint',rint
+               rintsum = rintsum + rint
+               nsplit = nsplit+1
               end if
              end do
             end do
@@ -9325,20 +9421,32 @@ C           from model atom: NQUANT(I),TYPLEV(I)
             gjlo = 1.
             gjhi = 1.
             nsplit = 1
+            rintsum = 1.
            end if
-            do mlo=NINT(-jlo*2),NINT(jlo*2),2
-             do mhi=NINT(-jhi*2),NINT(jhi*2),2
-              if(abs(mlo-mhi).LE.2) then
-               eshift = 4.66853663D-05*bfield*
-     *                  (float(mlo)*gjlo-float(mhi)*gjhi)/2
+           do imlo=NINT(-jlo*2),NINT(jlo*2),2
+            do imhi=NINT(-jhi*2),NINT(jhi*2),2
+             if(abs(imlo-imhi).LE.2) then
+              mjlo = real(imlo)/2.
+              mjhi = real(imhi)/2.
+              mjdiff = mjhi-mjlo
+              eshift = 4.66853663D-05*bfield*
+     *                 (mjlo*gjlo-mjhi*gjhi)
+C             relative intensities after Condon & Shortley (1963)
+C             as described by Kawka & Vennes (2011)
+              if(bfield.gt.0) then
+               rint = zeerint(jlo,jdiff,mjlo,mjdiff)
+              else
+               rint = rintsum
+              end if
+C              write(6,*) 'rint', rint
 C            DO 80 IJ=IJ1,IJ2
             DO IJ=IJ1,IJ2
 C               XF=ABS(FREQ(IJ)-FR0)*DOP1
                XF=ABS(FREQ(IJ)-(FR0+CL*eshift))*DOP1
 c               ABL=AB0*VOIGTE(AGAM,XF)
                ABL=AB0*VOIGTK(AGAM,XF)
-               ABLINN(IJ)=ABLINN(IJ) + ABL / nsplit
-               EMLIN(IJ)=EMLIN(IJ) + ABL*SL0 / nsplit
+               ABLINN(IJ)=ABLINN(IJ) + ABL * rint / rintsum
+               EMLIN(IJ)=EMLIN(IJ) + ABL*SL0 * rint / rintsum
             END DO
 C   80       CONTINUE
               end if
