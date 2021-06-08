@@ -173,7 +173,7 @@ C                  be read from unit 56
 C     IOPHLI     - switch for treatment the Lyman line wings -see LYMLIN
 C
       bfield=3.42D5 ! magnetic field in Gauss
-      bangle=9.D1 ! angle between the magnetic fieldaxis and the line of sight
+      bangle=6.5D1 ! angle between the magnetic fieldaxis and the line of sight
       mode=0
       read(1,*,err=10,end=10) mode
    10 continue
@@ -9282,14 +9282,22 @@ C
      *         (iation.eq.603)) then ! CIII 4650
              QSLO = 0.5
              QLLO = 0.
+            elseif((abs(elo-449941.312).lt.5d0).and.
+     *         (iation.eq.604)) then ! CIV 4658 (F-G)
+             QSLO = 0.5
+             QLLO = 3.
             elseif((abs(elo-302847.812).lt.1d2).and.
      *         (iation.eq.604)) then ! CIV 5800
              QSLO = 5.d-1
              QLLO = 0.d0
             elseif((abs(elo-287706.906).lt.1d2).and.
-     *         (iation.eq.703)) then ! NIII 3771
+     *         (iation.eq.703)) then ! NIII 3771,4511,4514
              QSLO = 1.5
              QLLO = 1.
+            elseif((abs(elo-317779.500).lt.5d1).and.
+     *         (iation.eq.703)) then ! NIII 4000
+             QSLO = 0.5
+             QLLO = 2.
             elseif((abs(elo-221302.2).lt.1d0).and.
      *         (iation.eq.703)) then ! NIII 4100
              QSLO = 5.d-1
@@ -9341,6 +9349,10 @@ C
      *         (iation.eq.603)) then ! CIII 4650
              QSHI = 0.5
              QLHI = 1.
+            elseif((abs(ehi-471405.812).lt.5d0).and.
+     *         (iation.eq.604)) then ! CIV 4658 (F-G)
+             QSHI = 0.5
+             QLHI = 4.
             elseif((abs(ehi-320080.406).lt.2d2).and.
      *         (iation.eq.604)) then ! CIV 5800
              QSHI = 5.d-1
@@ -9349,6 +9361,10 @@ C
      *         (iation.eq.703)) then ! NIII 3771
              QSHI = 1.5
              QLHI = 0.
+            elseif((abs(ehi-342750.094).lt.5d0).and.
+     *         (iation.eq.703)) then ! NIII 4000
+             QSHI = 0.5
+             QLHI = 3.
             elseif((abs(ehi-245665.406).lt.2d2).and.
      *         (iation.eq.703)) then ! NIII 4100
              QSHI = 5.d-1
@@ -9357,6 +9373,10 @@ C
      *         (iation.eq.703)) then ! NIII 4379 (F-G)
              QSHI = 0.5
              QLHI = 4.
+            elseif((abs(ehi-309849.812).lt.2d2).and.
+     *         (iation.eq.703)) then ! NIII 4510,4514
+             QSHI = 1.5
+             QLHI = 2.
             elseif((abs(ehi-267244.000).lt.2d2).and.
      *         (iation.eq.703)) then ! NIII 4640
              QSHI = 5.d-1
