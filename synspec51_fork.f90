@@ -173,7 +173,7 @@ C                  be read from unit 56
 C     IOPHLI     - switch for treatment the Lyman line wings -see LYMLIN
 C
       bfield=3.42D5 ! magnetic field in Gauss
-      bangle=6.5D1 ! angle between the magnetic fieldaxis and the line of sight
+      bangle=7.5D1 ! angle between the magnetic fieldaxis and the line of sight
       mode=0
       read(1,*,err=10,end=10) mode
    10 continue
@@ -5464,7 +5464,10 @@ C
       PARAMETER (CPP=4.1412E-16,CPJ=631479.)
       PARAMETER (C00=1.25E-9,CDOP=1.284523E12,CID=0.02654,TWO=2.)
       PARAMETER (CPJ4=CPJ/4.,AL10=2.3025851,CINV=UN/2.997925E18)
-      PARAMETER (CID1=0.01497,cas=2.997925d18)
+      PARAMETER (CID1=0.01497,cas=2.997925d18,
+     *           dtorad=1.7453292519943D-2)
+      real*8 fangle,nsplit,eshift,cenwave
+      integer mdiff
       DIMENSION PJ(80),FRHE(12),OSCHE2(19),PRF0(36),
      *          ABSO(MFREQ),EMIS(MFREQ),ABSOH(MFREQ),EMISH(MFREQ)
       COMMON/HE2PRF/PRFHE2(19,MDEPTH,36),WLHE2(19,36),NWLHE2(19),
@@ -5603,8 +5606,14 @@ C        loop over split comp.
           nsplit = 0
           do mlo=-mlomax,mlomax
            do mhi=-mhimax,mhimax
-            if(abs(mlo-mhi).LE.1) then
-             nsplit = nsplit +1
+            mdiff = mlo-mhi
+            if(abs(mdiff).LE.1) then
+              if(mdiff.eq.0) then ! pi; rel. int -> factor 2
+               fangle = sin(bangle*dtorad)*sin(bangle*dtorad) * 2
+              else ! +-sig
+               fangle = 1+cos(bangle*dtorad)*cos(bangle*dtorad)
+              end if
+             nsplit = nsplit + fangle
             end if
            end do
           end do
@@ -5612,6 +5621,7 @@ C        loop over split comp.
           mlomax = 0
           mhimax = 0
           nsplit = 1.D0
+          fangle = 1.
          end if
 C
          IF(ILINE.GT.0) THEN
@@ -5621,12 +5631,23 @@ C
             END DO
             FID=CID*OSCHE2(ILINE)
             do mlo=-mlomax,mlomax
-            do mhi=-mhimax,mhimax
-            if(abs(mlo-mhi).le.1) then
+             do mhi=-mhimax,mhimax
+              mdiff = mlo-mhi
+              if(abs(mdiff).le.1) then
+               if(bfield.gt.0) then
+                if(mdiff.eq.0) then ! pi
+                 fangle = sin(bangle*dtorad)*sin(bangle*dtorad) * 2.
+                else ! +- sig
+                 fangle = 1+cos(bangle*dtorad)*cos(bangle*dtorad)
+                end if
+C                write(6,*) 'fangle,bangle,dtorad',fangle,bangle,dtorad
+               else
+                fangle = 1.
+               end if
             DO 50 IJ=I0,I1
 C               WSHIFTM = (IMJ-2)*3.6
 C               AL=ABS(WLAM(IJ)-WLINE+WSHIFTM)
-               eshift = 4.66853663D-05 * bfield * (mlo-mhi)
+               eshift = 4.66853663D-05 * bfield * mdiff
                cenwave = 1D8 / ((1D8 / WLINE) + eshift)
 C               write(6,*) 'cenwave',cenwave
                AL=ABS(WLAM(IJ)-cenwave)
@@ -5641,7 +5662,7 @@ C               write(6,*) 'cenwave',cenwave
      *             (AL-WLHE2(ILINE,IW0)))/
      *             (WLHE2(ILINE,IW1)-WLHE2(ILINE,IW0))
 C              mag. split: divide osc. strength by number of split lines
-               SG=EXP(PRFF*AL10)*FID/nsplit
+               SG=EXP(PRFF*AL10)*FID/nsplit*fangle
                ABSO(IJ)=ABSO(IJ)+SG*ABTRA
                EMIS(IJ)=EMIS(IJ)+SG*EMTRA
    50       CONTINUE
@@ -7347,7 +7368,7 @@ C
             IF(NQ.EQ.10.AND.IG.EQ.400) IUN=I
          END IF 
    10 CONTINUE
-C      print *, 'il,iprof,ilw,iupn',il,iprf,ilw,iun
+      print *, 'il,iprof,ilw,iupn',il,iprf,ilw,iun
       ILWN=ILW
       IUPN=IUN
 C
@@ -9282,6 +9303,10 @@ C
      *         (iation.eq.603)) then ! CIII 4650
              QSLO = 0.5
              QLLO = 0.
+            elseif((abs(elo-346579.219).lt.1d1).and.
+     *         (iation.eq.603)) then ! CIII 8196 (3G-3H)
+             QSLO = 1.
+             QLLO = 4.
             elseif((abs(elo-449941.312).lt.5d0).and.
      *         (iation.eq.604)) then ! CIV 4658 (F-G)
              QSLO = 0.5
@@ -9290,6 +9315,10 @@ C
      *         (iation.eq.604)) then ! CIV 5800
              QSLO = 5.d-1
              QLLO = 0.d0
+            elseif((abs(elo-287706.906).lt.2d2).and.
+     *         (iation.eq.703)) then ! NIII 3367
+             QSLO = 1.5
+             QLLO = 1.
             elseif((abs(elo-287706.906).lt.1d2).and.
      *         (iation.eq.703)) then ! NIII 3771,4511,4514
              QSLO = 1.5
@@ -9334,6 +9363,10 @@ C
      *         (iation.eq.1404)) then ! SiIV 3165
              QSLO = 5.d-1
              QLLO = 1.d0
+            elseif((abs(elo-181448.203).lt.1d1).and.
+     *         (iation.eq.1604)) then ! SIV 3097,3118
+             QSLO = 0.5
+             QLLO = 0.
             else
              QSLO = -1.
              QLLO = -1.
@@ -9349,6 +9382,10 @@ C
      *         (iation.eq.603)) then ! CIII 4650
              QSHI = 0.5
              QLHI = 1.
+            elseif((abs(ehi-358776.312).lt.1d1).and.
+     *         (iation.eq.603)) then ! CIII 8196 (3G-3H)
+             QSHI = 1.
+             QLHI = 5.
             elseif((abs(ehi-471405.812).lt.5d0).and.
      *         (iation.eq.604)) then ! CIV 4658 (F-G)
              QSHI = 0.5
@@ -9357,6 +9394,10 @@ C
      *         (iation.eq.604)) then ! CIV 5800
              QSHI = 5.d-1
              QLHI = 1.d0
+            elseif((abs(ehi-317395.188).lt.2d2).and.
+     *         (iation.eq.703)) then ! NIII 3367
+             QSHI = 1.5
+             QLHI = 1.
             elseif((abs(ehi-314217.312).lt.1d2).and.
      *         (iation.eq.703)) then ! NIII 3771
              QSHI = 1.5
@@ -9405,6 +9446,10 @@ C
      *         (iation.eq.1404)) then ! SiIV 3165
              QSHI = 5.d-1
              QLHI = 2.d0
+            elseif((abs(ehi-213725.297).lt.3d2).and.
+     *         (iation.eq.1604)) then ! SIV 3097,3118
+             QSHI = 0.5
+             QLHI = 1.
             else
              QSHI = -1.
              QLHI = -1.
