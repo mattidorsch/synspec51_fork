@@ -4693,7 +4693,10 @@ C
       PARAMETER (CPP=4.1412E-16,CPJ=157803.)
       PARAMETER (C00=1.25E-9,CDOP=1.284523E12,CID=0.02654,TWO=2.)
       PARAMETER (CPJ4=CPJ/4.,AL10=2.3025851,CINV=UN/2.997925E18)
-      PARAMETER (CID1=0.01497,cas=2.997925d18)
+      PARAMETER (CID1=0.01497,cas=2.997925d18,
+     *           dtorad=1.7453292519943D-2)
+      real*8 fangle,nsplit
+      integer mdiff
       logical lquasi
       common/quasun/nunalp,nunbet,nungam,nunbal
       DIMENSION PJ(40),PRF0(54),WLINE(4,22),OSCH(4,22),
@@ -4846,8 +4849,14 @@ C
           nsplit = 0
           do mlo=-mlomax,mlomax
            do mhi=-mhimax,mhimax
-            if(abs(mlo-mhi).le.1) then
-             nsplit = nsplit +1
+            mdiff = mlo-mhi
+            if(abs(mdiff).LE.1) then
+              if(mdiff.eq.0) then ! pi; rel. int -> factor 2
+               fangle = sin(bangle*dtorad)*sin(bangle*dtorad)*2
+              else ! +-sig
+               fangle = 1+cos(bangle*dtorad)*cos(bangle*dtorad)
+              end if
+             nsplit = nsplit + fangle
             end if
            end do
           end do
@@ -4855,6 +4864,7 @@ C
           mlomax = 0
           mhimax = 0
           nsplit = 1
+          fangle = 1.
          end if
 c
 c        lines with special Stark broadening tables
@@ -4874,10 +4884,20 @@ c
             END DO
             do mlo=-mlomax,mlomax
              do mhi=-mhimax,mhimax
-              if(abs(mlo-mhi).le.1) then
+              mdiff = mlo-mhi
+              if(abs(mdiff).le.1) then
+               if(bfield.gt.0) then
+                if(mdiff.eq.0) then ! pi; rel. int -> factor 2
+                 fangle = sin(bangle*dtorad)*sin(bangle*dtorad)*2
+                else ! +- sig
+                 fangle = 1+cos(bangle*dtorad)*cos(bangle*dtorad)
+                end if
+               else
+                fangle = 1.
+               end if
             DO IJ=I0,I1
 C               AL=ABS(WLAM(IJ)-WLINE(I,J))
-               eshift = 4.66853663D-05 * bfield * (mlo-mhi)
+               eshift = 4.66853663D-05 * bfield * mdiff
                cenwave = 1D8 / ((1D8 / WLINE(I,J)) + eshift)
                AL=ABS(WLAM(IJ)-cenwave)
                IF(AL.LT.1.E-4) AL=1.E-4
@@ -4891,7 +4911,7 @@ C               AL=ABS(WLAM(IJ)-WLINE(I,J))
                PRFF=(PRF0(IW0)*(WLHYD(ILINE,IW1)-AL)+PRF0(IW1)*
      *             (AL-WLHYD(ILINE,IW0)))/
      *             (WLHYD(ILINE,IW1)-WLHYD(ILINE,IW0))
-               SG=EXP(PRFF*AL10)*FID/nsplit
+               SG=EXP(PRFF*AL10)*FID/nsplit*fangle
                IF(ILEMKE.EQ.1) SG=SG*WLINE(I,J)**2*CINV/F00
 c              IF(ILEMKE.EQ.1) SG=SG*WLAM(IJ)**2*CINV/F00
 c              if(lquasi) sg=sg*0.5
@@ -4950,8 +4970,18 @@ c           FID0=CID1*FIJ0/DOP
 C
             do mlo=-mlomax,mlomax
              do mhi=-mhimax,mhimax
-              if(abs(mlo-mhi).le.1) then
-               eshift = 4.66853663D-05 * bfield * (mlo-mhi)
+              mdiff = mlo-mhi
+              if(abs(mdiff).le.1) then
+               if(bfield.gt.0) then
+                if(mdiff.eq.0) then ! pi; rel. int -> factor 2
+                 fangle = sin(bangle*dtorad)*sin(bangle*dtorad)*2
+                else ! +- sig
+                 fangle = 1+cos(bangle*dtorad)*cos(bangle*dtorad)
+                end if
+               else
+                fangle = 1.
+               end if
+               eshift = 4.66853663D-05 * bfield * mdiff
                wshiftm = cas/(cas/WL0+CL*eshift) - WL0
 C
             DO IJ=I0,I1
@@ -4960,8 +4990,8 @@ C
                SG=STARKA(BETA,AD,DIV,fac)*FID
                if(iophli.eq.2.and.i.eq.1.and.j.eq.2) 
      *               sg=sg*feautr(fr,id)
-               ABSO(IJ)=ABSO(IJ)+SG*ABTRA / nsplit
-               EMIS(IJ)=EMIS(IJ)+SG*EMTRA / nsplit
+               ABSO(IJ)=ABSO(IJ)+SG*ABTRA / nsplit*fangle
+               EMIS(IJ)=EMIS(IJ)+SG*EMTRA / nsplit*fangle
             END DO
 C
               end if
