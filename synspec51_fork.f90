@@ -173,7 +173,7 @@ C                  be read from unit 56
 C     IOPHLI     - switch for treatment the Lyman line wings -see LYMLIN
 C
       bfield=3.42D5 ! magnetic field in Gauss
-      bangle=8.5D1 ! angle between the magnetic fieldaxis and the line of sight
+      bangle=9.0D1 ! angle between the magnetic fieldaxis and the line of sight
       mode=0
       read(1,*,err=10,end=10) mode
    10 continue
@@ -4695,7 +4695,7 @@ C
       PARAMETER (CPJ4=CPJ/4.,AL10=2.3025851,CINV=UN/2.997925E18)
       PARAMETER (CID1=0.01497,cas=2.997925d18,
      *           dtorad=1.7453292519943D-2)
-      real*8 fangle,nsplit
+      real*8 nlo,ndiff,fint,rint,rintsum
       integer mdiff
       logical lquasi
       common/quasun/nunalp,nunbet,nungam,nunbal
@@ -4844,27 +4844,26 @@ C
 C           find number of splits and energy shift
 C
          if(bfield.GT.0) then
-          mlomax = I-1
-          mhimax = J-1
-          nsplit = 0
+C          mlomax = I-1
+C          mhimax = J-1
+          mlomax = 0
+          mhimax = 1
+          ndiff = (mhimax-mlomax)*1.D0
+          nlo = mlomax
+          rintsum = 0.
           do mlo=-mlomax,mlomax
            do mhi=-mhimax,mhimax
             mdiff = mlo-mhi
             if(abs(mdiff).LE.1) then
-              if(mdiff.eq.0) then ! pi; rel. int -> factor 2
-               fangle = sin(bangle*dtorad)*sin(bangle*dtorad)*2
-              else ! +-sig
-               fangle = 1+cos(bangle*dtorad)*cos(bangle*dtorad)
-              end if
-             nsplit = nsplit + fangle
+             rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
+             rintsum = rintsum + rint
             end if
            end do
           end do
          else
           mlomax = 0
           mhimax = 0
-          nsplit = 1
-          fangle = 1.
+          rintsum = 1.
          end if
 c
 c        lines with special Stark broadening tables
@@ -4887,14 +4886,11 @@ c
               mdiff = mlo-mhi
               if(abs(mdiff).le.1) then
                if(bfield.gt.0) then
-                if(mdiff.eq.0) then ! pi; rel. int -> factor 2
-                 fangle = sin(bangle*dtorad)*sin(bangle*dtorad)*2
-                else ! +- sig
-                 fangle = 1+cos(bangle*dtorad)*cos(bangle*dtorad)
-                end if
+                rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
                else
-                fangle = 1.
+                rint = rintsum
                end if
+               fint = rint / rintsum
             DO IJ=I0,I1
 C               AL=ABS(WLAM(IJ)-WLINE(I,J))
                eshift = 4.66853663D-05 * bfield * mdiff
@@ -4911,12 +4907,12 @@ C               AL=ABS(WLAM(IJ)-WLINE(I,J))
                PRFF=(PRF0(IW0)*(WLHYD(ILINE,IW1)-AL)+PRF0(IW1)*
      *             (AL-WLHYD(ILINE,IW0)))/
      *             (WLHYD(ILINE,IW1)-WLHYD(ILINE,IW0))
-               SG=EXP(PRFF*AL10)*FID/nsplit*fangle
+               SG=EXP(PRFF*AL10)*FID
                IF(ILEMKE.EQ.1) SG=SG*WLINE(I,J)**2*CINV/F00
 c              IF(ILEMKE.EQ.1) SG=SG*WLAM(IJ)**2*CINV/F00
 c              if(lquasi) sg=sg*0.5
-               ABSO(IJ)=ABSO(IJ)+SG*ABTRA
-               EMIS(IJ)=EMIS(IJ)+SG*EMTRA
+               ABSO(IJ)=ABSO(IJ)+SG*ABTRA * fint
+               EMIS(IJ)=EMIS(IJ)+SG*EMTRA * fint
             END DO
               end if
              end do
@@ -4973,14 +4969,11 @@ C
               mdiff = mlo-mhi
               if(abs(mdiff).le.1) then
                if(bfield.gt.0) then
-                if(mdiff.eq.0) then ! pi; rel. int -> factor 2
-                 fangle = sin(bangle*dtorad)*sin(bangle*dtorad)*2
-                else ! +- sig
-                 fangle = 1+cos(bangle*dtorad)*cos(bangle*dtorad)
-                end if
+                rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
                else
-                fangle = 1.
+                rint = rintsum
                end if
+               fint = rint / rintsum
                eshift = 4.66853663D-05 * bfield * mdiff
                wshiftm = cas/(cas/WL0+CL*eshift) - WL0
 C
@@ -4990,8 +4983,8 @@ C
                SG=STARKA(BETA,AD,DIV,fac)*FID
                if(iophli.eq.2.and.i.eq.1.and.j.eq.2) 
      *               sg=sg*feautr(fr,id)
-               ABSO(IJ)=ABSO(IJ)+SG*ABTRA / nsplit*fangle
-               EMIS(IJ)=EMIS(IJ)+SG*EMTRA / nsplit*fangle
+               ABSO(IJ)=ABSO(IJ)+SG*ABTRA / fint
+               EMIS(IJ)=EMIS(IJ)+SG*EMTRA / fint
             END DO
 C
               end if
@@ -5496,7 +5489,7 @@ C
       PARAMETER (CPJ4=CPJ/4.,AL10=2.3025851,CINV=UN/2.997925E18)
       PARAMETER (CID1=0.01497,cas=2.997925d18,
      *           dtorad=1.7453292519943D-2)
-      real*8 fangle,nsplit,eshift,cenwave
+      real*8 rint,rintsum,fint,eshift,cenwave,nlo,ndiff
       integer mdiff
       DIMENSION PJ(80),FRHE(12),OSCHE2(19),PRF0(36),
      *          ABSO(MFREQ),EMIS(MFREQ),ABSOH(MFREQ),EMISH(MFREQ)
@@ -5631,43 +5624,46 @@ C        directly affects HeII wl for SB lines
 C
 C        loop over split comp.
          if(bfield.GT.0) then
-          mlomax = I-1
-          mhimax = J-1
-          nsplit = 0
+C          mlomax = I-1
+C          mhimax = J-1
+          mlomax = 0
+          mhimax = 1
+          ndiff = (mhimax-mlomax)*1.D0
+C          nsplit = 0
+          nlo = mlomax
+          rintsum = 0.
           do mlo=-mlomax,mlomax
            do mhi=-mhimax,mhimax
             mdiff = mlo-mhi
             if(abs(mdiff).LE.1) then
-              if(mdiff.eq.0) then ! pi; rel. int -> factor 2
-               fangle = sin(bangle*dtorad)*sin(bangle*dtorad) * 2
-              else ! +-sig
-               fangle = 1+cos(bangle*dtorad)*cos(bangle*dtorad)
-              end if
-             nsplit = nsplit + fangle
+             rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
+             rintsum = rintsum + rint
             end if
            end do
           end do
          else
           mlomax = 0
           mhimax = 0
-          nsplit = 1.D0
-          fangle = 1.
+C          nsplit = 1.D0
+          rintsum = 1.
+C          fangle = 1.
          end if
+        if(rintsum.eq.0) then
+         rintsum = 1.
+        end if
 C
          do mlo=-mlomax,mlomax
           do mhi=-mhimax,mhimax
            mdiff = mlo-mhi
            if(abs(mdiff).le.1) then
             if(bfield.gt.0) then
-             if(mdiff.eq.0) then ! pi; rel. int -> factor 2
-              fangle = sin(bangle*dtorad)*sin(bangle*dtorad) * 2.
-             else ! +- sig
-              fangle = 1+cos(bangle*dtorad)*cos(bangle*dtorad)
-             end if
-C            write(6,*) 'fangle,bangle,dtorad',fangle,bangle,dtorad
+              rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
             else
-             fangle = 1.
+             rint = rintsum
             end if
+            fint = rint / rintsum
+C            write(6,*) 'rintsum,rint,fint',rintsum,rint,fint
+            eshift = 4.66853663D-05 * bfield * mdiff
 C
          IF(ILINE.GT.0) THEN
             NWL=NWLHE2(ILINE)
@@ -5678,9 +5674,7 @@ C
             DO 50 IJ=I0,I1
 C               WSHIFTM = (IMJ-2)*3.6
 C               AL=ABS(WLAM(IJ)-WLINE+WSHIFTM)
-               eshift = 4.66853663D-05 * bfield * mdiff
                cenwave = 1D8 / ((1D8 / WLINE) + eshift)
-C               write(6,*) 'cenwave',cenwave
                AL=ABS(WLAM(IJ)-cenwave)
                IF(AL.LT.1.E-4) AL=1.E-4
                AL=LOG10(AL)
@@ -5693,7 +5687,7 @@ C               write(6,*) 'cenwave',cenwave
      *             (AL-WLHE2(ILINE,IW0)))/
      *             (WLHE2(ILINE,IW1)-WLHE2(ILINE,IW0))
 C              mag. split: divide osc. strength by number of split lines
-               SG=EXP(PRFF*AL10)*FID/nsplit*fangle
+               SG=EXP(PRFF*AL10)*FID * fint
                ABSO(IJ)=ABSO(IJ)+SG*ABTRA
                EMIS(IJ)=EMIS(IJ)+SG*EMTRA
    50       CONTINUE
@@ -5710,7 +5704,6 @@ C            WL00 = WL0
 c           FID0=CID1*FIJ0/DOP
             CALL DIVHE2(AD,DIV)
 C
-            eshift = 4.66853663D-05 * bfield * (mlo-mhi)
             wshiftm = cas/(cas/WL0+CL*eshift) - WL0
 C
             DO IJ=I0,I1
@@ -5720,8 +5713,8 @@ c              if(fid0.gt.0.) then
 c                 xd=beta/betad
 c                 if(xd.lt.5.) sg=sg+exp(-xd*xd)*fid0
 c              end if
-               ABSO(IJ)=ABSO(IJ)+SG*ABTRA / nsplit*fangle
-               EMIS(IJ)=EMIS(IJ)+SG*EMTRA / nsplit*fangle
+               ABSO(IJ)=ABSO(IJ)+SG*ABTRA * fint
+               EMIS(IJ)=EMIS(IJ)+SG*EMTRA * fint
             END DO
          END IF
            end if
@@ -9119,7 +9112,7 @@ C
       fsig = 1+cos(psi*dtorad)*cos(psi*dtorad)
       if(jdiff.eq.0) then
        if(mjdiff.eq.0) then ! pi comp
-        rint = (imlo*imlo)*fpi ! this can be = 0
+        rint = (mjlo*mjlo)*fpi ! this can be = 0
        elseif(mjdiff.eq.1) then ! sig+
         rint = (jlo-mjlo)*(jlo-mjlo+1)/4*fsig
        elseif(mjdiff.eq.-1) then ! sig-
@@ -9142,7 +9135,7 @@ C
         rint = (jlo+mjlo)*(jlo+mjlo-1)/4*fsig
        end if
       else
-       rint = 1.
+       rint = 0. ! E1: jdiff must be 0 or +-1
       end if
       zeerint = rint
 C      write(6,*) 'zrint',zeerint
@@ -9498,7 +9491,7 @@ C     *                   qSLO,qSHI,qLLO,qLHI,gjlo,gjhi
 C           from model atom: NQUANT(I),TYPLEV(I)
 C
             jdiff = JHI-JLO
-            nsplit = 0
+C            nsplit = 0
             rintsum = 0.
             do imlo=NINT(-JLO*2.),NINT(JLO*2.),2
              do imhi=NINT(-JHI*2.),NINT(JHI*2.),2
@@ -9509,7 +9502,7 @@ C
                rint = zeerint(jlo,jdiff,mjlo,mjdiff,bangle)
 C               write(6,*) 'zrint',rint
                rintsum = rintsum + rint
-               nsplit = nsplit+1
+C               nsplit = nsplit+1
               end if
              end do
             end do
@@ -9518,7 +9511,7 @@ C               write(6,*) 'zrint',rint
             JHI = 0.
             gjlo = 1.
             gjhi = 1.
-            nsplit = 1
+C            nsplit = 1
             rintsum = 1.
            end if
            do imlo=NINT(-jlo*2),NINT(jlo*2),2
