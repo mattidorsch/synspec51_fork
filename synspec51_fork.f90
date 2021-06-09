@@ -5644,9 +5644,7 @@ C          nsplit = 0
          else
           mlomax = 0
           mhimax = 0
-C          nsplit = 1.D0
           rintsum = 1.
-C          fangle = 1.
          end if
         if(rintsum.eq.0) then
          rintsum = 1.
@@ -9112,7 +9110,7 @@ C
       fsig = 1+cos(psi*dtorad)*cos(psi*dtorad)
       if(jdiff.eq.0) then
        if(mjdiff.eq.0) then ! pi comp
-        rint = (mjlo*mjlo)*fpi ! this can be = 0
+        rint = (mjlo*mjlo)*fpi
        elseif(mjdiff.eq.1) then ! sig+
         rint = (jlo-mjlo)*(jlo-mjlo+1)/4*fsig
        elseif(mjdiff.eq.-1) then ! sig-
@@ -9135,7 +9133,8 @@ C
         rint = (jlo+mjlo)*(jlo+mjlo-1)/4*fsig
        end if
       else
-       rint = 0. ! E1: jdiff must be 0 or +-1
+C      E1: jdiff must be +-1 or 0 (but not 0->0)
+       rint = 0.
       end if
       zeerint = rint
 C      write(6,*) 'zrint',zeerint
@@ -9386,6 +9385,8 @@ C
      *         (iation.eq.1604)) then ! SIV 3097,3118
              QSLO = 0.5
              QLLO = 0.
+            elseif((iation.eq.101).or.(iation.eq.202)) then
+             QSLO = 0.5
             else
              QSLO = -1.
              QLLO = -1.
@@ -9469,6 +9470,8 @@ C
      *         (iation.eq.1604)) then ! SIV 3097,3118
              QSHI = 0.5
              QLHI = 1.
+            elseif((iation.eq.101).or.(iation.eq.202)) then
+             QSHI = 0.5
             else
              QSHI = -1.
              QLHI = -1.
@@ -9491,7 +9494,6 @@ C     *                   qSLO,qSHI,qLLO,qLHI,gjlo,gjhi
 C           from model atom: NQUANT(I),TYPLEV(I)
 C
             jdiff = JHI-JLO
-C            nsplit = 0
             rintsum = 0.
             do imlo=NINT(-JLO*2.),NINT(JLO*2.),2
              do imhi=NINT(-JHI*2.),NINT(JHI*2.),2
@@ -9502,7 +9504,6 @@ C            nsplit = 0
                rint = zeerint(jlo,jdiff,mjlo,mjdiff,bangle)
 C               write(6,*) 'zrint',rint
                rintsum = rintsum + rint
-C               nsplit = nsplit+1
               end if
              end do
             end do
@@ -9511,7 +9512,6 @@ C               nsplit = nsplit+1
             JHI = 0.
             gjlo = 1.
             gjhi = 1.
-C            nsplit = 1
             rintsum = 1.
            end if
            do imlo=NINT(-jlo*2),NINT(jlo*2),2
@@ -9551,37 +9551,56 @@ C
 C           normal Zeeman -> find main quantum number
 C           find number of splits and energy shift
             if(bfield.GT.0) then
-             if(isp.gt.0)then
+C             if(isp.gt.0)then
 C             old HeI tables: all lines between n=2 and n=4
-              mlomax = 2 - 1
-              mlomax = 4 - 1
-             elseif(isp.lt.0)then
+C              mlomax = 2 - 1
+C              mhimax = 4 - 1
+C             elseif(isp.lt.0)then
 C             beauchamp tables
-              ihe = ilowhe(-isp) + nfirst(ielhe1) - 1
-              jhe = iuphe(-isp) + nfirst(ielhe1) - 1
-              mlomax = NQUANT(ihe)-1
-              mhimax = NQUANT(jhe)-1
-             end if
+C              ihe = ilowhe(-isp) + nfirst(ielhe1) - 1
+C              jhe = iuphe(-isp) + nfirst(ielhe1) - 1
+C              mlomax = NQUANT(ihe)-1
+C              mhimax = NQUANT(jhe)-1
+C             end if
+             mlomax = 0
+             mhimax = 1
+             jdiff = (mhimax-mlomax)*1.D0
+C             jdiff = 1.
+             rintsum = 0
+             do mlo=-mlomax,mlomax
+              do mhi=-mhimax,mhimax
+               if(abs(mlo-mhi).LE.1) then
+                mdiff = mhi-mlo
+                rint = zeerint(mlomax*1.D0,jdiff,
+     *                         mlo*1.D0,mdiff*1.D0,bangle)
+C                write(6,*) 'jlo,jdiff,mlo,mdiff,rint',
+C     *             mlomax*1.D0,jdiff,mlo*1.D0,mdiff*1.D0,rint
+                rintsum = rintsum + rint
+C                nsplit = nsplit +1
+               end if
+              end do
+             end do
             else
              mlomax = 0
              mhimax = 0
+             rintsum = 1.
             end if
 C           write(6,*) 'mlomax,mhimax',mlomax,mhimax
-            nsplit = 0
-            do mlo=-mlomax,mlomax
-             do mhi=-mhimax,mhimax
-              if(abs(mlo-mhi).LE.1) then
-               nsplit = nsplit +1
-              end if
-             end do
-            end do
+C            nsplit = 0
 C
 C            DO 90 IJ=3,NFREQ
             do mlo=-mlomax,mlomax
              do mhi=-mhimax,mhimax
+              mdiff = mhi-mlo
               if(abs(mlo-mhi).LE.1) then
-                eshift = 4.66853663D-05*bfield*(mlo-mhi)
+                eshift = 4.66853663D-05*bfield*mdiff ! lo-hi?
                 wshiftm = cas/(FR0+CL*eshift) - cas/FR0
+                if(bfield.gt.0) then
+                 rint = zeerint(mlomax*1.D0,jdiff,
+     *                          mlo*1.D0,mdiff*1.D0,bangle)
+                else
+                 rint = rintsum
+                end if
 C                write(6,*) 'F,w,n,cas',FR0,wshiftm,nsplit,cas
             DO IJ=3,NFREQ
                FR=FREQ(IJ)
@@ -9592,8 +9611,8 @@ C                write(6,*) 'F,w,n,cas',FR0,wshiftm,nsplit,cas
                   isp2=-isp
                   call absohe(id,fr,isp2,il,abl,eml,wshiftm)
                endif
-               ABLINN(IJ)=ABLINN(IJ) + ABL / nsplit
-               EMLIN(IJ)=EMLIN(IJ) + eml / nsplit
+               ABLINN(IJ)=ABLINN(IJ) + ABL * rint / rintsum
+               EMLIN(IJ)=EMLIN(IJ) + eml * rint / rintsum
             END DO
               end if
              end do
