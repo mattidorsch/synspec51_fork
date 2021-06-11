@@ -173,6 +173,7 @@ C                  be read from unit 56
 C     IOPHLI     - switch for treatment the Lyman line wings -see LYMLIN
 C
       bfield=3.42D5 ! magnetic field in Gauss
+C      bfield=0 ! magnetic field in Gauss
       bangle=9.0D1 ! angle between the magnetic fieldaxis and the line of sight
       mode=0
       read(1,*,err=10,end=10) mode
@@ -9203,19 +9204,28 @@ C
       elseif((abs(e-320080.406).lt.2d2).and.(iation.eq.604)) then ! CIV 5800
        S = 0.5
        L = 1.
-      elseif((abs(e-287706.906).lt.2d2).and.(iation.eq.703)) then ! NIII 3367
+      elseif((e.lt.2d2).and.(iation.eq.703)) then ! NIII ground state
+       S = 0.5
+       L = 1.
+      elseif((abs(e-57246.0).lt.1d2).and.(iation.eq.703)) then ! NIII
        S = 1.5
        L = 1.
-      elseif((abs(e-317779.500).lt.5d1).and.(iation.eq.703)) then ! NIII 4000
-       S = 0.5
-       L = 2.
-      elseif((abs(e-221302.2).lt.1d0).and.(iation.eq.703)) then ! NIII 4100
+      elseif((abs(e-131004.3).lt.5d1).and.(iation.eq.703)) then ! NIII
        S = 0.5
        L = 0.
-      elseif((abs(e-320288.312).lt.1d2).and.(iation.eq.703)) then ! NIII 4379 (F-G)
+      elseif((abs(e-145890.0).lt.1d2).and.(iation.eq.703)) then ! NIII
        S = 0.5
-       L = 3.
-      elseif((abs(e-245701.297).lt.3d2).and.(iation.eq.703)) then ! NIII 4640
+       L = 1.
+      elseif((abs(e-186797.1).lt.1d1).and.(iation.eq.703)) then ! NIII
+       S = 1.5
+       L = 0.
+      elseif((abs(e-203080.0).lt.3d1).and.(iation.eq.703)) then ! NIII
+       S = 0.5
+       L = 2.
+      elseif((abs(e-221302.2).lt.1d1).and.(iation.eq.703)) then ! NIII 4100
+       S = 0.5
+       L = 0.
+      elseif((abs(e-230404.3).lt.5d1).and.(iation.eq.703)) then ! NIII
        S = 0.5
        L = 1.
       elseif((abs(e-245665.406).lt.2d2).and.(iation.eq.703)) then ! NIII 4100
@@ -9224,21 +9234,72 @@ C
       elseif((abs(e-267244.000).lt.2d2).and.(iation.eq.703)) then ! NIII 4640
        S = 0.5
        L = 2.
+      elseif((abs(e-287706.906).lt.2d2).and.(iation.eq.703)) then ! NIII 3367
+       S = 1.5
+       L = 1.
+      elseif((abs(e-297200.0).lt.2d2).and.(iation.eq.703)) then ! NIII
+       S = 0.5
+       L = 1.
+      elseif((abs(e-301082.6).lt.2d2).and.(iation.eq.703)) then ! NIII
+       S = 0.5
+       L = 0.
+      elseif((abs(e-309170.0).lt.5d1).and.(iation.eq.703)) then ! NIII
+       S = 0.5
+       L = 1.
       elseif((abs(e-309849.812).lt.2d2).and.(iation.eq.703)) then ! NIII 4510,4514
        S = 1.5
        L = 2.
+      elseif((abs(e-311700.0).lt.5d1).and.(iation.eq.703)) then ! NIII
+       S = 0.5
+       L = 1.
       elseif((abs(e-314217.312).lt.1d2).and.(iation.eq.703)) then ! NIII 3771
        S = 1.5
        L = 0.
-      elseif((abs(e-317395.188).lt.2d2).and.(iation.eq.703)) then ! NIII 3367
+      elseif((abs(e-317340.0).lt.1d2).and.(iation.eq.703)) then ! NIII 3367
        S = 1.5
        L = 1.
+      elseif((abs(e-317779.500).lt.6d1).and.(iation.eq.703)) then ! NIII 4000
+       S = 0.5
+       L = 2.
+      elseif((abs(e-320288.312).lt.1d2).and.(iation.eq.703)) then ! NIII 4379 (F-G)
+       S = 0.5
+       L = 3.
       elseif((abs(e-342750.094).lt.5d0).and.(iation.eq.703)) then ! NIII 4000
        S = 0.5
        L = 3.
       elseif((abs(e-343117.094).lt.2d2).and.(iation.eq.703)) then ! NIII 4379 (F-G)
        S = 0.5
        L = 4.
+      elseif((abs(e-368578.3).lt.1d2).and.(iation.eq.703)) then ! NIII
+       S = 1.5
+       L = 1.
+      elseif((abs(e-368893.8).lt.3d1).and.(iation.eq.703)) then ! NIII
+       S = 0.5
+       L = 0.
+      elseif((abs(e-370269.0).lt.3d1).and.(iation.eq.703)) then ! NIII
+       S = 0.5
+       L = 2.
+      elseif((abs(e-370365.0).lt.3d1).and.(iation.eq.703)) then ! NIII
+       S = 0.5
+       L = 0.
+      elseif((abs(e-371646.9).lt.5d1).and.(iation.eq.703)) then ! NIII
+       S = 0.5
+       L = 0.
+      elseif((abs(e-372651.0).lt.1d2).and.(iation.eq.703)) then ! NIII
+       S = 0.5
+       L = 2.
+      elseif((abs(e-373346.094).lt.1d2).and.(iation.eq.703)) then ! NIII 4623
+       S = 0.5
+       L = 2.
+      elseif((abs(e-373605.6).lt.5d1).and.(iation.eq.703)) then ! NIII
+       S = 0.5
+       L = 0.
+      elseif((abs(e-374427.0).lt.1d2).and.(iation.eq.703)) then ! NIII
+       S = 0.5
+       L = 2.
+      elseif((abs(e-394969.000).lt.2d2).and.(iation.eq.703)) then ! NIII 4623
+       S = 0.5
+       L = 3.
       elseif((abs(e-377284.812).lt.1d3).and.(iation.eq.704)) then ! NIV 3480
        S = 1.
        L = 0.
@@ -9335,6 +9396,8 @@ C
 C     L and S for 24-lev HeI ion (-> Zeeman split)
 C      DATA HE1L / 4471.50, 4387.93, 4026.20, 4921.93/
 C      DATA HE1S / 4471.50, 4387.93, 4026.20, 4921.93/
+C      DATA HE2L / 4471.50, 4387.93, 4026.20, 4921.93/
+C      DATA HE2F / 4471.50, 4387.93, 4026.20, 4921.93/
 C
       DO 10 IJ=1,NFREQ
          ABLIN(IJ)=0.
@@ -9440,9 +9503,6 @@ C          QSLO = -1.
 C          QLLO = -1.
 C          QSHI = -1.
 C          QLHI = -1.
-C
-C         lower levels
-C
 C
 C         try to find LS terms
           call findls(elo,iation,qslo,qllo)
