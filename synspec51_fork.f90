@@ -9549,10 +9549,10 @@ C               XF=ABS(FREQ(IJ)-FR0)*DOP1
 c               ABLIN(IJ)=ABLIN(IJ)+AB0*VOIGTE(AGAM,XF)
                ABLIN(IJ)=ABLIN(IJ)+AB0*VOIGTK(AGAM,XF) * rint/rintsum
 C              check for nan
-               if(ABLIN(IJ)/=ABLIN(IJ)) then
-                write(6,*) 'w,e,r,rs',
-     *                      cas/FREQ(IJ),eshift,rint,rint/rintsum
-               end if
+C               if(ABLIN(IJ)/=ABLIN(IJ)) then
+C                write(6,*) 'w,e,r,rs',
+C     *                      cas/FREQ(IJ),eshift,rint,rint/rintsum
+C               end if
             END DO
               end if
              end do
