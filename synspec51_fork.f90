@@ -9167,6 +9167,148 @@ C ********************************************************************
 C
 C
 C
+      subroutine findls(e,iation,s,l)
+C     ==============================
+C
+C     try to find L, S for energy level
+C
+      implicit none
+      real*8, intent(in)  :: e
+      integer, intent(in)  :: iation
+      real*8, intent(out) :: s,l
+      if((abs(e-322009.594).lt.1d2).and.(iation.eq.603)) then ! CIII 4070 (F-G)
+       S = 1.
+       L = 3.
+      elseif((abs(e-238213.000).lt.1d2).and.(iation.eq.603)) then ! CIII 4650
+       S = 0.5
+       L = 0.
+      elseif((abs(e-346579.219).lt.1d1).and.(iation.eq.603)) then ! CIII 8196 (3G-3H)
+       S = 1.
+       L = 4.
+      elseif((abs(e-259724.297).lt.2d2).and.(iation.eq.603)) then ! CIII 4650
+       S = 0.5
+       L = 1.
+      elseif((abs(e-358776.312).lt.1d1).and.(iation.eq.603)) then ! CIII 8196 (3G-3H)
+       S = 1.
+       L = 5.
+      elseif((abs(e-449941.312).lt.5d0).and.(iation.eq.604)) then ! CIV 4658 (F-G)
+       S = 0.5
+       L = 3.
+      elseif((abs(e-302847.812).lt.1d2).and.(iation.eq.604)) then ! CIV 5800
+       S = 0.5
+       L = 0.
+      elseif((abs(e-471405.812).lt.5d0).and.(iation.eq.604)) then ! CIV 4658 (F-G)
+       S = 0.5
+       L = 4.
+      elseif((abs(e-320080.406).lt.2d2).and.(iation.eq.604)) then ! CIV 5800
+       S = 0.5
+       L = 1.
+      elseif((abs(e-287706.906).lt.2d2).and.(iation.eq.703)) then ! NIII 3367
+       S = 1.5
+       L = 1.
+      elseif((abs(e-317779.500).lt.5d1).and.(iation.eq.703)) then ! NIII 4000
+       S = 0.5
+       L = 2.
+      elseif((abs(e-221302.2).lt.1d0).and.(iation.eq.703)) then ! NIII 4100
+       S = 0.5
+       L = 0.
+      elseif((abs(e-320288.312).lt.1d2).and.(iation.eq.703)) then ! NIII 4379 (F-G)
+       S = 0.5
+       L = 3.
+      elseif((abs(e-245701.297).lt.3d2).and.(iation.eq.703)) then ! NIII 4640
+       S = 0.5
+       L = 1.
+      elseif((abs(e-245665.406).lt.2d2).and.(iation.eq.703)) then ! NIII 4100
+       S = 0.5
+       L = 1.
+      elseif((abs(e-267244.000).lt.2d2).and.(iation.eq.703)) then ! NIII 4640
+       S = 0.5
+       L = 2.
+      elseif((abs(e-309849.812).lt.2d2).and.(iation.eq.703)) then ! NIII 4510,4514
+       S = 1.5
+       L = 2.
+      elseif((abs(e-314217.312).lt.1d2).and.(iation.eq.703)) then ! NIII 3771
+       S = 1.5
+       L = 0.
+      elseif((abs(e-317395.188).lt.2d2).and.(iation.eq.703)) then ! NIII 3367
+       S = 1.5
+       L = 1.
+      elseif((abs(e-342750.094).lt.5d0).and.(iation.eq.703)) then ! NIII 4000
+       S = 0.5
+       L = 3.
+      elseif((abs(e-343117.094).lt.2d2).and.(iation.eq.703)) then ! NIII 4379 (F-G)
+       S = 0.5
+       L = 4.
+      elseif((abs(e-377284.812).lt.1d3).and.(iation.eq.704)) then ! NIV 3480
+       S = 1.
+       L = 0.
+      elseif((abs(e-404522.406).lt.1d2).and.(iation.eq.704)) then ! NIV 4060
+       S = 0.
+       L = 1.
+      elseif((abs(e-405987.500).lt.2d2).and.(iation.eq.704)) then ! NIV 3480
+       S = 1.
+       L = 1.
+      elseif((abs(e-429159.594).lt.2d2).and.(iation.eq.704)) then ! NIV 4060
+       S = 0.
+       L = 2.
+      elseif((abs(e-267634.000).lt.6d2).and.(iation.eq.803)) then ! OIII 3760
+       S = 1.
+       L = 1.
+      elseif((abs(e-294223.062).lt.8d2).and.(iation.eq.803)) then ! OIII 3760
+       S = 1.
+       L = 2.
+      elseif((abs(e-219130.766).lt.1d1).and.(iation.eq.1002)) then ! NeII 3335
+       S = 1.5
+       L = 1.
+      elseif((abs(e-249108.609).lt.1d1).and.(iation.eq.1002)) then ! NeII 3335
+       S = 1.5
+       L = 2.
+      elseif((abs(e-193978.891).lt.1d0).and.(iation.eq.1404)) then ! SiIV 4100
+       S = 0.5
+       L = 0.
+      elseif((abs(e-218428.672).lt.5d2).and.(iation.eq.1404)) then ! SiIV 3165
+       S = 0.5
+       L = 1.
+      elseif((abs(e-250008.141).lt.1d2).and.(iation.eq.1404)) then ! SiIV 3165
+       S = 0.5
+       L = 2.
+      elseif((abs(e-293719.000).lt.1d1).and.(iation.eq.1404)) then ! SiIV 4631 (F-G)
+       S = 0.5
+       L = 3.
+      elseif((abs(e-315305.281).lt.1d2).and.(iation.eq.1404)) then ! SiIV 4631 (F-G)
+       S = 0.5
+       L = 4.
+      elseif((abs(e-181448.203).lt.1d1).and.(iation.eq.1604)) then ! SIV 3097,3118
+       S = 0.5
+       L = 0.
+      elseif((abs(e-213725.297).lt.3d2).and.(iation.eq.1604)) then ! SIV 3097,3118
+       S = 0.5
+       L = 1.
+      elseif((abs(e-230924.375).lt.4d2).and.(iation.eq.2204)) then ! TiIV 3541,3576
+       S = 0.5
+       L = 1.
+      elseif((abs(e-258877.078).lt.1d2).and.(iation.eq.2204)) then ! TiIV 3541,3576
+       S = 0.5
+       L = 2.
+      elseif((abs(e-278511.219).lt.1d1).and.(iation.eq.2204)) then ! TiIV 4618 (G-H)
+       S = 0.5
+       L = 4.
+      elseif((abs(e-300158.750).lt.1d1).and.(iation.eq.2204)) then ! TiIV 4618 (G-H)
+       S = 0.5
+       L = 5.
+      elseif((iation.eq.101).or.(iation.eq.202)) then
+       S = 0.5
+       L = -1.
+      else
+       S = -1.
+       L = -1.
+      end if
+      end subroutine
+C
+C ********************************************************************
+C
+C
+C
       SUBROUTINE LINOP(ID,ABLIN,EMLIN,AVAB)
 C     =====================================
 C
@@ -9188,7 +9330,7 @@ C
       COMMON/PRFQUA/DOPA1(MATOM,MDEPTH),VDWC(MDEPTH)
       COMMON/NLTPOP/PNLT(MATOM,MION,MDEPTH)
       common/lasers/lasdel
-      real*8 JLO,JHI,gjlo,gjhi,eshift
+      real*8 JLO,JHI,gjlo,gjhi,eshift,qslo,qllo,qshi,qlhi
       real*8 mjlo,mjhi,mjdiff,jdiff,rint,rintsum
 C     L and S for 24-lev HeI ion (-> Zeeman split)
 C      DATA HE1L / 4471.50, 4387.93, 4026.20, 4921.93/
@@ -9301,193 +9443,10 @@ C          QLHI = -1.
 C
 C         lower levels
 C
-          if((abs(elo-322009.594).lt.1d2).and.
-     *       (iation.eq.603)) then ! CIII 4070 (F-G)
-           QSLO = 1.d0
-           QLLO = 3.d0
-          elseif((abs(elo-238213.000).lt.1d2).and.
-     *       (iation.eq.603)) then ! CIII 4650
-           QSLO = 0.5
-           QLLO = 0.
-          elseif((abs(elo-346579.219).lt.1d1).and.
-     *       (iation.eq.603)) then ! CIII 8196 (3G-3H)
-           QSLO = 1.
-           QLLO = 4.
-          elseif((abs(elo-449941.312).lt.5d0).and.
-     *       (iation.eq.604)) then ! CIV 4658 (F-G)
-           QSLO = 0.5
-           QLLO = 3.
-          elseif((abs(elo-302847.812).lt.1d2).and.
-     *       (iation.eq.604)) then ! CIV 5800
-           QSLO = 5.d-1
-           QLLO = 0.d0
-          elseif((abs(elo-287706.906).lt.2d2).and.
-     *       (iation.eq.703)) then ! NIII 3367
-           QSLO = 1.5
-           QLLO = 1.
-          elseif((abs(elo-287706.906).lt.1d2).and.
-     *       (iation.eq.703)) then ! NIII 3771,4511,4514
-           QSLO = 1.5
-           QLLO = 1.
-          elseif((abs(elo-317779.500).lt.5d1).and.
-     *       (iation.eq.703)) then ! NIII 4000
-           QSLO = 0.5
-           QLLO = 2.
-          elseif((abs(elo-221302.2).lt.1d0).and.
-     *       (iation.eq.703)) then ! NIII 4100
-           QSLO = 5.d-1
-           QLLO = 0.d0
-          elseif((abs(elo-320288.312).lt.1d2).and.
-     *       (iation.eq.703)) then ! NIII 4379 (F-G)
-           QSLO = 0.5
-           QLLO = 3.
-          elseif((abs(elo-245701.297).lt.3d2).and.
-     *       (iation.eq.703)) then ! NIII 4640
-           QSLO = 5.d-1
-           QLLO = 1.d0
-          elseif((abs(elo-377284.812).lt.1d3).and.
-     *       (iation.eq.704)) then ! NIV 3480
-           QSLO = 1.d0
-           QLLO = 0.d0
-          elseif((abs(elo-404522.406).lt.1d2).and.
-     *       (iation.eq.704)) then ! NIV 4060
-           QSLO = 0.d0
-           QLLO = 1.d0
-          elseif((abs(elo-267634.000).lt.6d2).and.
-     *       (iation.eq.803)) then ! OIII 3760
-           QSLO = 1.d0
-           QLLO = 1.d0
-          elseif((abs(elo-219130.766).lt.1d1).and.
-     *       (iation.eq.1002)) then ! NeII 3335
-           QSLO = 1.5
-           QLLO = 1.
-          elseif((abs(elo-193978.891).lt.1d0).and.
-     *       (iation.eq.1404)) then ! SiIV 4100
-           QSLO = 5.d-1
-           QLLO = 0.d0
-          elseif((abs(elo-293719.000).lt.1d1).and.
-     *       (iation.eq.1404)) then ! SiIV 4631 (F-G)
-           QSLO = 5.d-1
-           QLLO = 3.d0
-          elseif((abs(elo-218428.672).lt.5d2).and.
-     *       (iation.eq.1404)) then ! SiIV 3165
-           QSLO = 5.d-1
-           QLLO = 1.d0
-          elseif((abs(elo-181448.203).lt.1d1).and.
-     *       (iation.eq.1604)) then ! SIV 3097,3118
-           QSLO = 0.5
-           QLLO = 0.
-          elseif((abs(elo-230924.375).lt.4d2).and.
-     *       (iation.eq.2204)) then ! TiIV 3541,3576
-           QSLO = 0.5
-           QLLO = 1.
-          elseif((abs(elo-278511.219).lt.1d1).and.
-     *       (iation.eq.2204)) then ! TiIV 4618 (G-H)
-           QSLO = 0.5
-           QLLO = 4.
-          elseif((iation.eq.101).or.(iation.eq.202)) then
-           QSLO = 0.5
-          else
-           QSLO = -1.
-           QLLO = -1.
-          end if
 C
-C         the same for upper levels
-C
-          if((abs(ehi-346579.219).lt.2d2).and.
-     *       (iation.eq.603)) then ! CIII 4070 (F-G)
-           QSHI = 1.d0
-           QLHI = 4.d0
-          elseif((abs(ehi-259724.297).lt.2d2).and.
-     *       (iation.eq.603)) then ! CIII 4650
-           QSHI = 0.5
-           QLHI = 1.
-          elseif((abs(ehi-358776.312).lt.1d1).and.
-     *       (iation.eq.603)) then ! CIII 8196 (3G-3H)
-           QSHI = 1.
-           QLHI = 5.
-          elseif((abs(ehi-471405.812).lt.5d0).and.
-     *       (iation.eq.604)) then ! CIV 4658 (F-G)
-           QSHI = 0.5
-           QLHI = 4.
-          elseif((abs(ehi-320080.406).lt.2d2).and.
-     *       (iation.eq.604)) then ! CIV 5800
-           QSHI = 5.d-1
-           QLHI = 1.d0
-          elseif((abs(ehi-317395.188).lt.2d2).and.
-     *       (iation.eq.703)) then ! NIII 3367
-           QSHI = 1.5
-           QLHI = 1.
-          elseif((abs(ehi-314217.312).lt.1d2).and.
-     *       (iation.eq.703)) then ! NIII 3771
-           QSHI = 1.5
-           QLHI = 0.
-          elseif((abs(ehi-342750.094).lt.5d0).and.
-     *       (iation.eq.703)) then ! NIII 4000
-           QSHI = 0.5
-           QLHI = 3.
-          elseif((abs(ehi-245665.406).lt.2d2).and.
-     *       (iation.eq.703)) then ! NIII 4100
-           QSHI = 5.d-1
-           QLHI = 1.d0
-          elseif((abs(ehi-343117.094).lt.2d2).and.
-     *       (iation.eq.703)) then ! NIII 4379 (F-G)
-           QSHI = 0.5
-           QLHI = 4.
-          elseif((abs(ehi-309849.812).lt.2d2).and.
-     *       (iation.eq.703)) then ! NIII 4510,4514
-           QSHI = 1.5
-           QLHI = 2.
-          elseif((abs(ehi-267244.000).lt.2d2).and.
-     *       (iation.eq.703)) then ! NIII 4640
-           QSHI = 5.d-1
-           QLHI = 2.d0
-          elseif((abs(ehi-405987.500).lt.2d2).and.
-     *       (iation.eq.704)) then ! NIV 3480
-           QSHI = 1.d0
-           QLHI = 1.d0
-          elseif((abs(ehi-429159.594).lt.2d2).and.
-     *       (iation.eq.704)) then ! NIV 4060
-           QSHI = 0.d0
-           QLHI = 2.d0
-          elseif((abs(ehi-294223.062).lt.8d2).and.
-     *       (iation.eq.803)) then ! OIII 3760
-           QSHI = 1.d0
-           QLHI = 2.d0
-          elseif((abs(ehi-249108.609).lt.1d1).and.
-     *       (iation.eq.1002)) then ! NeII 3335
-           QSHI = 1.5
-           QLHI = 2.
-          elseif((abs(ehi-218428.672).lt.3d2).and.
-     *       (iation.eq.1404)) then ! SiIV 4100
-           QSHI = 5.d-1
-           QLHI = 1.d0
-          elseif((abs(ehi-315305.281).lt.3d2).and.
-     *       (iation.eq.1404)) then ! SiIV 4631 (F-G)
-           QSHI = 5.d-1
-           QLHI = 4.d0
-          elseif((abs(ehi-250008.141).lt.1d2).and.
-     *       (iation.eq.1404)) then ! SiIV 3165
-           QSHI = 5.d-1
-           QLHI = 2.d0
-          elseif((abs(ehi-213725.297).lt.3d2).and.
-     *       (iation.eq.1604)) then ! SIV 3097,3118
-           QSHI = 0.5
-           QLHI = 1.
-          elseif((abs(ehi-258877.078).lt.1d2).and.
-     *       (iation.eq.2204)) then ! TiIV 3541,3576
-           QSHI = 0.5
-           QLHI = 2.
-          elseif((abs(ehi-300158.750).lt.1d1).and.
-     *       (iation.eq.2204)) then ! TiIV 4618 (G-H)
-           QSHI = 0.5
-           QLHI = 5.
-          elseif((iation.eq.101).or.(iation.eq.202)) then
-           QSHI = 0.5
-          else
-           QSHI = -1.
-           QLHI = -1.
-          end if
+C         try to find LS terms
+          call findls(elo,iation,qslo,qllo)
+          call findls(ehi,iation,qshi,qlhi)
 C
 C         find Lande-g for lower and upper level
 C         gjlo = 1.
@@ -9542,7 +9501,6 @@ C
                else
                 rint = rintsum
                end if
-C           loop over freq. +-cutof0 AA
             DO IJ=IJ1,IJ2
 C               XF=ABS(FREQ(IJ)-FR0)*DOP1
                XF=ABS(FREQ(IJ)-(FR0+CL*eshift))*DOP1
