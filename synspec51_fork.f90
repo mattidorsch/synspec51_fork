@@ -5492,19 +5492,30 @@ C
      *           dtorad=1.7453292519943D-2)
       real*8 rint,rintsum,fint,eshift,cenwave,nlo,ndiff
       integer mdiff
-      DIMENSION PJ(80),FRHE(12),OSCHE2(19),PRF0(36),
+C     magn. field breaks l degeneracy
+C      real*8, dimension(90) :: splam,spfosc,spnlo,spnhi,spslo,
+C     *                        spshi,splhi,spllo,spjlo,spjhi
+      DIMENSION PJ(80),FRHE(12),OSCHE2(19),PRF0(36), !mpar(19,6,13),
      *          ABSO(MFREQ),EMIS(MFREQ),ABSOH(MFREQ),EMISH(MFREQ)
+      COMMON/HE2MLIN/splam(30),spfosc(30),spnlo(30),spnhi(30),
+     *               spslo(30),spshi(30),splhi(30),spllo(30),
+     *               spjlo(30),spjhi(30),nmlin
       COMMON/HE2PRF/PRFHE2(19,MDEPTH,36),WLHE2(19,36),NWLHE2(19),
      *              ILHE2(19),IUHE2(19)
+C     ionization frequcenies: 227.8,911.3,2049.9 ...
       DATA FRHE /1.3158153D+16, 3.2895381D+15, 1.4624854D+15,
      *           8.2261878D+14, 5.2647201D+14, 3.6560459D+14,
      *           2.6860713D+14, 2.0565220D+14, 1.6249055D+14,
      *           1.3161730D+14, 1.0877460D+14, 9.1400851D+13/
+C     oscillator stength fij: 1640,3204
+C     for Schoening and Butler lines
       DATA OSCHE2/6.407E-1, 1.506E-1, 5.584E-2, 2.768E-2,
      *        1.604E-2, 1.023E-2, 6.980E-3,
      *        8.421E-1, 3.230E-2, 1.870E-2, 1.196E-2, 8.187E-3,
      *        5.886E-3, 4.393E-3, 3.375E-3, 2.656E-3,
      *        1.038,    1.793E-1, 6.549E-2/
+C    matrix for each S&B line: clam,f,llo,lhi,jlo,jhi
+C    or just 2 comp for each line?
 C
       I=ILWHE2
       izz=2
@@ -5630,18 +5641,21 @@ C          mhimax = J-1
           mlomax = 0
           mhimax = 1
           ndiff = (mhimax-mlomax)*1.D0
-C          nsplit = 0
           nlo = mlomax
           rintsum = 0.
-          do mlo=-mlomax,mlomax
-           do mhi=-mhimax,mhimax
-            mdiff = mlo-mhi
-            if(abs(mdiff).LE.1) then
-             rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
-             rintsum = rintsum + rint
-            end if
-           end do
-          end do
+C          do ic=1,nmlin
+C           if((spnlo(ic).eq.i).and.(spnhi(ic).eq.j))then
+            do mlo=-mlomax,mlomax
+             do mhi=-mhimax,mhimax
+              mdiff = mlo-mhi
+              if(abs(mdiff).LE.1) then
+               rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
+               rintsum = rintsum + rint
+              end if
+             end do
+            end do
+C           end if
+C          end do
          else
           mlomax = 0
           mhimax = 0
@@ -5656,7 +5670,7 @@ C
            mdiff = mlo-mhi
            if(abs(mdiff).le.1) then
             if(bfield.gt.0) then
-              rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
+             rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
             else
              rint = rintsum
             end if
@@ -6859,11 +6873,35 @@ C     This procedure is quite analogous to HYDINI for hydrogen lines
 C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
+      COMMON/HE2MLIN/splam(30),spfosc(30),spnlo(30),spnhi(30),
+     *               spslo(30),spshi(30),splhi(30),spllo(30),
+     *               spjlo(30),spjhi(30),nmlin
       COMMON/HE2PRF/PRFHE2(19,MDEPTH,36),WLHE2(19,36),NWLHE2(19),
      *              ILHE2(19),IUHE2(19)
       COMMON/HE2DAT/WL2(36,19),XT2(6),XNE2(11,19),PRF2(36,6,11),
      *              NWL2,NT2,NE2
       DATA NLINE1 /19/
+C
+C    read SLJ components for each line for Zeeman effect
+      if(bfied.gt.0) then
+       ih=99
+       nmlin = 0
+       open(unit=ih,file='./he2ls.dat',status='old')
+       do idx=1,30
+        read(ih,*,end=900,err=8) splam(idx),spfosc(idx),spnlo(idx),
+     *                           spnhi(idx),spslo(idx),spshi(idx),
+     *                           splhi(idx),spllo(idx),spjlo(idx),
+     *                           spjhi(idx)
+        nmlin = nmlin + 1
+       end do
+       close(ih)
+    8  write(6,*) 'error reading he2ls.dat', splam
+  900  continue
+       write(6,*) 'read', nread
+      else
+       nmlin = 1
+      end if
+C
 C
       IH=67
       OPEN(UNIT=IH,FILE='./data/he2prf.dat',STATUS='OLD')
@@ -6894,6 +6932,7 @@ C        empty line
          READ(IH,500)
          NWLHE2(ILINE)=NWL2
 C
+C        wavelength grid for each line (max. 36 points per line)
          DO I=1,NWL2
             IF(WL2(I,ILINE).LT.1.E-4) WL2(I,ILINE)=1.E-4
             WLHE2(ILINE,I)=LOG10(WL2(I,ILINE))
@@ -9095,6 +9134,32 @@ C ********************************************************************
 C
 C
 C
+      function sumzeerint(jlo,jhi,bangle)
+      implicit none
+      integer imlo,imhi
+      real*8 jlo,jhi,bangle,jdiff,mjlo,mjhi,mjdiff,
+     *       rint,zeerint,rintsum,sumzeerint
+      jdiff = jhi-jlo
+      rintsum = 0.
+      do imlo=nint(-jlo*2.),nint(jlo*2.),2
+       do imhi=nint(-jhi*2.),nint(jhi*2.),2
+        if(abs(imlo-imhi).le.2) then
+         mjlo = imlo/2.
+         mjhi = imhi/2.
+         mjdiff = mjhi-mjlo
+         rint = zeerint(jlo,jdiff,mjlo,mjdiff,bangle)
+         rintsum = rintsum + rint
+        end if
+       end do
+      end do
+      sumzeerint = rintsum
+      return
+      end
+C
+C ********************************************************************
+C
+C
+C
       function zeerint(jlo,jdiff,mjlo,mjdiff,psi)
 C     ==============================
 C
@@ -9357,9 +9422,9 @@ C
       elseif((abs(e-300158.750).lt.1d1).and.(iation.eq.2204)) then ! TiIV 4618 (G-H)
        S = 0.5
        L = 5.
-      elseif((iation.eq.101).or.(iation.eq.202)) then
-       S = 0.5
-       L = -1.
+C      elseif((iation.eq.101).or.(iation.eq.202)) then ! H/HeII: S=0.5, L varies
+C       S = 0.5
+C       L = -1.
       else
        S = -1.
        L = -1.
@@ -9509,26 +9574,12 @@ C         try to find LS terms
           call findls(ehi,iation,qshi,qlhi)
 C
 C         find Lande-g for lower and upper level
-C         gjlo = 1.
-C         gjhi = 1.
           call landeg(qslo,qllo,jlo,gjlo)
           call landeg(qshi,qlhi,jhi,gjhi)
-C         from model atom: NQUANT(I),TYPLEV(I)
 C
-          jdiff = JHI-JLO
-          rintsum = 0.
-          do imlo=NINT(-JLO*2.),NINT(JLO*2.),2
-           do imhi=NINT(-JHI*2.),NINT(JHI*2.),2
-            if(abs(imlo-imhi).LE.2) then
-             mjlo = imlo/2.
-             mjhi = imhi/2.
-             mjdiff = mjhi-mjlo
-             rint = zeerint(jlo,jdiff,mjlo,mjdiff,bangle)
-C             write(6,*) 'zrint',rint
-             rintsum = rintsum + rint
-            end if
-           end do
-          end do
+C         sum over relative intensities
+          rintsum = sumzeerint(jlo,jhi,bangle)
+          jdiff = jhi-jlo
          else
           JLO = 0.
           JHI = 0.
@@ -9655,7 +9706,6 @@ C             jdiff = 1.
 C                write(6,*) 'jlo,jdiff,mlo,mdiff,rint',
 C     *             mlomax*1.D0,jdiff,mlo*1.D0,mdiff*1.D0,rint
                 rintsum = rintsum + rint
-C                nsplit = nsplit +1
                end if
               end do
              end do
@@ -9665,7 +9715,6 @@ C                nsplit = nsplit +1
              rintsum = 1.
             end if
 C           write(6,*) 'mlomax,mhimax',mlomax,mhimax
-C            nsplit = 0
 C
 C            DO 90 IJ=3,NFREQ
             do mlo=-mlomax,mlomax
@@ -9680,7 +9729,6 @@ C            DO 90 IJ=3,NFREQ
                 else
                  rint = rintsum
                 end if
-C                write(6,*) 'F,w,n,cas',FR0,wshiftm,nsplit,cas
             DO IJ=3,NFREQ
                FR=FREQ(IJ)
                if(isp.gt.0)then
