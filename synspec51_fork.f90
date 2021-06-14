@@ -5490,11 +5490,9 @@ C
       PARAMETER (CPJ4=CPJ/4.,AL10=2.3025851,CINV=UN/2.997925E18)
       PARAMETER (CID1=0.01497,cas=2.997925d18,
      *           dtorad=1.7453292519943D-2)
-      real*8 rint,rintsum,fint,eshift,cenwave,nlo,ndiff
-      integer mdiff
-C     magn. field breaks l degeneracy
-C      real*8, dimension(90) :: splam,spfosc,spnlo,spnhi,spslo,
-C     *                        spshi,splhi,spllo,spjlo,spjhi
+      real*8 rint,rintsum,fint,eshift,cenwave
+      real*8 jlo,jhi,slo,shi,llo,lhi,jdiff,mjlo,mjhi,mjdiff,fsweight
+C      integer mdiff
       DIMENSION PJ(80),FRHE(12),OSCHE2(19),PRF0(36), !mpar(19,6,13),
      *          ABSO(MFREQ),EMIS(MFREQ),ABSOH(MFREQ),EMISH(MFREQ)
       COMMON/HE2MLIN/splam(30),spfosc(30),spnlo(30),spnhi(30),
@@ -5621,7 +5619,7 @@ C        HeII 1640; air -> vacuum
 C        directly affects HeII wl for SB lines
          IF((I.LE.2).or.(I.LE.3.and.J.GE.6)) THEN
             WLINE=227.838/(XII-1./JJ)
-          ELSE 
+          ELSE
             WLINE=227.7776/(XII-1./JJ)
          END IF
          IF(I.EQ.2) THEN
@@ -5636,47 +5634,82 @@ C        directly affects HeII wl for SB lines
 C
 C        loop over split comp.
          if(bfield.GT.0) then
-C          mlomax = I-1
-C          mhimax = J-1
-          mlomax = 0
-          mhimax = 1
-          ndiff = (mhimax-mlomax)*1.D0
-          nlo = mlomax
-          rintsum = 0.
-C          do ic=1,nmlin
-C           if((spnlo(ic).eq.i).and.(spnhi(ic).eq.j))then
-            do mlo=-mlomax,mlomax
-             do mhi=-mhimax,mhimax
-              mdiff = mlo-mhi
-              if(abs(mdiff).LE.1) then
-               rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
-               rintsum = rintsum + rint
-              end if
-             end do
-            end do
-C           end if
-C          end do
+          jlo = 0.
+          jhi = 1.
+          rintsum = sumzeerint(jlo,jhi,bangle)
+          rintsumfs = 0.
+          nfscomp = 0
+          ifscomp = 0
+          do ic=1,nmlin
+           if((spnlo(ic).eq.i).and.(spnhi(ic).eq.j))then
+C            write(6,*) 'splam(ic),spnlo(ic),i',
+C     *                  splam(ic),spnlo(ic),i
+           fsweight = spfosc(ic) ! not gf, because js are split!
+           rintsumfs = rintsumfs +
+     *               sumzeerint(spjlo(ic),spjhi(ic),bangle)*fsweight
+           if(nfscomp.eq.0) ifscomp = ic
+           nfscomp = nfscomp + 1
+           end if
+          end do
+C         line is included in fine structure file
+          if(rintsumfs.gt.0) rintsum = rintsumfs
+          if(nfscomp.eq.0) ifscomp = 0
          else
-          mlomax = 0
-          mhimax = 0
+          jlo = 0.
+          jhi = 0.
           rintsum = 1.
          end if
-        if(rintsum.eq.0) then
-         rintsum = 1.
-        end if
+C       don't divide by 0 later
+        if(rintsum.eq.0) rintsum = 1.
 C
-         do mlo=-mlomax,mlomax
-          do mhi=-mhimax,mhimax
-           mdiff = mlo-mhi
-           if(abs(mdiff).le.1) then
+C        write(6,*) 'nfscomp,ifscomp',nfscomp,ifscomp
+         do ic=ifscomp,max(nfscomp+ifscomp-1,ifscomp)
+          if(nfscomp.gt.0) then
+           jlo = spjlo(ic)
+           jhi = spjhi(ic)
+           slo = spslo(ic)
+           shi = spshi(ic)
+           llo = spllo(ic)
+           lhi = splhi(ic)
+C          find Lande-g for lower and upper level
+           gjlo = 1.
+           gjhi = 1.
+           call landeg(slo,llo,jlo,gjlo)
+           call landeg(shi,lhi,jhi,gjhi)
+           fsweight = spfosc(ic) ! not gf, because js are split!
+          else
+           gjlo = 1.
+           gjhi = 1.
+           fsweight = 1.
+           if(bfield.gt.0) then
+            jlo = 0.
+            jhi = 1.
+           else
+            jlo = 0.
+            jhi = 0.
+           end if
+          end if
+          jdiff=jhi-jlo
+C
+         do imlo=-nint(jlo*2.),nint(jlo*2.),2
+          do imhi=-nint(jhi*2.),nint(jhi*2.),2
+           if(abs(imlo-imhi).le.2) then
+            mjlo = imlo/2.
+            mjhi = imhi/2.
+            mjdiff = mjhi-mjlo
             if(bfield.gt.0) then
-             rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
+C             rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
+             rint = zeerint(jlo,jdiff,mjlo,mjdiff,bangle)
             else
              rint = rintsum
             end if
-            fint = rint / rintsum
-C            write(6,*) 'rintsum,rint,fint',rintsum,rint,fint
-            eshift = 4.66853663D-05 * bfield * mdiff
+            fint = rint / rintsum * fsweight
+C            if(nfscomp.eq.0) then
+C            write(6,*) 'rintsum,rint,fint,i,j',
+C     *                  nfscomp,rintsum,rint,fint,i,j
+C            end if
+C            eshift = 4.66853663D-05 * bfield * mdiff
+            eshift = 4.66853663D-05*bfield*(mjlo*gjlo-mjhi*gjhi)
 C
          IF(ILINE.GT.0) THEN
             NWL=NWLHE2(ILINE)
@@ -5699,7 +5732,7 @@ C               AL=ABS(WLAM(IJ)-WLINE+WSHIFTM)
                PRFF=(PRF0(IW0)*(WLHE2(ILINE,IW1)-AL)+PRF0(IW1)*
      *             (AL-WLHE2(ILINE,IW0)))/
      *             (WLHE2(ILINE,IW1)-WLHE2(ILINE,IW0))
-C              mag. split: divide osc. strength by number of split lines
+C              mag. split: fint
                SG=EXP(PRFF*AL10)*FID * fint
                ABSO(IJ)=ABSO(IJ)+SG*ABTRA
                EMIS(IJ)=EMIS(IJ)+SG*EMTRA
@@ -5733,7 +5766,8 @@ c              end if
            end if
           end do
          end do
-
+C
+         end do
   100 CONTINUE
   200 CONTINUE
 C
@@ -6883,7 +6917,7 @@ C
       DATA NLINE1 /19/
 C
 C    read SLJ components for each line for Zeeman effect
-      if(bfied.gt.0) then
+      if(bfield.gt.0) then
        ih=99
        nmlin = 0
        open(unit=ih,file='./he2ls.dat',status='old')
