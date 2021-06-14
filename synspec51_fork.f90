@@ -4852,6 +4852,7 @@ C          mhimax = J-1
           ndiff = (mhimax-mlomax)*1.D0
           nlo = mlomax
           rintsum = 0.
+          rintsum = sumzee
           do mlo=-mlomax,mlomax
            do mhi=-mhimax,mhimax
             mdiff = mlo-mhi
@@ -5622,6 +5623,7 @@ C        directly affects HeII wl for SB lines
           ELSE
             WLINE=227.7776/(XII-1./JJ)
          END IF
+         WLINE0 = WLINE
          IF(I.EQ.2) THEN
             IF(J.EQ.3.AND.IHE2PR.GT.0) ILINE=1
           ELSE IF(I.EQ.3) THEN
@@ -5640,7 +5642,6 @@ C        loop over split comp.
           rintsumfs = 0.
           nfscomp = 0
           ifscomp = 0
-C          write(6,*) 'WLINE,i,j',WLINE,i,j
           if(nmlin.gt.0)then
            do ic=1,nmlin
             if((nint(spnlo(ic)).eq.i).and.(nint(spnhi(ic)).eq.j))then
@@ -5687,11 +5688,12 @@ C           write(6,"(A,4F5.2)") 'shi,lhi,jhi,gjhi ',shi,lhi,jhi,gjhi
 C          not gf, because js are split!
            fsweight = spfosc(ic)
 C           fsweight = spfosc(ic) * (2*llo+1)*(2*slo+1)
-
+           wline = splam(ic)
           else
            gjlo = 1.
            gjhi = 1.
            fsweight = 1.
+           wline = wline0
            if(bfield.gt.0) then
             jlo = 0.
             jhi = 1.
@@ -9507,13 +9509,44 @@ C
       COMMON/PRFQUA/DOPA1(MATOM,MDEPTH),VDWC(MDEPTH)
       COMMON/NLTPOP/PNLT(MATOM,MION,MDEPTH)
       common/lasers/lasdel
+      COMMON/HE1MLIN/helam(90),hefosc(90),henlo(90),
+     *               henhi(90),heslo(90),heshi(90),
+     *               helhi(90),hello(90),hejlo(90),
+     *               hejhi(90),henmlin
       real*8 JLO,JHI,gjlo,gjhi,eshift,qslo,qllo,qshi,qlhi
       real*8 mjlo,mjhi,mjdiff,jdiff,rint,rintsum
+      real*8 slo,shi,llo,lhi,fsweight
+      integer henmlin
+      logical :: he1ls
 C     L and S for 24-lev HeI ion (-> Zeeman split)
 C      DATA HE1L / 4471.50, 4387.93, 4026.20, 4921.93/
 C      DATA HE1S / 4471.50, 4387.93, 4026.20, 4921.93/
 C      DATA HE2L / 4471.50, 4387.93, 4026.20, 4921.93/
 C      DATA HE2F / 4471.50, 4387.93, 4026.20, 4921.93/
+C
+C     read SLJ components for each line for Zeeman effect
+      if((bfield.gt.0).and.(henmlin.eq.0)) then
+       ih=98
+       henmlin = 0
+       he1ls = .false.
+       inquire(file="./he1ls.dat", exist=he1ls)
+       if(he1ls) then
+        open(unit=ih,file='./he1ls.dat',status='old')
+        do idx=1,90
+         read(ih,*,end=900,err=8) helam(idx),hefosc(idx),
+     *             henlo(idx),henhi(idx),heslo(idx),heshi(idx),
+     *             hello(idx),helhi(idx),hejlo(idx),hejhi(idx)
+         henmlin = henmlin + 1
+        end do
+        close(ih)
+    8   write(6,*) 'error reading he1ls.dat', helam
+  900   continue
+        write(6,"(A,I3,1X,A)") 'read', henmlin, 'lines from he1ls.dat'
+       else
+        write(6,*) 'file not found: he1ls.dat'
+       end if
+      end if
+C
 C
       DO 10 IJ=1,NFREQ
          ABLIN(IJ)=0.
@@ -9552,7 +9585,10 @@ C        changed ISP.GE.6 to ISP.GE.7
          IF (ISP.GE.7) GO TO 100
          CALL PROFIL(IL,IAT,ID,AGAM)
          DOP1=DOPA1(IAT,ID)
+C
          FR0=FREQ0(IL)
+         FR00=FREQ0(IL)
+C
          IF(INNLT.EQ.0) THEN
             AB0=EXP(GF0(IL)-EXCL0(IL)*TEM1)*RRR(ID,ION,IAT)*
      *          DOP1*STIM(ID)
@@ -9729,53 +9765,86 @@ C        again, special expressions for He I lines
 C
          ELSE
 C
-C           normal Zeeman -> find main quantum number
-C           find number of splits and energy shift
             if(bfield.GT.0) then
-C             if(isp.gt.0)then
-C             old HeI tables: all lines between n=2 and n=4
-C              mlomax = 2 - 1
-C              mhimax = 4 - 1
-C             elseif(isp.lt.0)then
-C             beauchamp tables
-C              ihe = ilowhe(-isp) + nfirst(ielhe1) - 1
-C              jhe = iuphe(-isp) + nfirst(ielhe1) - 1
-C              mlomax = NQUANT(ihe)-1
-C              mhimax = NQUANT(jhe)-1
-C             end if
-             mlomax = 0
-             mhimax = 1
-             jdiff = (mhimax-mlomax)*1.D0
-C             jdiff = 1.
-             rintsum = 0
-             do mlo=-mlomax,mlomax
-              do mhi=-mhimax,mhimax
-               if(abs(mlo-mhi).LE.1) then
-                mdiff = mhi-mlo
-                rint = zeerint(mlomax*1.D0,jdiff,
-     *                         mlo*1.D0,mdiff*1.D0,bangle)
-C                write(6,*) 'jlo,jdiff,mlo,mdiff,rint',
-C     *             mlomax*1.D0,jdiff,mlo*1.D0,mdiff*1.D0,rint
-                rintsum = rintsum + rint
+             ilo = ilowhe(abs(-isp))
+             ihi = iuphe(abs(-isp))
+C             ilo = ilowhe(-isp) + nfirst(ielhe1) - 1
+C             ihi = iuphe(-isp) + nfirst(ielhe1) - 1
+             jlo = 0
+             jhi = 1
+             rintsum = sumzeerint(jlo,jhi,bangle)
+C            for triplet lines
+             nfscomp = 0
+             ifscomp = 0
+             if(henmlin.gt.0)then
+              rintsumfs = 0
+              do ic=1,henmlin
+               if((nint(henlo(ic)).eq.ilo).and.
+     *            (nint(henhi(ic)).eq.ihi))then
+C                write(6,*) 'cas/FR0,ilo,ihi',cas/FR0,ilo,ihi
+                fsweight = hefosc(ic)
+                rintsumfs = rintsumfs + fsweight*
+     *                      sumzeerint(hejlo(ic),hejhi(ic),bangle)
+                if(nfscomp.eq.0) ifscomp = ic
+                nfscomp = nfscomp + 1
                end if
               end do
-             end do
+C             line is included in fine structure file
+C              write(6,*) 'rintsumfs',rintsumfs
+              if(rintsumfs.gt.0) rintsum = rintsumfs
+              if(nfscomp.eq.0) ifscomp = 0
+             end if
             else
-             mlomax = 0
-             mhimax = 0
+             jlo = 0
+             jhi = 0
              rintsum = 1.
             end if
-C           write(6,*) 'mlomax,mhimax',mlomax,mhimax
+C
+            do ic=ifscomp,max(nfscomp+ifscomp-1,ifscomp)
+             if(nfscomp.gt.0) then
+              jlo = hejlo(ic)
+              jhi = hejhi(ic)
+              slo = heslo(ic)
+              shi = heshi(ic)
+              llo = hello(ic)
+              lhi = helhi(ic)
+              fr0 = cas/helam(ic)
+C             find Lande-g for lower and upper level
+              gjlo = 1.
+              gjhi = 1.
+              call landeg(slo,llo,jlo,gjlo)
+              call landeg(shi,lhi,jhi,gjhi)
+C           write(6,"(A,F12.6)") 'helam(ic)',helam(ic)
+C           write(6,"(A,4F5.2)") 'slo,llo,jlo,gjlo ',slo,llo,jlo,gjlo
+C           write(6,"(A,4F5.2)") 'shi,lhi,jhi,gjhi ',shi,lhi,jhi,gjhi
+              fsweight = hefosc(ic)
+             else
+              fr0 = fr00
+              gjlo = 1.
+              gjhi = 1.
+              fsweight = 1.
+              if(bfield.gt.0) then
+               jlo = 0.
+               jhi = 1.
+              else
+               jlo = 0.
+               jhi = 0.
+              end if
+             end if
+             jdiff=jhi-jlo
 C
 C            DO 90 IJ=3,NFREQ
-            do mlo=-mlomax,mlomax
-             do mhi=-mhimax,mhimax
-              mdiff = mhi-mlo
-              if(abs(mlo-mhi).LE.1) then
-                eshift = 4.66853663D-05*bfield*mdiff ! lo-hi?
-                wshiftm = cas/(FR0+CL*eshift) - cas/FR0
+            do mlo=-nint(jlo),nint(jlo)
+             do mhi=-nint(jhi),nint(jhi)
+              mdiff = mlo-mhi
+              if(abs(mdiff).LE.1) then
+                eshift = 4.66853663D-05*bfield*(mlo*gjlo-mhi*gjhi)
+C                wshiftm = cas/(FR0+CL*eshift) - cas/FR0
+                wshiftm=4.66853663D-13*bfield*
+     *                  (cas/FR0)**2*(mlo*gjlo-mhi*gjhi)
+C                write(6,*)'wshifta,wshiftm',wshifta,wshiftm
                 if(bfield.gt.0) then
-                 rint = zeerint(mlomax*1.D0,jdiff,
+                 rint = fsweight * zeerint(jlo,jdiff,
      *                          mlo*1.D0,mdiff*1.D0,bangle)
                 else
                  rint = rintsum
@@ -9794,6 +9863,7 @@ C            DO 90 IJ=3,NFREQ
             END DO
               end if
              end do
+            end do
             end do
 C   90       CONTINUE
          END IF
