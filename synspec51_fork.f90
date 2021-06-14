@@ -5495,9 +5495,9 @@ C
 C      integer mdiff
       DIMENSION PJ(80),FRHE(12),OSCHE2(19),PRF0(36), !mpar(19,6,13),
      *          ABSO(MFREQ),EMIS(MFREQ),ABSOH(MFREQ),EMISH(MFREQ)
-      COMMON/HE2MLIN/splam(30),spfosc(30),spnlo(30),spnhi(30),
-     *               spslo(30),spshi(30),splhi(30),spllo(30),
-     *               spjlo(30),spjhi(30),nmlin
+      COMMON/HE2MLIN/splam(90),spfosc(90),spnlo(90),spnhi(90),
+     *               spslo(90),spshi(90),splhi(90),spllo(90),
+     *               spjlo(90),spjhi(90),nmlin
       COMMON/HE2PRF/PRFHE2(19,MDEPTH,36),WLHE2(19,36),NWLHE2(19),
      *              ILHE2(19),IUHE2(19)
 C     ionization frequcenies: 227.8,911.3,2049.9 ...
@@ -5640,22 +5640,25 @@ C        loop over split comp.
           rintsumfs = 0.
           nfscomp = 0
           ifscomp = 0
-          do ic=1,nmlin
-           if((spnlo(ic).eq.i).and.(spnhi(ic).eq.j))then
-C            write(6,*) 'splam(ic),spnlo(ic),i',
-C     *                  splam(ic),spnlo(ic),i
+C          write(6,*) 'WLINE,i,j',WLINE,i,j
+          if(nmlin.gt.0)then
+           do ic=1,nmlin
+            if((nint(spnlo(ic)).eq.i).and.(nint(spnhi(ic)).eq.j))then
+C            write(6,*) 'splam(ic),spnlo(ic),spnhi(ic),i,j',
+C     *                  splam(ic),spnlo(ic),spnhi(ic),i,j
 C          not gf, because js are split!
-C           fsweight = spfosc(ic)
-           fsweight = spfosc(ic)*(2*spllo(ic)+1)*(2*spslo(ic)+1)
-           rintsumfs = rintsumfs +
-     *               sumzeerint(spjlo(ic),spjhi(ic),bangle)*fsweight
-           if(nfscomp.eq.0) ifscomp = ic
-           nfscomp = nfscomp + 1
-           end if
-          end do
+             fsweight = spfosc(ic)
+C           fsweight = spfosc(ic)*(2*spllo(ic)+1)*(2*spslo(ic)+1)
+             rintsumfs = rintsumfs +
+     *                sumzeerint(spjlo(ic),spjhi(ic),bangle)*fsweight
+             if(nfscomp.eq.0) ifscomp = ic
+             nfscomp = nfscomp + 1
+            end if
+           end do
 C         line is included in fine structure file
-          if(rintsumfs.gt.0) rintsum = rintsumfs
-          if(nfscomp.eq.0) ifscomp = 0
+           if(rintsumfs.gt.0) rintsum = rintsumfs
+           if(nfscomp.eq.0) ifscomp = 0
+          end if
          else
           jlo = 0.
           jhi = 0.
@@ -5682,8 +5685,8 @@ C           write(6,"(A,F12.6)") 'splam(ic)',splam(ic)
 C           write(6,"(A,4F5.2)") 'slo,llo,jlo,gjlo ',slo,llo,jlo,gjlo
 C           write(6,"(A,4F5.2)") 'shi,lhi,jhi,gjhi ',shi,lhi,jhi,gjhi
 C          not gf, because js are split!
-C           fsweight = spfosc(ic)
-           fsweight = spfosc(ic) * (2*llo+1)*(2*slo+1)
+           fsweight = spfosc(ic)
+C           fsweight = spfosc(ic) * (2*llo+1)*(2*slo+1)
 
           else
            gjlo = 1.
@@ -6910,9 +6913,10 @@ C     This procedure is quite analogous to HYDINI for hydrogen lines
 C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
-      COMMON/HE2MLIN/splam(30),spfosc(30),spnlo(30),spnhi(30),
-     *               spslo(30),spshi(30),splhi(30),spllo(30),
-     *               spjlo(30),spjhi(30),nmlin
+      COMMON/HE2MLIN/splam(90),spfosc(90),spnlo(90),
+     *               spnhi(90),spslo(90),spshi(90),
+     *               splhi(90),spllo(90),spjlo(90),
+     *               spjhi(90),nmlin
       logical :: he2ls
       COMMON/HE2PRF/PRFHE2(19,MDEPTH,36),WLHE2(19,36),NWLHE2(19),
      *              ILHE2(19),IUHE2(19)
@@ -6928,7 +6932,7 @@ C    read SLJ components for each line for Zeeman effect
        inquire(file="./he2ls.dat", exist=he2ls)
        if(he2ls) then
         open(unit=ih,file='./he2ls.dat',status='old')
-        do idx=1,30
+        do idx=1,90
          read(ih,*,end=900,err=8) splam(idx),spfosc(idx),
      *             spnlo(idx),spnhi(idx),spslo(idx),spshi(idx),
      *             spllo(idx),splhi(idx),spjlo(idx),spjhi(idx)
@@ -6942,11 +6946,11 @@ C    read SLJ components for each line for Zeeman effect
      *             spnhi(1),spslo(1),spshi(1),
      *             spllo(1),splhi(1),spjlo(1),
      *             spjhi(1)
-        else
-         nmlin = 1
-        end if
+       else
+        nmlin = 0
+       end if
       else
-       nmlin = 1
+       nmlin = 0
       end if
 C
 C
