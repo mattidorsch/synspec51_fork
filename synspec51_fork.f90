@@ -5644,7 +5644,9 @@ C        loop over split comp.
            if((spnlo(ic).eq.i).and.(spnhi(ic).eq.j))then
 C            write(6,*) 'splam(ic),spnlo(ic),i',
 C     *                  splam(ic),spnlo(ic),i
-           fsweight = spfosc(ic) ! not gf, because js are split!
+C          not gf, because js are split!
+C           fsweight = spfosc(ic)
+           fsweight = spfosc(ic)*(2*spllo(ic)+1)*(2*spslo(ic)+1)
            rintsumfs = rintsumfs +
      *               sumzeerint(spjlo(ic),spjhi(ic),bangle)*fsweight
            if(nfscomp.eq.0) ifscomp = ic
@@ -5676,7 +5678,13 @@ C          find Lande-g for lower and upper level
            gjhi = 1.
            call landeg(slo,llo,jlo,gjlo)
            call landeg(shi,lhi,jhi,gjhi)
-           fsweight = spfosc(ic) ! not gf, because js are split!
+C           write(6,"(A,F12.6)") 'splam(ic)',splam(ic)
+C           write(6,"(A,4F5.2)") 'slo,llo,jlo,gjlo ',slo,llo,jlo,gjlo
+C           write(6,"(A,4F5.2)") 'shi,lhi,jhi,gjhi ',shi,lhi,jhi,gjhi
+C          not gf, because js are split!
+C           fsweight = spfosc(ic)
+           fsweight = spfosc(ic) * (2*llo+1)*(2*slo+1)
+
           else
            gjlo = 1.
            gjhi = 1.
@@ -5704,11 +5712,6 @@ C             rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
              rint = rintsum
             end if
             fint = rint / rintsum * fsweight
-C            if(nfscomp.eq.0) then
-C            write(6,*) 'rintsum,rint,fint,i,j',
-C     *                  nfscomp,rintsum,rint,fint,i,j
-C            end if
-C            eshift = 4.66853663D-05 * bfield * mdiff
             eshift = 4.66853663D-05*bfield*(mjlo*gjlo-mjhi*gjhi)
 C
          IF(ILINE.GT.0) THEN
@@ -6910,6 +6913,7 @@ C
       COMMON/HE2MLIN/splam(30),spfosc(30),spnlo(30),spnhi(30),
      *               spslo(30),spshi(30),splhi(30),spllo(30),
      *               spjlo(30),spjhi(30),nmlin
+      logical :: he2ls
       COMMON/HE2PRF/PRFHE2(19,MDEPTH,36),WLHE2(19,36),NWLHE2(19),
      *              ILHE2(19),IUHE2(19)
       COMMON/HE2DAT/WL2(36,19),XT2(6),XNE2(11,19),PRF2(36,6,11),
@@ -6920,18 +6924,27 @@ C    read SLJ components for each line for Zeeman effect
       if(bfield.gt.0) then
        ih=99
        nmlin = 0
-       open(unit=ih,file='./he2ls.dat',status='old')
-       do idx=1,30
-        read(ih,*,end=900,err=8) splam(idx),spfosc(idx),spnlo(idx),
-     *                           spnhi(idx),spslo(idx),spshi(idx),
-     *                           splhi(idx),spllo(idx),spjlo(idx),
-     *                           spjhi(idx)
-        nmlin = nmlin + 1
-       end do
-       close(ih)
-    8  write(6,*) 'error reading he2ls.dat', splam
-  900  continue
-       write(6,*) 'read', nread
+       he2ls = .false.
+       inquire(file="./he2ls.dat", exist=he2ls)
+       if(he2ls) then
+        open(unit=ih,file='./he2ls.dat',status='old')
+        do idx=1,30
+         read(ih,*,end=900,err=8) splam(idx),spfosc(idx),
+     *             spnlo(idx),spnhi(idx),spslo(idx),spshi(idx),
+     *             spllo(idx),splhi(idx),spjlo(idx),spjhi(idx)
+         nmlin = nmlin + 1
+        end do
+        close(ih)
+    8   write(6,*) 'error reading he2ls.dat', splam
+  900   continue
+        write(6,"(A,I3,1X,A)") 'read', nmlin, 'lines from he2ls.dat'
+        write(6,"(F7.2,1X,E7.1,8F4.1)") splam(1),spfosc(1),spnlo(1),
+     *             spnhi(1),spslo(1),spshi(1),
+     *             spllo(1),splhi(1),spjlo(1),
+     *             spjhi(1)
+        else
+         nmlin = 1
+        end if
       else
        nmlin = 1
       end if
