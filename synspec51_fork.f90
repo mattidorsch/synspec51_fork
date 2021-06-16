@@ -9295,249 +9295,269 @@ C
       real*8, intent(in)  :: e
       integer, intent(in)  :: iation
       real*8, intent(out) :: s,l
-      if((abs(e-322009.594).lt.1d2).and.(iation.eq.603)) then ! CIII 4070 (F-G)
-       S = 1.
-       L = 3.
-      elseif((abs(e-238213.000).lt.1d2).and.(iation.eq.603)) then ! CIII 4650
-       S = 1.
-       L = 0.
-      elseif((abs(e-259724.297).lt.2d2).and.(iation.eq.603)) then ! CIII 4650
-       S = 1.
-       L = 1.
-      elseif((abs(e-323100.0).lt.1d2).and.(iation.eq.603)) then ! CIII 4163l
-       S = 1.
-       L = 2.
-      elseif((abs(e-346579.219).lt.1d1).and.(iation.eq.603)) then ! CIII 8196l
-       S = 1.
-       L = 4.
-      elseif((abs(e-347155.41).lt.2d1).and.(iation.eq.603)) then ! CIII 4163u
-       S = 1.
-       L = 3.
-      elseif((abs(e-358776.312).lt.1d1).and.(iation.eq.603)) then ! CIII 8196u
-       S = 1.
-       L = 5.
-      elseif((abs(e-449941.312).lt.5d0).and.(iation.eq.604)) then ! CIV 4658 (F-G)
-       S = 0.5
-       L = 3.
-      elseif((abs(e-302847.812).lt.1d2).and.(iation.eq.604)) then ! CIV 5800
-       S = 0.5
-       L = 0.
-      elseif((abs(e-471405.812).lt.5d0).and.(iation.eq.604)) then ! CIV 4658 (F-G)
-       S = 0.5
-       L = 4.
-      elseif((abs(e-320080.406).lt.2d2).and.(iation.eq.604)) then ! CIV 5800
-       S = 0.5
-       L = 1.
-      elseif((abs(e-149076.516).lt.2d2).and.(iation.eq.702)) then ! NII 4621,4630
-       S = 1.0
-       L = 1.
-      elseif((abs(e-166678.641).lt.1d2).and.(iation.eq.702)) then ! NII 5000
-       S = 1.0
-       L = 2.
-      elseif((abs(e-170666.234).lt.2d2).and.(iation.eq.702)) then ! NII 4621,4630
-       S = 1.0
-       L = 1.
-      elseif((abs(e-186652.484).lt.2d2).and.(iation.eq.702)) then ! NII 5000
-       S = 1.0
-       L = 3.
-      elseif((abs(e-187461.56).lt.2d2).and.(iation.eq.702)) then ! NII 4240l
-       S = 1.0
-       L = 2.
-      elseif((abs(e-189335.156).lt.2d2).and.(iation.eq.702)) then ! NII 4530 1Fo
-       S = 0.0
-       L = 1.
-C     JloL-coupling, no LS term; will not reproduce spectrum
-      elseif((abs(e-211402.031).lt.2d1).and.(iation.eq.702)) then ! NII 4530 G[9/2]
-       S = 1.0
-       L = 4.
-C     JloL-coupling, no LS term; will not reproduce spectrum
-      elseif((abs(e-211290.0).lt.2d1).and.(iation.eq.702)) then ! NII 4553 G[7/2]
-       S = 1.0
-       L = 4.
-      elseif((e.lt.2d2).and.(iation.eq.703)) then ! NIII ground state
-       S = 0.5
-       L = 1.
-      elseif((abs(e-57246.0).lt.1d2).and.(iation.eq.703)) then ! NIII
-       S = 1.5
-       L = 1.
-      elseif((abs(e-131004.3).lt.5d1).and.(iation.eq.703)) then ! NIII
-       S = 0.5
-       L = 0.
-      elseif((abs(e-145890.0).lt.1d2).and.(iation.eq.703)) then ! NIII
-       S = 0.5
-       L = 1.
-      elseif((abs(e-186797.1).lt.1d1).and.(iation.eq.703)) then ! NIII
-       S = 1.5
-       L = 0.
-      elseif((abs(e-203080.0).lt.3d1).and.(iation.eq.703)) then ! NIII
-       S = 0.5
-       L = 2.
-      elseif((abs(e-221302.2).lt.1d1).and.(iation.eq.703)) then ! NIII 4100
-       S = 0.5
-       L = 0.
-      elseif((abs(e-230404.3).lt.5d1).and.(iation.eq.703)) then ! NIII
-       S = 0.5
-       L = 1.
-      elseif((abs(e-245665.406).lt.2d2).and.(iation.eq.703)) then ! NIII 4100
-       S = 0.5
-       L = 1.
-      elseif((abs(e-267244.000).lt.2d2).and.(iation.eq.703)) then ! NIII 4640
-       S = 0.5
-       L = 2.
-      elseif((abs(e-287706.906).lt.2d2).and.(iation.eq.703)) then ! NIII 3367l
-       S = 1.5
-       L = 1.
-      elseif((abs(e-297200.0).lt.2d2).and.(iation.eq.703)) then ! NIII 4196
-       S = 0.5
-       L = 1.
-      elseif((abs(e-301082.6).lt.2d2).and.(iation.eq.703)) then ! NIII
-       S = 0.5
-       L = 0.
-      elseif((abs(e-309170.0).lt.5d1).and.(iation.eq.703)) then ! NIII
-       S = 0.5
-       L = 1.
-      elseif((abs(e-309849.812).lt.2d2).and.(iation.eq.703)) then ! NIII 4510,4514,4859
-       S = 1.5
-       L = 2.
-      elseif((abs(e-311700.0).lt.5d1).and.(iation.eq.703)) then ! NIII
-       S = 0.5
-       L = 1.
-      elseif((abs(e-314217.312).lt.1d2).and.(iation.eq.703)) then ! NIII 3771
-       S = 1.5
-       L = 0.
-      elseif((abs(e-317340.0).lt.1d2).and.(iation.eq.703)) then ! NIII 3367u
-       S = 1.5
-       L = 1.
-      elseif((abs(e-317779.500).lt.6d1).and.(iation.eq.703)) then ! NIII 4000
-       S = 0.5
-       L = 2.
-      elseif((abs(e-320288.312).lt.1d2).and.(iation.eq.703)) then ! NIII 4379 (F-G)
-       S = 0.5
-       L = 3.
-      elseif((abs(e-320978.188).lt.1d2).and.(iation.eq.703)) then ! NIII 4200l,5321l
-       S = 0.5
-       L = 2.
-      elseif((abs(e-330300.0).lt.1d2).and.(iation.eq.703)) then ! NIII 4859
-       S = 1.5
-       L = 3.
-      elseif((abs(e-339855.500).lt.2d2).and.(iation.eq.703)) then ! NIII 5321u
-       S = 0.5
-       L = 3.
-      elseif((abs(e-342750.094).lt.5d1).and.(iation.eq.703)) then ! NIII 4000u
-       S = 0.5
-       L = 3.
-      elseif((abs(e-343117.094).lt.2d2).and.(iation.eq.703)) then ! NIII 4379 (F-G)
-       S = 0.5
-       L = 4.
-      elseif((abs(e-368578.3).lt.1d2).and.(iation.eq.703)) then ! NIII
-       S = 1.5
-       L = 1.
-      elseif((abs(e-368893.8).lt.3d1).and.(iation.eq.703)) then ! NIII
-       S = 0.5
-       L = 0.
-      elseif((abs(e-370269.0).lt.3d1).and.(iation.eq.703)) then ! NIII
-       S = 0.5
-       L = 2.
-      elseif((abs(e-370365.0).lt.3d1).and.(iation.eq.703)) then ! NIII
-       S = 0.5
-       L = 0.
-      elseif((abs(e-371646.9).lt.5d1).and.(iation.eq.703)) then ! NIII
-       S = 0.5
-       L = 0.
-      elseif((abs(e-372651.0).lt.1d2).and.(iation.eq.703)) then ! NIII
-       S = 0.5
-       L = 2.
-      elseif((abs(e-373346.094).lt.1d2).and.(iation.eq.703)) then ! NIII 4623
-       S = 0.5
-       L = 2.
-      elseif((abs(e-373605.6).lt.5d1).and.(iation.eq.703)) then ! NIII
-       S = 0.5
-       L = 0.
-      elseif((abs(e-374427.0).lt.1d2).and.(iation.eq.703)) then ! NIII
-       S = 0.5
-       L = 2.
-      elseif((abs(e-394969.000).lt.2d2).and.(iation.eq.703)) then ! NIII 4623
-       S = 0.5
-       L = 3.
-      elseif((abs(e-377284.812).lt.1d3).and.(iation.eq.704)) then ! NIV 3480
-       S = 1.
-       L = 0.
-      elseif((abs(e-404522.406).lt.1d2).and.(iation.eq.704)) then ! NIV 4060
-       S = 0.
-       L = 1.
-      elseif((abs(e-405987.500).lt.2d2).and.(iation.eq.704)) then ! NIV 3480
-       S = 1.
-       L = 1.
-      elseif((abs(e-429159.594).lt.2d2).and.(iation.eq.704)) then ! NIV 4060
-       S = 0.
-       L = 2.
-      elseif((abs(e-267634.000).lt.6d2).and.(iation.eq.803)) then ! OIII 3760l
-       S = 1.
-       L = 1.
-      elseif((abs(e-294223.062).lt.8d2).and.(iation.eq.803)) then ! OIII 3760u
-       S = 1.
-       L = 2.
-      elseif((abs(e-219130.766).lt.1d1).and.(iation.eq.1002)) then ! NeII 3335
-       S = 1.5
-       L = 1.
-      elseif((abs(e-249108.609).lt.1d1).and.(iation.eq.1002)) then ! NeII 3335
-       S = 1.5
-       L = 2.
-      elseif((abs(e-71490.19).lt.1d1).and.(iation.eq.1202)) then ! MgII 4481l
-       S = 0.5
-       L = 2.
-      elseif((abs(e-93799.75).lt.1d1).and.(iation.eq.1202)) then ! MgII 4481u
-       S = 0.5
-       L = 3.
-      elseif((abs(e-193978.891).lt.1d0).and.(iation.eq.1404)) then ! SiIV 4100
-       S = 0.5
-       L = 0.
-      elseif((abs(e-218428.672).lt.5d2).and.(iation.eq.1404)) then ! SiIV 3165
-       S = 0.5
-       L = 1.
-      elseif((abs(e-250008.141).lt.1d2).and.(iation.eq.1404)) then ! SiIV 3165
-       S = 0.5
-       L = 2.
-      elseif((abs(e-293719.000).lt.1d1).and.(iation.eq.1404)) then ! SiIV 4631 (F-G)
-       S = 0.5
-       L = 3.
-      elseif((abs(e-315305.281).lt.1d2).and.(iation.eq.1404)) then ! SiIV 4631 (F-G)
-       S = 0.5
-       L = 4.
-      elseif((abs(e-181448.203).lt.1d1).and.(iation.eq.1604)) then ! SIV 3097,3118l
-       S = 0.5
-       L = 0.
-      elseif((abs(e-213725.297).lt.3d2).and.(iation.eq.1604)) then ! SIV 3097u,3118u,3340u
-       S = 0.5
-       L = 1.
-      elseif((abs(e-255400.297).lt.3d2).and.(iation.eq.1604)) then ! SIV 4504l, 3363l
-       S = 0.5
-       L = 2.
-      elseif((abs(e-263600.0).lt.6d2).and.(iation.eq.1604)) then ! SIV 3308l
-       S = 1.5
-       L = 1.
-C     mixed with 3d 2Fo
-      elseif((abs(e-277596.000).lt.3d2).and.(iation.eq.1604)) then ! SIV 4504.07u
-       S = 0.5
-       L = 3.
-      elseif((abs(e-285122.20).lt.3d2).and.(iation.eq.1604)) then ! SIV 3363u
-       S = 1.5
-       L = 2.
-      elseif((abs(e-293750.0).lt.6d2).and.(iation.eq.1604)) then ! SIV 3308u
-       S = 1.5
-       L = 2.
-      elseif((abs(e-230924.375).lt.4d2).and.(iation.eq.2204)) then ! TiIV 3541,3576
-       S = 0.5
-       L = 1.
-      elseif((abs(e-258877.078).lt.1d2).and.(iation.eq.2204)) then ! TiIV 3541,3576
-       S = 0.5
-       L = 2.
-      elseif((abs(e-278511.219).lt.1d1).and.(iation.eq.2204)) then ! TiIV 4618 (G-H)
-       S = 0.5
-       L = 4.
-      elseif((abs(e-300158.750).lt.1d1).and.(iation.eq.2204)) then ! TiIV 4618 (G-H)
-       S = 0.5
-       L = 5.
+      if(iation.eq.603) then ! CIII
+       if(abs(e-322009.594).lt.1d2) then ! 4070 (F-G)
+        S = 1.
+        L = 3.
+       elseif(abs(e-238213.000).lt.1d2) then ! 4650
+        S = 1.
+        L = 0.
+       elseif(abs(e-259724.297).lt.2d2) then ! 4650
+        S = 1.
+        L = 1.
+       elseif(abs(e-323100.0).lt.1d2) then ! 4163l
+        S = 1.
+        L = 2.
+       elseif(abs(e-346579.219).lt.1d1) then ! 8196l
+        S = 1.
+        L = 4.
+       elseif(abs(e-347155.41).lt.2d1) then ! 4163u
+        S = 1.
+        L = 3.
+       elseif(abs(e-358776.312).lt.1d1) then ! 8196u
+        S = 1.
+        L = 5.
+       end if
+      elseif(iation.eq.604) then ! CIV
+       if(abs(e-449941.312).lt.5d0) then ! CIV 4658 (F-G)
+        S = 0.5
+        L = 3.
+       elseif(abs(e-302847.812).lt.1d2) then ! CIV 5800
+        S = 0.5
+        L = 0.
+       elseif(abs(e-471405.812).lt.5d0) then ! CIV 4658 (F-G)
+        S = 0.5
+        L = 4.
+       elseif(abs(e-320080.406).lt.2d2) then ! CIV 5800
+        S = 0.5
+        L = 1.
+       elseif(abs(e-149076.516).lt.2d2) then ! NII 4621,4630
+        S = 1.0
+        L = 1.
+       elseif(abs(e-166678.641).lt.1d2) then ! NII 5000
+        S = 1.0
+        L = 2.
+       elseif(abs(e-170666.234).lt.2d2) then ! NII 4621,4630
+        S = 1.0
+        L = 1.
+       elseif(abs(e-186652.484).lt.2d2) then ! NII 5000
+        S = 1.0
+        L = 3.
+       elseif(abs(e-187461.56).lt.2d2) then ! NII 4240l
+        S = 1.0
+        L = 2.
+       elseif(abs(e-189335.156).lt.2d2) then ! NII 4530 1Fo
+        S = 0.0
+        L = 1.
+C      Jlo-L coupling, no LS term; will not reproduce spectrum
+       elseif(abs(e-211402.031).lt.2d1)then ! NII 4530 G[9/2]
+        S = 1.0
+        L = 4.
+C      Jlo-L coupling, no LS term; will not reproduce spectrum
+       elseif(abs(e-211290.0).lt.2d1) then ! NII 4553 G[7/2]
+        S = 1.0
+        L = 4.
+       end if
+      elseif(iation.eq.703) then ! NIII
+       if(e.lt.2d2) then ! ground state
+        S = 0.5
+        L = 1.
+       elseif(abs(e-57246.0).lt.1d2) then
+        S = 1.5
+        L = 1.
+       elseif(abs(e-131004.3).lt.5d1) then
+        S = 0.5
+        L = 0.
+       elseif(abs(e-145890.0).lt.1d2) then
+        S = 0.5
+        L = 1.
+       elseif(abs(e-186797.1).lt.1d1) then
+        S = 1.5
+        L = 0.
+       elseif(abs(e-203080.0).lt.3d1) then
+        S = 0.5
+        L = 2.
+       elseif(abs(e-221302.2).lt.1d1) then ! 4100
+        S = 0.5
+        L = 0.
+       elseif(abs(e-230404.3).lt.5d1) then !
+        S = 0.5
+        L = 1.
+       elseif(abs(e-245665.406).lt.2d2) then ! NIII 4100
+        S = 0.5
+        L = 1.
+       elseif(abs(e-267244.000).lt.2d2) then ! NIII 4640
+        S = 0.5
+        L = 2.
+       elseif(abs(e-287706.906).lt.2d2) then ! NIII 3367l
+        S = 1.5
+        L = 1.
+       elseif(abs(e-297200.0).lt.2d2) then ! NIII 4196
+        S = 0.5
+        L = 1.
+       elseif(abs(e-301082.6).lt.2d2) then ! NIII
+        S = 0.5
+        L = 0.
+       elseif(abs(e-309170.0).lt.5d1) then ! NIII
+        S = 0.5
+        L = 1.
+       elseif(abs(e-309849.812).lt.2d2) then ! NIII 4510,4514,4859
+        S = 1.5
+        L = 2.
+       elseif(abs(e-311700.0).lt.5d1) then ! NIII
+        S = 0.5
+        L = 1.
+       elseif(abs(e-314217.312).lt.1d2) then ! NIII 3771
+        S = 1.5
+        L = 0.
+       elseif(abs(e-317340.0).lt.1d2) then ! NIII 3367u
+        S = 1.5
+        L = 1.
+       elseif(abs(e-317779.500).lt.6d1) then ! NIII 4000
+        S = 0.5
+        L = 2.
+       elseif(abs(e-320288.312).lt.1d2) then ! NIII 4379 (F-G)
+        S = 0.5
+        L = 3.
+       elseif(abs(e-320978.188).lt.1d2) then ! NIII 4200l,5321l
+        S = 0.5
+        L = 2.
+       elseif(abs(e-330300.0).lt.1d2) then ! NIII 4859
+        S = 1.5
+        L = 3.
+       elseif(abs(e-339855.500).lt.2d2) then ! NIII 5321u
+        S = 0.5
+        L = 3.
+       elseif(abs(e-342750.094).lt.5d1) then ! NIII 4000u
+        S = 0.5
+        L = 3.
+       elseif(abs(e-343117.094).lt.2d2) then ! NIII 4379 (F-G)
+        S = 0.5
+        L = 4.
+       elseif(abs(e-368578.3).lt.1d2) then
+        S = 1.5
+        L = 1.
+       elseif(abs(e-368893.8).lt.3d1) then
+        S = 0.5
+        L = 0.
+       elseif(abs(e-370269.0).lt.3d1) then
+        S = 0.5
+        L = 2.
+       elseif(abs(e-370365.0).lt.3d1) then
+        S = 0.5
+        L = 0.
+       elseif(abs(e-371646.9).lt.5d1) then
+        S = 0.5
+        L = 0.
+       elseif(abs(e-372651.0).lt.1d2) then
+        S = 0.5
+        L = 2.
+       elseif(abs(e-373346.094).lt.1d2) then ! NIII 4623
+        S = 0.5
+        L = 2.
+       elseif(abs(e-373605.6).lt.5d1) then
+        S = 0.5
+        L = 0.
+       elseif(abs(e-374427.0).lt.1d2) then
+        S = 0.5
+        L = 2.
+       elseif(abs(e-394969.000).lt.2d2) then ! NIII 4623
+        S = 0.5
+        L = 3.
+       end if
+      elseif(iation.eq.704) then ! NIV
+       if(abs(e-377284.812).lt.1d3) then ! NIV 3480
+        S = 1.
+        L = 0.
+       elseif(abs(e-404522.406).lt.1d2) then ! NIV 4060
+        S = 0.
+        L = 1.
+       elseif(abs(e-405987.500).lt.2d2) then ! NIV 3480
+        S = 1.
+        L = 1.
+       elseif(abs(e-429159.594).lt.2d2) then ! NIV 4060
+        S = 0.
+        L = 2.
+       end if
+      elseif(iation.eq.803) then
+       if(abs(e-267634.000).lt.6d2) then ! OIII 3760l
+        S = 1.
+        L = 1.
+       elseif(abs(e-294223.062).lt.8d2) then ! OIII 3760u
+        S = 1.
+        L = 2.
+       end if
+      elseif(iation.eq.1002) then
+       if(abs(e-219130.766).lt.1d1) then ! NeII 3335
+        S = 1.5
+        L = 1.
+       elseif(abs(e-249108.609).lt.1d1) then ! NeII 3335
+        S = 1.5
+        L = 2.
+       end if
+      elseif(iation.eq.1202) then
+       if(abs(e-71490.19).lt.1d1) then ! MgII 4481l
+        S = 0.5
+        L = 2.
+       elseif(abs(e-93799.75).lt.1d1) then ! MgII 4481u
+        S = 0.5
+        L = 3.
+       end if
+      elseif(iation.eq.1404) then ! SiIV
+       if(abs(e-193978.891).lt.1d0) then ! SiIV 4100
+        S = 0.5
+        L = 0.
+       elseif(abs(e-218428.672).lt.5d2) then ! SiIV 3165
+        S = 0.5
+        L = 1.
+       elseif(abs(e-250008.141).lt.1d2) then ! SiIV 3165
+        S = 0.5
+        L = 2.
+       elseif(abs(e-293719.000).lt.1d1) then ! SiIV 4631 (F-G)
+        S = 0.5
+        L = 3.
+       elseif(abs(e-315305.281).lt.1d2) then ! SiIV 4631 (F-G)
+        S = 0.5
+        L = 4.
+       end if
+      elseif(iation.eq.1604) then
+       if(abs(e-181448.203).lt.1d1) then ! SIV 3097,3118l
+        S = 0.5
+        L = 0.
+       elseif(abs(e-213725.297).lt.3d2) then ! SIV 3097u,3118u,3340u
+        S = 0.5
+        L = 1.
+       elseif(abs(e-255400.297).lt.3d2) then ! SIV 4504l, 3363l
+        S = 0.5
+        L = 2.
+       elseif(abs(e-263600.0).lt.6d2) then ! SIV 3308l
+        S = 1.5
+        L = 1.
+C      mixed with 3d 2Fo
+       elseif(abs(e-277596.000).lt.3d2) then ! SIV 4504.07u
+        S = 0.5
+        L = 3.
+       elseif(abs(e-285122.20).lt.3d2) then ! SIV 3363u
+        S = 1.5
+        L = 2.
+       elseif(abs(e-293750.0).lt.6d2) then ! SIV 3308u
+        S = 1.5
+        L = 2.
+       end if
+      elseif(iation.eq.2204) then
+       if(abs(e-230924.375).lt.4d2)then ! TiIV 3541,3576
+        S = 0.5
+        L = 1.
+       elseif(abs(e-258877.078).lt.1d2) then ! TiIV 3541,3576
+        S = 0.5
+        L = 2.
+       elseif(abs(e-278511.219).lt.1d1) then ! TiIV 4618 (G-H)
+        S = 0.5
+        L = 4.
+       elseif(abs(e-300158.750).lt.1d1)then ! TiIV 4618 (G-H)
+        S = 0.5
+        L = 5.
+       end if
 C      elseif((iation.eq.101).or.(iation.eq.202)) then ! H/HeII: S=0.5, L varies
 C       S = 0.5
 C       L = -1.
