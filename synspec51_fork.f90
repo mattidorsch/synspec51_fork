@@ -9322,6 +9322,12 @@ C
       elseif((abs(e-320080.406).lt.2d2).and.(iation.eq.604)) then ! CIV 5800
        S = 0.5
        L = 1.
+      elseif((abs(e-166678.641).lt.1d2).and.(iation.eq.702)) then ! NII 5000
+       S = 1.0
+       L = 2.
+      elseif((abs(e-186652.484).lt.2d2).and.(iation.eq.702)) then ! NII 5000
+       S = 1.0
+       L = 3.
       elseif((e.lt.2d2).and.(iation.eq.703)) then ! NIII ground state
        S = 0.5
        L = 1.
@@ -9717,16 +9723,45 @@ C
 C        special expressions for He I lines
 C
          ELSE
-            DO 60 IJ=3,NFREQ
+            if(bfield.GT.0) then
+             jlo = 0
+             jhi = 1
+             rintsum = sumzeerint(jlo,jhi,bangle)
+             if(rintsum.le.0) rintsum = 1.
+            else
+             jlo = 0
+             jhi = 0
+             rintsum = 1.
+            end if
+            jdiff = jhi-jlo
+            gjlo = 1.
+            gjhi = 1.
+            do mlo=-nint(jlo),nint(jlo)
+             do mhi=-nint(jhi),nint(jhi)
+              mdiff = mlo-mhi
+              if(abs(mdiff).LE.1) then
+                wshiftm=4.66853663D-13*bfield*
+     *                  (cas/fr0)**2*(mlo*gjlo-mhi*gjhi)
+                if(bfield.gt.0) then
+                 rint = zeerint(jlo,jdiff,mlo*1.D0,mdiff*1.D0,bangle)
+                else
+                 rint = rintsum
+                end if
+C            DO 60 IJ=3,NFREQ
+            DO IJ=3,NFREQ
                FR=FREQ(IJ)
                if(isp.gt.0)then
-                  ABL=AB0*PHE1(ID,FR,ISP-1,0.D0)
+                  ABL=AB0*PHE1(ID,FR,ISP-1,wshiftm)
                elseif(isp.lt.0)then
                   isp2=-isp
-                  call absohe(id,fr,isp2,il,abl,eml,0.D0)
+                  call absohe(id,fr,isp2,il,abl,eml,wshiftm)
                endif
-               ABLIN(IJ)=ABLIN(IJ)+ABL
-   60       CONTINUE
+               ABLIN(IJ)=ABLIN(IJ)+ABL *rint/rintsum
+            END DO
+              end if
+             end do
+            end do
+C   60       CONTINUE
          END IF
 
 C
@@ -9838,7 +9873,7 @@ C            DO 90 IJ=3,NFREQ
              do mhi=-nint(jhi),nint(jhi)
               mdiff = mlo-mhi
               if(abs(mdiff).LE.1) then
-                eshift = 4.66853663D-05*bfield*(mlo*gjlo-mhi*gjhi)
+C                eshift = 4.66853663D-05*bfield*(mlo*gjlo-mhi*gjhi)
 C                wshiftm = cas/(FR0+CL*eshift) - cas/FR0
                 wshiftm=4.66853663D-13*bfield*
      *                  (cas/FR0)**2*(mlo*gjlo-mhi*gjhi)
