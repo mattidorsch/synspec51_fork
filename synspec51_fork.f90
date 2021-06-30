@@ -4855,7 +4855,8 @@ C          mhimax = J-1
           rintsum = sumzee
           do mlo=-mlomax,mlomax
            do mhi=-mhimax,mhimax
-            mdiff = mlo-mhi
+C            mdiff = mlo-mhi
+            mdiff = mhi-mlo
             if(abs(mdiff).LE.1) then
              rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
              rintsum = rintsum + rint
@@ -4885,7 +4886,8 @@ c
             END DO
             do mlo=-mlomax,mlomax
              do mhi=-mhimax,mhimax
-              mdiff = mlo-mhi
+C              mdiff = mlo-mhi
+              mdiff = mhi-mlo
               if(abs(mdiff).le.1) then
                if(bfield.gt.0) then
                 rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
@@ -4968,7 +4970,8 @@ c           FID0=CID1*FIJ0/DOP
 C
             do mlo=-mlomax,mlomax
              do mhi=-mhimax,mhimax
-              mdiff = mlo-mhi
+C              mdiff = mlo-mhi
+              mdiff = mhi-mlo
               if(abs(mdiff).le.1) then
                if(bfield.gt.0) then
                 rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
@@ -5704,6 +5707,7 @@ C           fsweight = spfosc(ic) * (2*llo+1)*(2*slo+1)
           end if
           jdiff=jhi-jlo
 C
+C        S=0.5 -> half-int steps
          do imlo=-nint(jlo*2.),nint(jlo*2.),2
           do imhi=-nint(jhi*2.),nint(jhi*2.),2
            if(abs(imlo-imhi).le.2) then
@@ -9599,7 +9603,9 @@ C
      *               hejhi(90),henmlin
       real*8 JLO,JHI,gjlo,gjhi,eshift,qslo,qllo,qshi,qlhi
       real*8 mjlo,mjhi,mjdiff,jdiff,rint,rintsum
+C      real*8 mdiff,mhi,mlo
       real*8 slo,shi,llo,lhi,fsweight
+      integer imlo,imhi
       integer henmlin
       logical :: he1ls
 C     L and S for 24-lev HeI ion (-> Zeeman split)
@@ -9816,7 +9822,8 @@ C
             gjhi = 1.
             do mlo=-nint(jlo),nint(jlo)
              do mhi=-nint(jhi),nint(jhi)
-              mdiff = mlo-mhi
+C              mdiff = mlo-mhi
+              mdiff = mhi-mlo
               if(abs(mdiff).LE.1) then
                 wshiftm=4.66853663D-13*bfield*
      *                  (cas/fr0)**2*(mlo*gjlo-mhi*gjhi)
@@ -9890,12 +9897,15 @@ C            for triplet lines
              nfscomp = 0
              ifscomp = 0
              if(henmlin.gt.0)then
-              rintsumfs = 0
+              rintsumfs = 0.
               do ic=1,henmlin
                if((nint(henlo(ic)).eq.ilo).and.
      *            (nint(henhi(ic)).eq.ihi))then
 C                write(6,*) 'cas/FR0,ilo,ihi',cas/FR0,ilo,ihi
                 fsweight = hefosc(ic)
+C                fsweight = hefosc(ic)*(2*hello(ic)+1)*(2*heslo(ic)+1)
+C                fsweight = hefosc(ic)*(2*hejlo(ic)+1)
+C                fsweight = 1.
                 rintsumfs = rintsumfs + fsweight*
      *                      sumzeerint(hejlo(ic),hejhi(ic),bangle)
                 if(nfscomp.eq.0) ifscomp = ic
@@ -9928,10 +9938,14 @@ C             find Lande-g for lower and upper level
               gjhi = 1.
               call landeg(slo,llo,jlo,gjlo)
               call landeg(shi,lhi,jhi,gjhi)
-C           write(6,"(A,F12.6)") 'helam(ic)',helam(ic)
-C           write(6,"(A,4F5.2)") 'slo,llo,jlo,gjlo ',slo,llo,jlo,gjlo
-C           write(6,"(A,4F5.2)") 'shi,lhi,jhi,gjhi ',shi,lhi,jhi,gjhi
+              write(6,"(A,F12.6,E9.2)") 'helam(ic),hefosc(ic)',
+     *                                   helam(ic),hefosc(ic)
+              write(6,"(A,4F5.2)") 'slo,llo,jlo,gjlo ',slo,llo,jlo,gjlo
+              write(6,"(A,4F5.2)") 'shi,lhi,jhi,gjhi ',shi,lhi,jhi,gjhi
               fsweight = hefosc(ic)
+C              fsweight = hefosc(ic)*(2*hejlo(ic)+1)
+C              fsweight = hefosc(ic)*(2*hello(ic)+1)*(2*heslo(ic)+1)
+C              fsweight = 1.
              else
               fr0 = fr00
               gjlo = 1.
@@ -9948,9 +9962,15 @@ C           write(6,"(A,4F5.2)") 'shi,lhi,jhi,gjhi ',shi,lhi,jhi,gjhi
              jdiff=jhi-jlo
 C
 C            DO 90 IJ=3,NFREQ
+C            do imlo=NINT(-jlo*2),NINT(jlo*2),2
+C             do imhi=NINT(-jhi*2),NINT(jhi*2),2
+C               mlo = imlo/2.
+C               mhi = imhi/2.
+C           no need for half-integer steps as S=1
             do mlo=-nint(jlo),nint(jlo)
              do mhi=-nint(jhi),nint(jhi)
-              mdiff = mlo-mhi
+C              mdiff = mlo-mhi
+              mdiff = mhi-mlo
               if(abs(mdiff).LE.1) then
 C                eshift = 4.66853663D-05*bfield*(mlo*gjlo-mhi*gjhi)
 C                wshiftm = cas/(FR0+CL*eshift) - cas/FR0
