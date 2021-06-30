@@ -9217,7 +9217,8 @@ C
 C     ==============================
 C
 C     relative intensities for linear Zeeman effect
-C     after Kawka & Vennes (2011)
+C     after Kawka & Vennes (2011), corrected for the sign error in
+C     their Eq. 5 (sig components for dj, dm=0)
 C
 C     psi: angle between the magnetic fieldaxis and the line of sight
 C          in degree
@@ -9231,9 +9232,9 @@ C
        if(mjdiff.eq.0) then ! pi comp
         rint = (mjlo*mjlo)*fpi
        elseif(mjdiff.eq.1) then ! sig+
-        rint = (jlo-mjlo)*(jlo-mjlo+1)/4*fsig
+        rint = (jlo-mjlo)*(jlo+mjlo+1)/4*fsig
        elseif(mjdiff.eq.-1) then ! sig-
-        rint = (jlo+mjlo)*(jlo+mjlo+1)/4*fsig
+        rint = (jlo+mjlo)*(jlo-mjlo+1)/4*fsig
        end if
       elseif(jdiff.eq.1) then ! j -> j+1
        if(mjdiff.eq.0) then ! pi
@@ -9545,7 +9546,7 @@ C      mixed with 3d 2Fo
         L = 2.
        end if
       elseif(iation.eq.2204) then
-       if(abs(e-230924.375).lt.4d2)then ! TiIV 3541,3576
+       if(abs(e-230924.375).lt.4d2) then ! TiIV 3541,3576
         S = 0.5
         L = 1.
        elseif(abs(e-258877.078).lt.1d2) then ! TiIV 3541,3576
@@ -9913,6 +9914,7 @@ C              write(6,*) 'rintsumfs',rintsumfs
             end if
 C
             do ic=ifscomp,max(nfscomp+ifscomp-1,ifscomp)
+C            splitting fine structure
              if(nfscomp.gt.0) then
               jlo = hejlo(ic)
               jhi = hejhi(ic)
