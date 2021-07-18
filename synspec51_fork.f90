@@ -174,7 +174,8 @@ C     IOPHLI     - switch for treatment the Lyman line wings -see LYMLIN
 C
       bfield=3.42D5 ! magnetic field in Gauss
 C      bfield=0 ! magnetic field in Gauss
-      bangle=9.0D1 ! angle between the magnetic fieldaxis and the line of sight
+C      bfield=1.D-3 ! magnetic field in Gauss
+      bangle=9.0D1 * 1.7453292519943D-2 ! angle between the magnetic fieldaxis and the line of sight
       mode=0
       read(1,*,err=10,end=10) mode
    10 continue
@@ -4855,7 +4856,6 @@ C          mhimax = J-1
           rintsum = sumzee
           do mlo=-mlomax,mlomax
            do mhi=-mhimax,mhimax
-C            mdiff = mlo-mhi
             mdiff = mhi-mlo
             if(abs(mdiff).LE.1) then
              rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
@@ -4886,7 +4886,6 @@ c
             END DO
             do mlo=-mlomax,mlomax
              do mhi=-mhimax,mhimax
-C              mdiff = mlo-mhi
               mdiff = mhi-mlo
               if(abs(mdiff).le.1) then
                if(bfield.gt.0) then
@@ -4970,7 +4969,6 @@ c           FID0=CID1*FIJ0/DOP
 C
             do mlo=-mlomax,mlomax
              do mhi=-mhimax,mhimax
-C              mdiff = mlo-mhi
               mdiff = mhi-mlo
               if(abs(mdiff).le.1) then
                if(bfield.gt.0) then
@@ -5618,6 +5616,7 @@ C
          JJ=J*J
          XJJ=UN/JJ
          ABTRA=PJ(I)*WNHE2(J,ID)
+C        II*XJJ = gwlo/gwhi; I=lo, J=hi
          EMTRA=PJ(J)*WNHE2(I,ID)*II*XJJ*EXP(CPJ*(XII-XJJ)*T1)
 C        HeII 1640; air -> vacuum
 C        directly affects HeII wl for SB lines
@@ -5638,7 +5637,7 @@ C        directly affects HeII wl for SB lines
          END IF
 C
 C        loop over split comp.
-         if(bfield.GT.0) then
+         if(bfield.gt.0) then
           jlo = 0.
           jhi = 1.
           rintsum = sumzeerint(jlo,jhi,bangle)
@@ -5653,14 +5652,15 @@ C     *                  splam(ic),spnlo(ic),spnhi(ic),i,j
 C          not gf, because js are split!
              fsweight = spfosc(ic)
 C           fsweight = spfosc(ic)*(2*spllo(ic)+1)*(2*spslo(ic)+1)
-             rintsumfs = rintsumfs +
-     *                sumzeerint(spjlo(ic),spjhi(ic),bangle)*fsweight
+C             rintsumfs = rintsumfs +
+C     *                sumzeerint(spjlo(ic),spjhi(ic),bangle)*fsweight
+             rintsumfs = rintsumfs + fsweight
              if(nfscomp.eq.0) ifscomp = ic
              nfscomp = nfscomp + 1
             end if
            end do
 C         line is included in fine structure file
-           if(rintsumfs.gt.0) rintsum = rintsumfs
+C           if(rintsumfs.gt.0) rintsum = rintsumfs
            if(nfscomp.eq.0) ifscomp = 0
           end if
          else
@@ -5680,17 +5680,31 @@ C        write(6,*) 'nfscomp,ifscomp',nfscomp,ifscomp
            shi = spshi(ic)
            llo = spllo(ic)
            lhi = splhi(ic)
+C          stat. weight for LS states
+           gwlo = 2*jlo+1
+           gwhi = 2*jlo+1
+C          stat. weight for main qn "levels"
+           gwlon = 2*JJ
+           gwhin = 2*II
 C          find Lande-g for lower and upper level
-           gjlo = 1.
-           gjhi = 1.
+C           gjlo = 1.
+C           gjhi = 1.
            call landeg(slo,llo,jlo,gjlo)
            call landeg(shi,lhi,jhi,gjhi)
 C           write(6,"(A,F12.6)") 'splam(ic)',splam(ic)
 C           write(6,"(A,4F5.2)") 'slo,llo,jlo,gjlo ',slo,llo,jlo,gjlo
 C           write(6,"(A,4F5.2)") 'shi,lhi,jhi,gjhi ',shi,lhi,jhi,gjhi
 C          not gf, because js are split!
-           fsweight = spfosc(ic)
-C           fsweight = spfosc(ic) * (2*llo+1)*(2*slo+1)
+C           fsweight = spfosc(ic)
+C
+C          this is correct for split term = level
+           rintsum = sumzeerint(jlo,jhi,bangle)
+C          multiplet-normalized line strength
+           fsweight = spfosc(ic) / rintsumfs
+C           ldiff = nint(lhi - llo)
+C           jdiff = jhi - jlo
+C           call fsnint(slo,nint(llo),jlo,ldiff,nint(jdiff),fsweight)
+C
            wline = splam(ic)
           else
            gjlo = 1.
@@ -5715,7 +5729,6 @@ C        S=0.5 -> half-int steps
             mjhi = imhi/2.
             mjdiff = mjhi-mjlo
             if(bfield.gt.0) then
-C             rint = zeerint(nlo,ndiff,mlo*1.D0,mdiff*1.D0,bangle)
              rint = zeerint(jlo,jdiff,mjlo,mjdiff,bangle)
             else
              rint = rintsum
@@ -5746,8 +5759,11 @@ C               AL=ABS(WLAM(IJ)-WLINE+WSHIFTM)
      *             (WLHE2(ILINE,IW1)-WLHE2(ILINE,IW0))
 C              mag. split: fint
                SG=EXP(PRFF*AL10)*FID * fint
-               ABSO(IJ)=ABSO(IJ)+SG*ABTRA
-               EMIS(IJ)=EMIS(IJ)+SG*EMTRA
+               ABSO(IJ)=ABSO(IJ)+SG*ABTRA ! *gwlon/gwlo
+               EMIS(IJ)=EMIS(IJ)+SG*EMTRA ! 
+C              ABTRA=PJ(I)*WNHE2(J,ID)
+C              EMTRA=PJ(J)*WNHE2(I,ID)*II*XJJ*EXP(CPJ*(XII-XJJ)*T1)
+C
    50       CONTINUE
 C            END DO
           ELSE
@@ -8742,7 +8758,7 @@ C
       SUBROUTINE NLTSET(MODE,IL,IAT,ION,EXCL,EXCU,QL,QU,IEVEN,INNLT0)
 C     ===============================================================
 C
-C     NLTE option -  automatic assignement of level indices
+C     NLTE option - automatic assignement of level indices
 C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
@@ -9108,13 +9124,13 @@ C
 C     CALCULATION OF THE 
 C     CENTRAL OPACITY (ABCENT) AND THE LINE SOURCE FUNCTION  (SLIN)
 C
-      if(gi.le.0..or.gj.le.0.) return
+      if(gi.le.0..or.gj.le.0.) return ! 2*q+1
       ILNLT=INDNLT(IL)
-      IF(ILNLT.LE.0) RETURN
+      IF(ILNLT.LE.0) RETURN ! 0->LTE
       IAT=INDAT(IL)/100
       ION=MOD(INDAT(IL),100)
       EGF=EXP(GF0(IL))
-      BNU=BN*(FREQ0(IL)*1.E-15)**3
+      BNU=BN*(FREQ0(IL)*1.E-15)**3 ! 2*h/c**2 * freq
       DP0=3.33564E-11*FREQ0(IL)
       DP1=1.651E8/AMAS(IAT)
       IF(ILW.LE.0) GO TO 100
@@ -9129,7 +9145,7 @@ C
          PP=PNLT(IAT,ION,ID)
          IF(ILW.GT.0) THEN
             PI=POPUL(ILW,ID)/G(ILW)
-          ELSE
+          ELSE ! this never happens
             PI=PP*EXP((ENEV(IAT,ION)*XET3-EXCL0(IL))/T)
          END IF
          IF(IUN.GT.0) THEN
@@ -9146,14 +9162,14 @@ C
             x=un
          end if
          IF(X.EQ.UN) X=EXP(4.79928E-11*FREQ0(IL)/T)
-         DOP=DP0*SQRT(DP1*T+VTURB(ID))
+         DOP=DP0*SQRT(DP1*T+VTURB(ID)) ! VTURB = VTB**2
          SLIN(ILNLT,ID)=BNU/(X-UN)
          if(pi.gt.0.) ABCENT(ILNLT,ID)=PI*(UN-UN/X)*EGF/DOP
    60 CONTINUE
       RETURN
 C
 C     Approximate NLTE for resonance lines - second order escape
-C     probablity theory form of the source function
+C     probability theory form of the source function
 C
 C     Optical depth scale
 C
@@ -9217,44 +9233,48 @@ C ********************************************************************
 C
 C
 C
-      function zeerint(jlo,jdiff,mjlo,mjdiff,psi)
+      function zeerint(j,jdiff,mj,mjdiff,psi)
 C     ==============================
 C
 C     relative intensities for linear Zeeman effect
 C     after Kawka & Vennes (2011), corrected for the sign error in
 C     their Eq. 5 (sig components for dj, dm=0)
 C
-C     psi: angle between the magnetic fieldaxis and the line of sight
-C          in degree
+C     j: tot. angular momentum qn for initial level
+C     jdiff = j_final - j_initial
+C     mj: magnetic qn for initial level
+C     mjdiff: mj_final - mj_initial
+C     psi: angle between the magnetic field axis and the line of sight
+C          in rad
 C
-      real*8 jlo,jdiff,mjlo,mjdiff,psi,rint,zeerint,fpi,fsig,dtorad
-      PARAMETER (dtorad=1.7453292519943D-2)
+      real*8 j,jdiff,mj,mjdiff,psi,rint,zeerint,
+     *       fpi,fsig
 C
-      fpi = sin(psi*dtorad)*sin(psi*dtorad)
-      fsig = 1+cos(psi*dtorad)*cos(psi*dtorad)
+      fpi = sin(psi)**2
+      fsig = 1+cos(psi)**2
       if(jdiff.eq.0) then
        if(mjdiff.eq.0) then ! pi comp
-        rint = (mjlo*mjlo)*fpi
+        rint = (mj*mj)*fpi
        elseif(mjdiff.eq.1) then ! sig+
-        rint = (jlo-mjlo)*(jlo+mjlo+1)/4*fsig
+        rint = (j-mj)*(j+mj+1)/4*fsig
        elseif(mjdiff.eq.-1) then ! sig-
-        rint = (jlo+mjlo)*(jlo-mjlo+1)/4*fsig
+        rint = (j+mj)*(j-mj+1)/4*fsig
        end if
       elseif(jdiff.eq.1) then ! j -> j+1
        if(mjdiff.eq.0) then ! pi
-        rint = ((jlo+1)**2 - mjlo**2)*fpi
+        rint = ((j+1)**2 - mj**2)*fpi
        elseif(mjdiff.eq.1) then ! sig+
-        rint = (jlo+mjlo+1)*(jlo+mjlo+2)/4*fsig
+        rint = (j+mj+1)*(j+mj+2)/4*fsig
        elseif(mjdiff.eq.-1) then ! sig-
-        rint = (jlo-mjlo+1)*(jlo-mjlo+2)/4*fsig
+        rint = (j-mj+1)*(j-mj+2)/4*fsig
        end if
       elseif(jdiff.eq.-1) then ! j -> j-1
        if(mjdiff.eq.0) then ! pi
-        rint = (jlo**2 - mjlo**2)*fpi
+        rint = (j**2 - mj**2)*fpi
        elseif(mjdiff.eq.1) then ! sig+
-        rint = (jlo-mjlo)*(jlo-mjlo-1)/4*fsig
+        rint = (j-mj)*(j-mj-1)/4*fsig
        elseif(mjdiff.eq.-1) then ! sig-
-        rint = (jlo+mjlo)*(jlo+mjlo-1)/4*fsig
+        rint = (j+mj)*(j+mj-1)/4*fsig
        end if
       else
 C      E1: jdiff must be +-1 or 0 (but not 0->0)
@@ -9264,6 +9284,68 @@ C      E1: jdiff must be +-1 or 0 (but not 0->0)
 C      write(6,*) 'zrint',zeerint
       RETURN
       END
+C
+C ********************************************************************
+C
+C
+C
+      subroutine fsnint(s,l,j,ldiff,jdiff,rint)
+C     ==============================
+C
+C     transition-specific LS multiplet-normalized line strengths
+C     the sum over all (jlo, jhi) combinations = 1
+C     see Tab. 4-6 of Axner et al. (2004AcSpe..59....1A)
+C
+      implicit none
+      real*8, intent(in)  :: s,j
+      integer, intent(in) :: l,ldiff,jdiff
+      real*8, intent(out) :: rint
+
+      if (abs(jdiff).gt.1) goto 10 ! forbidden
+C     table 4
+      if (ldiff.eq.-1) then
+       if (jdiff.eq.-1) then
+        rint = (j-s+l-1)*(j-s+l)*(j+s+l+1)*(j+s+l)/
+     *         (4*j*(2*s+1)*(2*l-1)*l*(2*l+1))
+       elseif (jdiff.eq.0) then
+        if(j.eq.0) goto 10 ! j = 0 <-> 0 is forbidden
+        rint = (2*j+1)*(j-s+l)*(j+s-l+1)*(j+s+l+1)*(s+l-j)/
+     *         (4*(j+1)*(2*s+1)*(2*l-1)*l*(2*l+1))
+       elseif (jdiff.eq.1) then
+        rint = (j+s-l+1)*(s+l-j)*(j+s-l+2)*(s+l-j-1)/
+     *         (4*(j+1)*(2*s+1)*(2*l-1)*l*(2*l+1))
+       end if
+C     table 5
+      elseif (ldiff.eq.0) then
+       if(l.eq.0) goto 10 ! l = 0 <-> 0 is forbidden
+       if (jdiff.eq.-1) then
+        rint = (j-s+l)*(j+s-l)*(j+s+l+1)*(s+l-j+1)/
+     *         (4*j*(2*s+1)*l*(l+1)*(2*l+1))
+       elseif (jdiff.eq.0) then
+        if(j.eq.0) goto 10 ! j = 0 <-> 0 is forbidden
+        rint = (2*j+1)*(j*(j+1)-s*(s+1)+l*(l+1))**2/
+     *         (4*j*(j+1)*(2*s+1)*l*(l+1)*(2*l+1))
+       elseif (jdiff.eq.1) then
+        rint = (j-s+l+1)*(j+s-l+1)*(j+s+l+2)*(s+l-j)/
+     *         (4*(j+1)*(2*s+1)*l*(l+1)*(2*l+1))
+       end if
+C     table 6
+      elseif (ldiff.eq.1) then
+       if (jdiff.eq.-1) then
+        rint = (j+s-l-1)*(j+s-l)*(s+l-j+1)*(s+l-j+2)/
+     *         (4*j*(2*s+1)*(l+1)*(2*l+1)*(2*l+3))
+       elseif (jdiff.eq.0) then
+        if(j.eq.0) goto 10 ! j = 0 <-> 0 is forbidden
+        rint = (2*j+1)*(j-s+l+1)*(j+s-l)*(s+l-j+1)*(j+s+l+2)/
+     *         (4*j*(j+1)*(2*s+1)*(l+1)*(2*l+1)*(2*l+3))
+C        write(*,*) 'this runs'
+       elseif (jdiff.eq.1) then
+        rint = (j-s+l+1)*(j-s+l+2)*(j+s+l+2)*(j+s+l+3)/
+     *         (4*(j+1)*(2*s+1)*(l+1)*(2*l+1)*(2*l+3))
+       end if
+      end if
+   10 continue
+      end subroutine
 C
 C ********************************************************************
 C
@@ -9604,9 +9686,8 @@ C
       real*8 JLO,JHI,gjlo,gjhi,eshift,qslo,qllo,qshi,qlhi
       real*8 mjlo,mjhi,mjdiff,jdiff,rint,rintsum
 C      real*8 mdiff,mhi,mlo
-      real*8 slo,shi,llo,lhi,fsweight
-      integer imlo,imhi
-      integer henmlin
+      real*8 slo,shi,llo,lhi,fsweight,gstatlo
+      integer imlo,imhi,henmlin
       logical :: he1ls
 C     L and S for 24-lev HeI ion (-> Zeeman split)
 C      DATA HE1L / 4471.50, 4387.93, 4026.20, 4921.93/
@@ -9632,8 +9713,6 @@ C     read SLJ components for each line for Zeeman effect
     8   write(6,*) 'error reading he1ls.dat', helam
   900   continue
         write(6,"(A,I3,1X,A)") 'read', henmlin, 'lines from he1ls.dat'
-       else
-        write(6,*) 'file not found: he1ls.dat'
        end if
       end if
 C
@@ -9666,12 +9745,6 @@ c        Patch: remove He I 3872 in LTE spectra
 C         if(isp.eq.-22.and.innlt.eq.0) go to 100
 c        Patch: remove all He I lines that are not in the Beauchamp tables
 C         if(ihe1pr.eq.2.and.indat(il).eq.201.and.isp.eq.0) go to 100
-C        This is new MD
-C         IF(ISP.GT.104.AND.ISP.LT.122) LPR=.FALSE.
-C         IF (ISP.GE.6.AND.ISP.LT.105) GO TO 100
-C         IF (ISP.GE.122) GO TO 100
-C         IF(ISP.GT.1.AND.ISP.LE.6) LPR=.FALSE.
-C        changed ISP.GE.6 to ISP.GE.7
          IF (ISP.GE.7) GO TO 100
          CALL PROFIL(IL,IAT,ID,AGAM)
          DOP1=DOPA1(IAT,ID)
@@ -9679,17 +9752,17 @@ C
          FR0=FREQ0(IL)
          FR00=FREQ0(IL)
 C
-         IF(INNLT.EQ.0) THEN
+         IF(INNLT.EQ.0) THEN ! force LTE
             AB0=EXP(GF0(IL)-EXCL0(IL)*TEM1)*RRR(ID,ION,IAT)*
      *          DOP1*STIM(ID)
-          ELSE IF(INNLT.GT.0) THEN
+          ELSE IF(INNLT.GT.0) THEN ! NLTE, see SUBROUTINE NLTE, SUBROUTINE NLTSET
             AB0=ABCENT(INNLT,ID)
             SL0=SLIN(INNLT,ID)
-          ELSE
+          ELSE ! like SUBROUTINE NLTE
             ILW=ILOWN(IL)
             IUN=IUPN(IL)
             COR=1.
-            PP=PNLT(IAT,ION,ID)
+            PP=PNLT(IAT,ION,ID) ! total pop. for ion? ~> saha
             IF(ILW.GT.0) THEN
                PI=POPUL(ILW,ID)/G(ILW)
              ELSE
@@ -9711,7 +9784,7 @@ C
             IF(X.EQ.UN) X=EXP(4.79928E-11*FREQ0(IL)*TEM1)
             SL0=BNUL(IL)/(X-UN)
             ab0=0.
-            IF(pi.GT.0.) AB0=PI*(UN-UN/X)*EXP(GF0(IL))*DOP1
+            IF(pi.GT.0.) AB0=PI*(UN-UN/X)*EXP(GF0(IL))*DOP1 ! DOP1 = 1/DOP
          END IF
          IF(ab0.LE.0.AND.lasdel) GO TO 100
 C
@@ -9737,14 +9810,6 @@ C        lines from line list
           iation = INDAT(IL)
           elo = EXCL0(IL)/C3
           ehi = EXCU0(IL)/C3
-C          SLO = QSL0(IL)
-C          SHI = QSU0(IL)
-C          LLO = QLL0(IL)
-C          LHI = QLU0(IL)
-C          QSLO = -1.
-C          QLLO = -1.
-C          QSHI = -1.
-C          QLHI = -1.
 C
 C         try to find LS terms
           call findls(elo,iation,qslo,qllo)
@@ -9753,6 +9818,14 @@ C
 C         find Lande-g for lower and upper level
           call landeg(qslo,qllo,jlo,gjlo)
           call landeg(qshi,qlhi,jhi,gjhi)
+C
+C         for heI w/o broadening
+          if ((ISP.eq.0).and.(iation.eq.101)) then
+            jlo = 0
+            jhi = 1
+            gjlo = 1.
+            gjhi = 1.
+          end if
 C
 C         sum over relative intensities
           rintsum = sumzeerint(jlo,jhi,bangle)
@@ -9773,6 +9846,8 @@ C
 C        *********
 C        LTE lines
 C        *********
+C
+C        normal lines + heI w/o tables
 C
          IF(LPR) THEN
 C
@@ -9822,7 +9897,6 @@ C
             gjhi = 1.
             do mlo=-nint(jlo),nint(jlo)
              do mhi=-nint(jhi),nint(jhi)
-C              mdiff = mlo-mhi
               mdiff = mhi-mlo
               if(abs(mdiff).LE.1) then
                 wshiftm=4.66853663D-13*bfield*
@@ -9839,7 +9913,8 @@ C            DO 60 IJ=3,NFREQ
                   ABL=AB0*PHE1(ID,FR,ISP-1,wshiftm)
                elseif(isp.lt.0)then
                   isp2=-isp
-                  call absohe(id,fr,isp2,il,abl,eml,wshiftm)
+                  call absohe(id,fr,isp2,il,abl,eml,
+     *                        wshiftm,0.D0,0.D0,0.D0)
                endif
                ABLIN(IJ)=ABLIN(IJ)+ABL *rint/rintsum
             END DO
@@ -9886,10 +9961,19 @@ C
          ELSE
 C
             if(bfield.GT.0) then
-             ilo = ilowhe(abs(-isp))
-             ihi = iuphe(abs(-isp))
+C            statistical weight for the lower tlusty level
+             gstatlo = g(ILW)
+C            line parameters
+             if(isp.gt.0) then ! PHE1 -> use wave for match
+              ilo = 0
+              ihi = 0
+             elseif(isp.lt.0) then ! beauchamp
+              ilo = ilowhe(abs(-isp))
+              ihi = iuphe(abs(-isp))
+             end if
 C             ilo = ilowhe(-isp) + nfirst(ielhe1) - 1
 C             ihi = iuphe(-isp) + nfirst(ielhe1) - 1
+C            fake singlett line
              jlo = 0
              jhi = 1
              rintsum = sumzeerint(jlo,jhi,bangle)
@@ -9899,30 +9983,35 @@ C            for triplet lines
              if(henmlin.gt.0)then
               rintsumfs = 0.
               do ic=1,henmlin
-               if((nint(henlo(ic)).eq.ilo).and.
-     *            (nint(henhi(ic)).eq.ihi))then
+               if (((nint(henlo(ic)).eq.ilo).and.
+     *              (nint(henhi(ic)).eq.ihi)).or.
+     *             (abs(cas/FR0-helam(ic)).lt.5.)) then
 C                write(6,*) 'cas/FR0,ilo,ihi',cas/FR0,ilo,ihi
                 fsweight = hefosc(ic)
-C                fsweight = hefosc(ic)*(2*hello(ic)+1)*(2*heslo(ic)+1)
-C                fsweight = hefosc(ic)*(2*hejlo(ic)+1)
 C                fsweight = 1.
-                rintsumfs = rintsumfs + fsweight*
-     *                      sumzeerint(hejlo(ic),hejhi(ic),bangle)
+C                rintsumfs = rintsumfs + fsweight*
+C     *                      sumzeerint(hejlo(ic),hejhi(ic),bangle)
+                rintsumfs = rintsumfs + fsweight
+C                rintsumfs = 1.
+C               index for first line
                 if(nfscomp.eq.0) ifscomp = ic
                 nfscomp = nfscomp + 1
                end if
               end do
 C             line is included in fine structure file
 C              write(6,*) 'rintsumfs',rintsumfs
-              if(rintsumfs.gt.0) rintsum = rintsumfs
+C              if(rintsumfs.gt.0) rintsum = rintsumfs
               if(nfscomp.eq.0) ifscomp = 0
              end if
             else
              jlo = 0
              jhi = 0
              rintsum = 1.
+             rintsumfs = 1.
             end if
+            write(6,*) 'nfscomp',nfscomp
 C
+C            write(6,*) 'nfscomp,ilo,ihi',nfscomp,ilo,ihi
             do ic=ifscomp,max(nfscomp+ifscomp-1,ifscomp)
 C            splitting fine structure
              if(nfscomp.gt.0) then
@@ -9934,23 +10023,27 @@ C            splitting fine structure
               lhi = helhi(ic)
               fr0 = cas/helam(ic)
 C             find Lande-g for lower and upper level
-              gjlo = 1.
-              gjhi = 1.
               call landeg(slo,llo,jlo,gjlo)
               call landeg(shi,lhi,jhi,gjhi)
-              write(6,"(A,F12.6,E9.2)") 'helam(ic),hefosc(ic)',
-     *                                   helam(ic),hefosc(ic)
-              write(6,"(A,4F5.2)") 'slo,llo,jlo,gjlo ',slo,llo,jlo,gjlo
-              write(6,"(A,4F5.2)") 'shi,lhi,jhi,gjhi ',shi,lhi,jhi,gjhi
-              fsweight = hefosc(ic)
-C              fsweight = hefosc(ic)*(2*hejlo(ic)+1)
-C              fsweight = hefosc(ic)*(2*hello(ic)+1)*(2*heslo(ic)+1)
-C              fsweight = 1.
+C
+C             this is correct for split term = level
+              rintsum = sumzeerint(jlo,jhi,bangle)
+C             multiplet-normalized line strength
+              ldiff = nint(lhi - llo)
+              jdiff = jhi - jlo
+              call fsnint(slo,nint(llo),jlo,ldiff,nint(jdiff),fsweight)
+C              if (fsweight.eq.0) fsweight = 1.
+              rintsumfs = 1.
+C              fsweight = hefosc(ic)
+C              stot = 1.063D+2
+C              fosc = fsweight * stot
+C
              else
               fr0 = fr00
               gjlo = 1.
               gjhi = 1.
               fsweight = 1.
+              rintsumfs = 1.
               if(bfield.gt.0) then
                jlo = 0.
                jhi = 1.
@@ -9969,7 +10062,6 @@ C               mhi = imhi/2.
 C           no need for half-integer steps as S=1
             do mlo=-nint(jlo),nint(jlo)
              do mhi=-nint(jhi),nint(jhi)
-C              mdiff = mlo-mhi
               mdiff = mhi-mlo
               if(abs(mdiff).LE.1) then
 C                eshift = 4.66853663D-05*bfield*(mlo*gjlo-mhi*gjhi)
@@ -9978,7 +10070,7 @@ C                wshiftm = cas/(FR0+CL*eshift) - cas/FR0
      *                  (cas/FR0)**2*(mlo*gjlo-mhi*gjhi)
 C                write(6,*)'wshifta,wshiftm',wshifta,wshiftm
                 if(bfield.gt.0) then
-                 rint = fsweight * zeerint(jlo,jdiff,
+                 rint = zeerint(jlo,jdiff,
      *                          mlo*1.D0,mdiff*1.D0,bangle)
                 else
                  rint = rintsum
@@ -9986,14 +10078,37 @@ C                write(6,*)'wshifta,wshiftm',wshifta,wshiftm
             DO IJ=3,NFREQ
                FR=FREQ(IJ)
                if(isp.gt.0)then
+C
+C              recompute AB0, SL0 based on stat. weights
+C               gwlo = 2*jlo + 1
+C               gwhi = 2*jhi + 1
+C               gwlo = G(ILW)
+C               gwhi = G(IUN)
+C               ILW=ILOWN(IL)
+C               IUN=IUPN(IL)
+C               PI=POPUL(ILW,ID)/gwlo
+C               PJ=POPUL(IUN,ID)/gwhi
+C               cor=(excu0(il)-excl0(il)+
+C     *             (enion(iun)-enion(ilw))/1.38054e-16)*tem1
+C               cor=exp(cor)
+C               X=PI/PJ*cor
+C               SL0=BNUL(IL)/(X-UN)
+C               AB0=PI*(UN-UN/X)*EXP(GF0(IL))*DOP1
+C
                   ABL=AB0*PHE1(ID,FR,ISP-1,wshiftm)
-                  eml=abl*sl0
+                  eml=abl*sl0 ! sl0 depends on gw
                elseif(isp.lt.0)then
                   isp2=-isp
-                  call absohe(id,fr,isp2,il,abl,eml,wshiftm)
+                  gwlo = 2*jlo + 1
+                  gwhi = 2*jhi + 1
+                  call absohe(id,fr,isp2,il,abl,eml,
+     *                        wshiftm,0.D0,0.D0,0.D0)
                endif
-               ABLINN(IJ)=ABLINN(IJ) + ABL * rint / rintsum
-               EMLIN(IJ)=EMLIN(IJ) + eml * rint / rintsum
+               sfac = rint / rintsum * fsweight / rintsumfs
+C               write(6,*) 'sfac,rint,rintsum,fsweight,rintsumfs',
+C     *                     sfac,rint,rintsum,fsweight,rintsumfs
+               ABLINN(IJ)=ABLINN(IJ) + ABL * sfac
+               EMLIN(IJ)=EMLIN(IJ) + eml * sfac
             END DO
               end if
              end do
@@ -24618,11 +24733,11 @@ C      end
 C
 C
 C
-      subroutine absohe(id,fr,iline,il,abl,eml,wshiftm)
+      subroutine absohe(id,fr,iline,il,abl,eml,wshiftm,fosc,gwlo,gwhi)
 C     =========================================
 C
 C     He I line profiles after Beauchamp et al. (1997).
-C     ABSOHE is called to compute the absorption (ABL) and emission
+C     this routine is called to compute the absorption (ABL) and emission
 C     (EML) coefficients of the line at each frequency.
 C     Detailed profiles are interpolated to the correct temperature
 C     and electron density.
@@ -24634,6 +24749,8 @@ C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
       INCLUDE 'INCLUDE/LINDAT.FOR'
+      intent(in)  :: id,fr,iline,il,wshiftm,fosc,gwlo,gwhi
+      intent(out) :: abl,eml
       parameter(cas=2.997925d18,pi=3.14159265359d0,os0=0.02654,
      *          f13=1./3.,f43=4./3.,f49=4./9.,f89=8./9.)
       dimension prft(mthe),prfd(mdhe),coeff(100)
@@ -24654,7 +24771,7 @@ C     ifirst=1 -> first frequency for which this line is used
       ilold=il
 C
       if(ifirst.eq.1)then
-         fr000 = freq0(il)
+C         fr000 = freq0(il)
          t = temp(id)
          ane = elec(id)
 C        The actual temp. and electron densities are replaced by the 
@@ -24664,11 +24781,18 @@ C        ane0 is used as electron density from here on.
          ane0 = dmin1(ane, dhe(iline,ndhe(iline)))
          i = ilowhe(iline) + nfirst(ielhe1) - 1
          j = iuphe(iline) + nfirst(ielhe1) - 1
-         abtra = popul(i,id) * wop(j,id)
+         abtra = popul(i,id) * wop(j,id) ! occ. probab.
          emtra = popul(j,id) * wop(i,id) * g(i)/g(j)
      *        *dexp((enion(i)-enion(j))/bolk/t)
+C        this is not the fosc from beauchamp.dat
          f=exp(gf0(il)+4.2014672)/g(i)
       endif
+C      if ((gwlo.gt.0).and.(gwhi.gt.0)) then
+C        emtra = popul(j,id) * wop(i,id) * gwlo/gwhi
+C     *          * dexp((enion(i)-enion(j))/bolk/t)
+C         f=exp(gf0(il)+4.2014672)/gwlo
+C      end if
+      if (fosc.gt.0) f = fosc
 C
 C     shift central freq. by wshiftm
       fr000 = cas / (cas/freq0(il) + wshiftm)
@@ -24871,10 +24995,16 @@ C
       endif
 C
       sig = os0 * f * phi
-      xkf = dexp(-4.79928d-11 * fr / t)
+      xkf = dexp(-4.79928d-11 * fr / t) ! Boltzmann factor
       xkfb = xkf * 1.4743d-2 * (fr/1.d15)**3.
       abl = sig * (abtra-emtra*xkf)
       eml = sig * emtra * xkfb
+      if ((gwlo.gt.0).and.(gwhi.gt.0)) then
+C        write(6,*) 'factor',
+C     *  factor
+        abl = sig * gwlo / factor
+        eml = sig * gwhi / factor
+      end if
 C
       return
       end
