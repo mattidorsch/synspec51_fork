@@ -9345,7 +9345,8 @@ C        write(*,*) 'this runs'
        end if
       end if
    10 continue
-      end subroutine
+      return
+      end
 C
 C ********************************************************************
 C
@@ -9367,7 +9368,8 @@ C     later anyway mj=0, so mj*gj = 0
         gj = 1.
       end if
 C       write(6,*) 's,l,j,gj',s,l,j,gj
-      end subroutine
+      return
+      end
 C
 C ********************************************************************
 C
@@ -9382,7 +9384,46 @@ C
       real*8, intent(in)  :: e
       integer, intent(in)  :: iation
       real*8, intent(out) :: s,l
-      if(iation.eq.603) then ! CIII
+      integer ihel
+      real*8 he1en, he1enw, he1s, he1l
+      dimension he1en(34), he1enw(34), he1s(34), he1l(34)
+      data he1en/0., 159855.97, 166277.44, 169086., 171134.9,
+     *     183236.79, 184864.8, 185564.6, 186101.55, 186104.97,
+     *     186209.36, 190298.1, 190940.2, 191217.1, 191444.5,
+     *     191446.5, 191451.79, 191451.99, 191492.71, 193346.99,
+     *     193663.51, 193800.71, 193917.15, 193918.29, 193921.121,
+     *     193921.131, 193921.6177, 193921.6219, 193942.5, 194936.1,
+     *     195114.869, 195192.75, 195260.07, 195260.77/
+      data he1enw/1d2, 1d3, 1d3, 1d2, 1d3,
+     *     1d2, 1d2, 1d2, 1d0, 1d0,
+     *     1d0, 1d0, 1d0, 1d0, 1d0,
+     *     1d0, 1d-1, 1d-1, 1d0, 1d0,
+     *     1d0, 1d0, 1d0, 1d0, 5d-2,
+     *     5d-2, 4d-3, 1d-3, 3d0, 3d0,
+     *     1d1, 1d1, 1d-1, 1d-1/
+      data he1s/0,1,0,1,0,
+     *     1,0,1,1,0,
+     *     0,1,0,1,1,
+     *     0,1,0,0,1,
+     *     0,1,1,0,1,
+     *     0,1,0,0,1,
+     *     0,1,1,0/
+      data he1l/0,0,0,1,1,
+     *     0,0,1,2,2,
+     *     1,0,0,1,2,
+     *     2,3,3,1,0,
+     *     0,1,2,2,3,
+     *     3,4,4,1,0,
+     *     0,1,2,2/
+      if(iation.eq.201) then ! HeI
+       do ihel=1,50
+        if (abs(e-he1en(ihel)).lt.he1enw(ihel)) then
+         S = he1s(ihel)
+         L = he1l(ihel)
+         return
+        end if
+       end do
+      else if(iation.eq.603) then ! CIII
        if(abs(e-322009.594).lt.1d2) then ! 4070 (F-G)
         S = 1.
         L = 3.
@@ -9652,7 +9693,8 @@ C       L = -1.
        S = -1.
        L = -1.
       end if
-      end subroutine
+      return
+      end
 C
 C ********************************************************************
 C
@@ -9686,7 +9728,7 @@ C
       real*8 JLO,JHI,gjlo,gjhi,eshift,qslo,qllo,qshi,qlhi
       real*8 mjlo,mjhi,mjdiff,jdiff,rint,rintsum
 C      real*8 mdiff,mhi,mlo
-      real*8 slo,shi,llo,lhi,fsweight,gstatlo
+      real*8 slo,shi,llo,lhi,fsweight
       integer imlo,imhi,henmlin
       logical :: he1ls
 C     L and S for 24-lev HeI ion (-> Zeeman split)
@@ -9789,9 +9831,9 @@ C
          IF(ab0.LE.0.AND.lasdel) GO TO 100
 C
 C        set up limiting frequencies where the line I is supposed to
-C        contribute to the opacity 
+C        contribute to the opacity
 C
-         EX0=AB0/AVAB*AGAM 
+         EX0=AB0/AVAB*AGAM
          EXT=EXT0
          IF(EX0.GT.TEN) EXT=SQRT(EX0)
          EXT=EXT/DOP1
@@ -9805,31 +9847,46 @@ C        set up zeeman parameters
 C        ****
 C        lines from line list
          if(bfield.gt.0) then
+C         original statistical weights
+          gwlo = g(ILW)
+          gwhi = g(IUN)
+
           JLO = QL0(IL)
           JHI = QU0(IL)
-          iation = INDAT(IL)
-          elo = EXCL0(IL)/C3
-          ehi = EXCU0(IL)/C3
 C
-C         try to find LS terms
-          call findls(elo,iation,qslo,qllo)
-          call findls(ehi,iation,qshi,qlhi)
+          if(LPR) then ! no special HeI lines
+C          try to find LS terms
+           iation = INDAT(IL)
+           elo = EXCL0(IL)/C3
+           ehi = EXCU0(IL)/C3
+           call findls(elo,iation,qslo,qllo)
+           call findls(ehi,iation,qshi,qlhi)
+C          find Lande-g for lower and upper level
+           call landeg(qslo,qllo,jlo,gjlo)
+           call landeg(qshi,qlhi,jhi,gjhi)
+          end if
 C
-C         find Lande-g for lower and upper level
-          call landeg(qslo,qllo,jlo,gjlo)
-          call landeg(qshi,qlhi,jhi,gjhi)
-C
-C         for heI w/o broadening
-          if ((ISP.eq.0).and.(iation.eq.101)) then
+C         for heI without special broadening
+          jdiff = jhi-jlo
+          nohels = 0
+          if ((ISP.eq.0).and.(iation.eq.201)) then
+C            write(6,"(A,8F5.2)") 
+C     *                 'qslo,qllo,jlo,gjlo,qshi,qlhi,jhi,gjhi',
+C     *                 qslo,qllo,jlo,gjlo,qshi,qlhi,jhi,gjhi
+           if ((abs(jdiff).gt.1).or.(nohels.eq.1)) then
             jlo = 0
             jhi = 1
             gjlo = 1.
             gjhi = 1.
+           elseif ((abs(jdiff).le.1).or.(nohels.eq.2)) then
+C           for testing: Lande-g closer to 1
+            gjlo = (gjlo + 9) / 10
+            gjhi = (gjhi + 9) / 10
+           end if
           end if
-C
+          jdiff = jhi-jlo
 C         sum over relative intensities
           rintsum = sumzeerint(jlo,jhi,bangle)
-          jdiff = jhi-jlo
          else
           JLO = 0.
           JHI = 0.
@@ -9961,8 +10018,6 @@ C
          ELSE
 C
             if(bfield.GT.0) then
-C            statistical weight for the lower tlusty level
-             gstatlo = g(ILW)
 C            line parameters
              if(isp.gt.0) then ! PHE1 -> use wave for match
               ilo = 0
@@ -10080,31 +10135,69 @@ C                write(6,*)'wshifta,wshiftm',wshifta,wshiftm
                if(isp.gt.0)then
 C
 C              recompute AB0, SL0 based on stat. weights
-C               gwlo = 2*jlo + 1
-C               gwhi = 2*jhi + 1
-C               gwlo = G(ILW)
-C               gwhi = G(IUN)
-C               ILW=ILOWN(IL)
-C               IUN=IUPN(IL)
-C               PI=POPUL(ILW,ID)/gwlo
-C               PJ=POPUL(IUN,ID)/gwhi
-C               cor=(excu0(il)-excl0(il)+
-C     *             (enion(iun)-enion(ilw))/1.38054e-16)*tem1
-C               cor=exp(cor)
-C               X=PI/PJ*cor
-C               SL0=BNUL(IL)/(X-UN)
-C               AB0=PI*(UN-UN/X)*EXP(GF0(IL))*DOP1
+C
+C               through standard routine
+C
+                ILW=ILOWN(IL)
+                IUN=IUPN(IL)
+C                G(ILW) = 2*jlo + 1
+C                G(IUN) = 2*jhi + 1
+C                write(6,*) 'before',AB0,SL0
+C                write(6,*) 'IL,ILW,IUN',IL,ILW,IUN
+C                call NLTE(IL,ILW,IUN,1.D0,1.D0)
+C                AB0=ABCENT(INNLT,ID)
+C                SL0=SLIN(INNLT,ID)
+C               reset to old stat. weights
+C                G(ILW) = gwlo
+C                G(IUN) = gwhi
+C                write(6,*) 'after ',AB0,SL0
+C
+C               manually
+C
+                T=TEMP(ID)
+                IAT=INDAT(IL)/100
+                DP0=3.33564E-11*FREQ0(IL)
+                DP1=1.651E8/AMAS(IAT)
+                DOP=DP0*SQRT(DP1*T+VTURB(ID))
+C               standard
+C                GFMJ = GF0(IL)
+                GWLOM = G(ILW)
+                GWHIM = G(IUN)
+C               updated
+                C1 = 2.3025851
+                C2 = 4.2014672
+C               GFP=C1*GF-C2
+C               this is ~equivalent to scaling by fsweight / rintsumfs
+                GFMJ = DLOG10(hefosc(ic)*(2*jlo+1))*C1-C2
+C                GWLOM = 2*jlo+1
+C                GWHIM = 2*jhi+1
+C
+                EGF=EXP(GFMJ)
+                BNU=BN*(FREQ0(IL)*1.E-15)**3 ! 2*h/c**2 * freq
+C
+                PI=POPUL(ILW,ID)/GWLOM
+                PJ=POPUL(IUN,ID)/GWHIM
+                cor=(excu0(il)-excl0(il)+
+     *              (enion(iun)-enion(ilw))/1.38054e-16)/t
+                cor=exp(cor)
+C                write(6,*) 'cor',cor
+                cor = 1.
+                X=PI/PJ*cor
+C
+                SL0=BNU/(X-UN) ! source function
+                AB0=PI*(UN-UN/X)*EGF/DOP
+C
 C
                   ABL=AB0*PHE1(ID,FR,ISP-1,wshiftm)
                   eml=abl*sl0 ! sl0 depends on gw
                elseif(isp.lt.0)then
                   isp2=-isp
-                  gwlo = 2*jlo + 1
-                  gwhi = 2*jhi + 1
+C                  gwlo = 2*jlo + 1
+C                  gwhi = 2*jhi + 1
                   call absohe(id,fr,isp2,il,abl,eml,
      *                        wshiftm,0.D0,0.D0,0.D0)
                endif
-               sfac = rint / rintsum * fsweight / rintsumfs
+               sfac = rint / rintsum !* fsweight / rintsumfs
 C               write(6,*) 'sfac,rint,rintsum,fsweight,rintsumfs',
 C     *                     sfac,rint,rintsum,fsweight,rintsumfs
                ABLINN(IJ)=ABLINN(IJ) + ABL * sfac
@@ -10119,6 +10212,7 @@ C   90       CONTINUE
       END IF
   100 CONTINUE
 C
+C     PLAN=BNU/(EXP(HKF/T)-UN)
       DO 110 IJ=3,NFREQ
          EMLIN(IJ)=EMLIN(IJ)+ABLIN(IJ)*PLAN(ID)
          ABLIN(IJ)=ABLIN(IJ)+ABLINN(IJ)
