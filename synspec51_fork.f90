@@ -9868,17 +9868,17 @@ C          find Lande-g for lower and upper level
 C
 C         for heI without special broadening
           jdiff = jhi-jlo
-          nohels = 0
           if ((ISP.eq.0).and.(iation.eq.201)) then
 C            write(6,"(A,8F5.2)") 
 C     *                 'qslo,qllo,jlo,gjlo,qshi,qlhi,jhi,gjhi',
 C     *                 qslo,qllo,jlo,gjlo,qshi,qlhi,jhi,gjhi
+           nohels = 0
            if ((abs(jdiff).gt.1).or.(nohels.eq.1)) then
             jlo = 0
             jhi = 1
             gjlo = 1.
             gjhi = 1.
-           elseif ((abs(jdiff).le.1).or.(nohels.eq.2)) then
+           elseif (nohels.eq.2) then
 C           for testing: Lande-g closer to 1
             gjlo = (gjlo + 9) / 10
             gjhi = (gjhi + 9) / 10
@@ -9904,7 +9904,7 @@ C        *********
 C        LTE lines
 C        *********
 C
-C        normal lines + heI w/o tables
+C        normal lines
 C
          IF(LPR) THEN
 C
@@ -9916,6 +9916,9 @@ C
                mjdiff = mjhi-mjlo
                eshift = 4.66853663D-05*bfield*
      *                  (mjlo*gjlo-mjhi*gjhi)
+C                write(6,"(A,4F5.2)") 
+C     *                 'mjlo,mjhi,gjlo,gjhi',mjlo,mjhi,gjlo,gjhi
+
                if(bfield.gt.0) then
                 rint = zeerint(jlo,jdiff,mjlo,mjdiff,bangle)
                else
@@ -10064,7 +10067,7 @@ C              if(rintsumfs.gt.0) rintsum = rintsumfs
              rintsum = 1.
              rintsumfs = 1.
             end if
-            write(6,*) 'nfscomp',nfscomp
+C            write(6,*) 'nfscomp',nfscomp
 C
 C            write(6,*) 'nfscomp,ilo,ihi',nfscomp,ilo,ihi
             do ic=ifscomp,max(nfscomp+ifscomp-1,ifscomp)
@@ -10088,6 +10091,7 @@ C             multiplet-normalized line strength
               jdiff = jhi - jlo
               call fsnint(slo,nint(llo),jlo,ldiff,nint(jdiff),fsweight)
 C              if (fsweight.eq.0) fsweight = 1.
+C             multiplet-normalized line strengths, so:
               rintsumfs = 1.
 C              fsweight = hefosc(ic)
 C              stot = 1.063D+2
@@ -10132,61 +10136,48 @@ C                write(6,*)'wshifta,wshiftm',wshifta,wshiftm
                 end if
             DO IJ=3,NFREQ
                FR=FREQ(IJ)
-               if(isp.gt.0)then
-C
-C              recompute AB0, SL0 based on stat. weights
-C
-C               through standard routine
-C
-                ILW=ILOWN(IL)
-                IUN=IUPN(IL)
-C                G(ILW) = 2*jlo + 1
-C                G(IUN) = 2*jhi + 1
-C                write(6,*) 'before',AB0,SL0
-C                write(6,*) 'IL,ILW,IUN',IL,ILW,IUN
-C                call NLTE(IL,ILW,IUN,1.D0,1.D0)
-C                AB0=ABCENT(INNLT,ID)
-C                SL0=SLIN(INNLT,ID)
-C               reset to old stat. weights
-C                G(ILW) = gwlo
-C                G(IUN) = gwhi
-C                write(6,*) 'after ',AB0,SL0
-C
-C               manually
-C
-                T=TEMP(ID)
-                IAT=INDAT(IL)/100
-                DP0=3.33564E-11*FREQ0(IL)
-                DP1=1.651E8/AMAS(IAT)
-                DOP=DP0*SQRT(DP1*T+VTURB(ID))
-C               standard
-C                GFMJ = GF0(IL)
-                GWLOM = G(ILW)
-                GWHIM = G(IUN)
-C               updated
-                C1 = 2.3025851
-                C2 = 4.2014672
-C               GFP=C1*GF-C2
-C               this is ~equivalent to scaling by fsweight / rintsumfs
-                GFMJ = DLOG10(hefosc(ic)*(2*jlo+1))*C1-C2
+               if(isp.gt.0) then
+C              -> old tables; uses lines from linelist
+C              -> ll needs term transitions for 4471,4387,4026,4922
+                fsmanual = 0
+                if (fsmanual.eq.1) then
+                 ILW=ILOWN(IL)
+                 IUN=IUPN(IL)
+                 T=TEMP(ID)
+                 IAT=INDAT(IL)/100
+                 DP0=3.33564E-11*FREQ0(IL)
+                 DP1=1.651E8/AMAS(IAT)
+                 DOP=DP0*SQRT(DP1*T+VTURB(ID))
+C                standard
+C                 GFMJ = GF0(IL)
+                 GWLOM = G(ILW)
+                 GWHIM = G(IUN)
+C                updated
+                 C1 = 2.3025851
+                 C2 = 4.2014672
+C                GFP=C1*GF-C2
+C                this is ~equivalent to scaling by fsweight / rintsumfs
+                 GFMJ = DLOG10(hefosc(ic)*(2*jlo+1))*C1-C2
 C                GWLOM = 2*jlo+1
 C                GWHIM = 2*jhi+1
 C
-                EGF=EXP(GFMJ)
-                BNU=BN*(FREQ0(IL)*1.E-15)**3 ! 2*h/c**2 * freq
+                 EGF=EXP(GFMJ)
+                 BNU=BN*(FREQ0(IL)*1.E-15)**3 ! 2*h/c**2 * freq
 C
-                PI=POPUL(ILW,ID)/GWLOM
-                PJ=POPUL(IUN,ID)/GWHIM
-                cor=(excu0(il)-excl0(il)+
-     *              (enion(iun)-enion(ilw))/1.38054e-16)/t
-                cor=exp(cor)
-C                write(6,*) 'cor',cor
-                cor = 1.
-                X=PI/PJ*cor
+                 PI=POPUL(ILW,ID)/GWLOM
+                 PJ=POPUL(IUN,ID)/GWHIM
+                 cor=(excu0(il)-excl0(il)+
+     *               (enion(iun)-enion(ilw))/1.38054e-16)/t
+                 cor=exp(cor)
+                 cor = 1.
+                 X=PI/PJ*cor
 C
-                SL0=BNU/(X-UN) ! source function
-                AB0=PI*(UN-UN/X)*EGF/DOP
+                 SL0=BNU/(X-UN) ! source function
+                 AB0=PI*(UN-UN/X)*EGF/DOP ! central opacity
 C
+                 fsweight = 1
+                 rintsumfs = 1
+                end if
 C
                   ABL=AB0*PHE1(ID,FR,ISP-1,wshiftm)
                   eml=abl*sl0 ! sl0 depends on gw
@@ -10197,7 +10188,7 @@ C                  gwhi = 2*jhi + 1
                   call absohe(id,fr,isp2,il,abl,eml,
      *                        wshiftm,0.D0,0.D0,0.D0)
                endif
-               sfac = rint / rintsum !* fsweight / rintsumfs
+               sfac = rint / rintsum * fsweight / rintsumfs
 C               write(6,*) 'sfac,rint,rintsum,fsweight,rintsumfs',
 C     *                     sfac,rint,rintsum,fsweight,rintsumfs
                ABLINN(IJ)=ABLINN(IJ) + ABL * sfac
