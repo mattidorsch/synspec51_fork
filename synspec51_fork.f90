@@ -172,8 +172,8 @@ C     ICHEMC     - switch indicating that new chemical composition will
 C                  be read from unit 56
 C     IOPHLI     - switch for treatment the Lyman line wings -see LYMLIN
 C
-      bfield=3.42D5 ! magnetic field in Gauss
-C      bfield=0 ! magnetic field in Gauss
+C      bfield=3.42D5 ! magnetic field in Gauss
+      bfield=0 ! magnetic field in Gauss
 C      bfield=1.D-3 ! magnetic field in Gauss
       bangle=9.0D1 * 1.7453292519943D-2 ! angle between the magnetic fieldaxis and the line of sight
       mode=0
@@ -7235,7 +7235,8 @@ C     HeII 1640; air -> vacuum
 C
 C     He III population (either LTE or NLTE, depending on input model)
 C
-      IF(IELHE2.GT.0.and.inlte.gt.0) THEN
+      IF(IELHE2.GT.0) THEN
+C      IF(IELHE2.GT.0.and.inlte.gt.0) THEN
          PP=POPUL(NNEXT(IELHE2),ID)
          NLHE2=NLAST(IELHE2)-NFIRST(IELHE2)+1
        ELSE
@@ -7247,7 +7248,8 @@ C     population of the lower level of the given transition
 C     (again either LTE or NLTE)
 C
       PP=PP*ELEC(ID)*4.1412E-16/T/SQRT(T)*II
-      IF(I.LE.NLHE2.and.inlte.gt.0) THEN
+      IF(I.LE.NLHE2) THEN
+C      IF(I.LE.NLHE2.and.inlte.gt.0) THEN
          POPI=POPUL(NFIRST(IELHE2)+I-1,ID)
        ELSE
          POPI=PP*EXP(631479./T/II)
@@ -8113,7 +8115,7 @@ C
       IF(GRAV.GT.6.) ASTD=0.1
       CUTOFF=CUTOF0
       ALAST=CNM/FRLAST
-      IF(INLTE.GE.1.AND.INLSET.EQ.0) THEN
+      IF((INLTE.GE.1.OR.IAT.EQ.2).AND.INLSET.EQ.0) THEN
          CALL NLTSET(0,IL,IAT,ION,EXCL,EXCU,QL,QU,IEVEN,INNLT0)
          INLSET=1
       END IF
@@ -8375,7 +8377,7 @@ C
          QU=ABS(QU)
          QL=ABS(QL)
       END IF
-      IF(ILWN.LT.0.AND.INLTE.NE.0) THEN
+      IF(ILWN.LT.0.AND.((INLTE.NE.0).OR.(IAT.EQ.2))) THEN
          INNLT0=INNLT0+1
          INDNLT(IL)=INNLT0
          IF(INNLT0.GT.MNLT) THEN
@@ -8388,7 +8390,7 @@ C
          ILOWN(IL)=ILWN
          IUPN(IL)=IUN
       END IF
-      IF(ILWN.GT.0.AND.INLTE.NE.0) THEN
+      IF(ILWN.GT.0.AND.((INLTE.NE.0).OR.(IAT.EQ.2))) THEN
          INNLT0=INNLT0+1
          INDNLT(IL)=INNLT0
          IF(INNLT0.GT.MNLT) THEN
@@ -8401,7 +8403,7 @@ C
          ILOWN(IL)=ILWN
          IUPN(IL)=IUN
       END IF
-      IF(ILWN.EQ.0.AND.INLTE.GE.1) THEN
+      IF(ILWN.EQ.0.AND.((INLTE.GE.1).OR.(IAT.EQ.2))) THEN
          CALL NLTSET(1,IL,IAT,ION,EXCL,EXCU,QL,QU,IEVEN,INNLT0)
          IF(INDNLT(IL).GT.0) THEN
             IF(INDNLT(IL).GT.MNLT) THEN
@@ -9904,9 +9906,8 @@ C        *********
 C        LTE lines
 C        *********
 C
-C        normal lines
 C
-         IF(LPR) THEN
+         IF(LPR) THEN ! normal lines + heI w/o special broadening
 C
             do imlo=NINT(-jlo*2),NINT(jlo*2),2
              do imhi=NINT(-jhi*2),NINT(jhi*2),2
@@ -9990,7 +9991,7 @@ C        NLTE LINES
 C        **********
 C
        ELSE
-         IF(LPR) THEN
+         IF(LPR) THEN ! normal lines + heI w/o special broadening
 C
             do imlo=NINT(-jlo*2),NINT(jlo*2),2
              do imhi=NINT(-jhi*2),NINT(jhi*2),2
