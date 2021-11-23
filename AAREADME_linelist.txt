@@ -522,3 +522,7 @@ updates
 2020-12-02:
         loggf for PbIV 4496 from Naslim+ (2013) to 
         Alonso-Medina+ (2011) value (-0.237 -> -0.437)
+
+2021-11-23:        
+            Fe III 1033.066 -> 1033.090
+            P   IV 1033.112 -> 1033.130
