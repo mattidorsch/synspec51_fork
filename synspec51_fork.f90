@@ -173,9 +173,17 @@ C                  be read from unit 56
 C     IOPHLI     - switch for treatment the Lyman line wings -see LYMLIN
 C
 C      bfield=3.42D5 ! magnetic field in Gauss
+C      bfield=3.52D5 ! magnetic field in Gauss
+C      bfield=3.32D5 ! magnetic field in Gauss
+C      bfield=3.62D5 ! magnetic field in Gauss
+C      bfield=3.57D5 ! magnetic field in Gauss
+C      bfield=3.5326D5 ! magnetic field in Gauss
       bfield=0 ! magnetic field in Gauss
 C      bfield=1.D-3 ! magnetic field in Gauss
-      bangle=9.0D1 * 1.7453292519943D-2 ! angle between the magnetic fieldaxis and the line of sight
+C      bangle=9.0D1 * 1.7453292519943D-2 ! angle between the magnetic fieldaxis and the line of sight
+C      bangle=3.0D1 * 1.7453292519943D-2 ! angle between the magnetic fieldaxis and the line of sight
+      bangle=6.4165D1 * 1.7453292519943D-2 ! angle between the magnetic fieldaxis and the line of sight
+
       mode=0
       read(1,*,err=10,end=10) mode
    10 continue
@@ -1548,7 +1556,7 @@ c
          TSTD=TEMP(ID)
          VTS=VTURB(ID)
          DSTD=SQRT(1.4E7*TSTD+VTS)
-         WRITE(6,601) ID,TEMP(ID),ELEC(ID)
+         WRITE(6,601) ID,TEMP(ID),ELEC(ID),hpop
          DO 20 I=1,MATOM
    20       WRITE(6,602) TYPAT(I),(RR(I,J),J=1,MION0-1)
          WRITE(6,603)
@@ -1571,7 +1579,7 @@ c
       end if
 C
   601 FORMAT(/' N/U  AT THE STANDARD DEPTH  (ID =',I3, 
-     *         ' ; T,Ne = ',F8.1,1PE12.3,' )'/
+     *         ' ; T,Ne,hpop = ',F8.1,1P2E12.3,' )'/
      *         ' --------------------------'//)
   602 FORMAT(1H ,A4,1P8E9.2)
   603 FORMAT(//' PARTITION FUNCTIONS AT THE STANDARD DEPTH'/
