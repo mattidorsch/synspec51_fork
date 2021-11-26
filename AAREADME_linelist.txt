@@ -21,6 +21,7 @@ GaVI
 
 GeIII
     Naslim+ 2011 for 3 optical lines
+    Morton (2000) for 1088.463, 1600.001 AA
 
 GeIV
     Morton 2000 for UV
@@ -526,3 +527,7 @@ updates
 2021-11-23:        
             Fe III 1033.066 -> 1033.090
             P   IV 1033.112 -> 1033.130
+
+2021-11-26:
+            As  IV 1299.280 -> 1299.254
+
