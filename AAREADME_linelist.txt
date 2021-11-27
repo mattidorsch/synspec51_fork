@@ -96,7 +96,7 @@ YIII
         Fernandez-Menchero+ 2020
 
 YIV
-    no data
+    Loginov & Tuchkin 2001
 
 YV
     183AA to 3000AA: Kurucz/Atoms
@@ -532,5 +532,6 @@ updates
             As  IV 1299.280 -> 1299.254
             Ge  IV 1494.890 -> 1494.830
 
-2021-11-26:
+2021-11-27:
             Kr III  987.230 -> 987.527
+            added some YIV lines from Loginov & Tuchkin 2001
