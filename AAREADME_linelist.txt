@@ -533,9 +533,9 @@ updates
             Ge  IV 1494.890 -> 1494.830
 
 2021-11-27:
-            Kr III  987.230 -> 987.527
+            Kr III  987.230 ->  987.527
 
 2021-11-28:
             added some YIV lines from Loginov & Tuchkin 2001
-
+            Y   IV 1009.875 -> 1009.798
 
