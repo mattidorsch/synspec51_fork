@@ -169,7 +169,11 @@ TeVI
     TOSS
 
 XeIII
-    Romeo+ 1998, not all lines added
+    Romeo y Bidegain+ 1998, not all lines added
+    Iriarte+ 1997, not added yet
+    -> only 3454 to 4061 AA
+    Eser & Özdemir 2017, supplemented with NIST energies (loggf = -2.5)
+    -> 1 to 2980AA, weak lines due to generally low loggf
 
 XeIV
     TOSS
@@ -540,3 +544,8 @@ updates
             Y   IV 1009.875 -> 1009.798
             Mo  IV 1350.922 -> 1350.756
             added TeIV lines based on NIST energies and configurations only (loggf=-1)
+
+2021-11-29:
+            Te  IV 1168.388 -> 1168.350
+            Sc III 1168.607 -> 1168.517
+            Cu  IV 1105.507 -> 1105.383
