@@ -160,7 +160,7 @@ TeIII
     Zhang+ 2014
 
 TeIV
-    no data
+    Energy+Config. from NIST, assuming loggf=-1
 
 TeV
     Morton 2000
@@ -539,3 +539,4 @@ updates
             added some YIV lines from Loginov & Tuchkin 2001
             Y   IV 1009.875 -> 1009.798
             Mo  IV 1350.922 -> 1350.756
+            added TeIV lines based on NIST energies and configurations only (loggf=-1)
