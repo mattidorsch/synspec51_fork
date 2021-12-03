@@ -551,3 +551,6 @@ updates
             Cu  IV 1105.507 -> 1105.383
             Fe  IV 1495.178 -> 1495.155
             Zn  IV 1298.506 -> 1298.547
+
+2021-12-03:
+            moved two TeIV lines from to air wavelengths (from level energies)
