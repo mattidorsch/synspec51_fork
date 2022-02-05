@@ -178,11 +178,12 @@ C      bfield=3.32D5 ! magnetic field in Gauss
 C      bfield=3.62D5 ! magnetic field in Gauss
 C      bfield=3.57D5 ! magnetic field in Gauss
 C      bfield=3.5326D5 ! magnetic field in Gauss
-      bfield=0 ! magnetic field in Gauss
+C      bfield=4.17D5 ! magnetic field in Gauss
 C      bfield=1.D-3 ! magnetic field in Gauss
-C      bangle=9.0D1 * 1.7453292519943D-2 ! angle between the magnetic fieldaxis and the line of sight
-C      bangle=3.0D1 * 1.7453292519943D-2 ! angle between the magnetic fieldaxis and the line of sight
-      bangle=6.4165D1 * 1.7453292519943D-2 ! angle between the magnetic fieldaxis and the line of sight
+      bfield=0. ! magnetic field in Gauss
+      bangle=9.0D1 * 1.7453292519943D-2 ! angle between the magnetic field axis and the line of sight
+C      bangle=5.0D1 * 1.7453292519943D-2 ! angle between the magnetic field axis and the line of sight
+C      bangle=6.4165D1 * 1.7453292519943D-2 ! angle between the magnetic field axis and the line of sight
 
       mode=0
       read(1,*,err=10,end=10) mode
@@ -194,6 +195,13 @@ C      bangle=3.0D1 * 1.7453292519943D-2 ! angle between the magnetic fieldaxis 
       nungam=0
       nunbal=0
       READ(55,*) IMODE,IDSTD,IPRIN
+C     additional line for B in kG and angle in degrees
+      if(imode.eq.3) then
+        READ(55,*) bfield, bangle
+        bangle = bangle * 1.7453292519943D-2
+        bfield = bfield * 1.D3
+        imode = 0
+      end if
       READ(55,*) INMOD,INTRPL,ICHANG,ICHEMC
       if(mode.gt.0) inmod=2
       READ(55,*,ERR=3) IOPHLI,nunalp,nunbet,nungam,nunbal
