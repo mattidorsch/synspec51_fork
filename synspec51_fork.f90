@@ -9442,15 +9442,51 @@ C
         end if
        end do
       else if(iation.eq.603) then ! CIII
-       if(abs(e-322009.594).lt.1d2) then ! 4070 (F-G)
+       if(abs(e).lt.1d2) then ! ground state
+        S = 0.
+        L = 0.
+       elseif(abs(e-52390.75).lt.1d3) then ! CIII
         S = 1.
-        L = 3.
-       elseif(abs(e-238213.000).lt.1d2) then ! 4650
+        L = 1.
+       elseif(abs(e-102352.04).lt.1d3) then ! CIII
+        S = 0.
+        L = 1.
+       elseif(abs(e-137454.40).lt.1d3) then ! CIII
+        S = 1.
+        L = 1.
+       elseif(abs(e-145876.13).lt.1d3) then ! CIII
+        S = 0.
+        L = 2.
+       elseif(abs(e-182519.88).lt.1d3) then ! CIII
+        S = 0.
+        L = 0.
+       elseif(abs(e-238213.000).lt.1d3) then ! 4650
         S = 1.
         L = 0.
+       elseif(abs(e-247170.26).lt.1d3) then ! CIII
+        S = 0.
+        L = 0.
+       elseif(abs(e-258931.29).lt.2d2) then ! CIII
+        S = 0.
+        L = 1.
        elseif(abs(e-259724.297).lt.2d2) then ! 4650
         S = 1.
         L = 1.
+       elseif(abs(e-270011.93).lt.1d3) then ! CIII
+        S = 1.
+        L = 2.
+       elseif(abs(e-276482.86).lt.1d3) then ! CIII
+        S = 0.
+        L = 2.
+       elseif(abs(e-308248.91).lt.2d2) then ! CIII
+        S = 1.
+        L = 1.
+       elseif(abs(e-309457.17).lt.3d2) then ! CIII
+        S = 1.
+        L = 0.
+       elseif(abs(e-322009.594).lt.1d2) then ! 4070 (F-G)
+        S = 1.
+        L = 3.
        elseif(abs(e-323100.0).lt.1d2) then ! 4163l
         S = 1.
         L = 2.
@@ -9465,19 +9501,40 @@ C
         L = 5.
        end if
       elseif(iation.eq.604) then ! CIV
-       if(abs(e-449941.312).lt.5d0) then ! CIV 4658 (F-G)
-        S = 0.5
-        L = 3.
-       elseif(abs(e-302847.812).lt.1d2) then ! CIV 5800
-        S = 0.5
+       S = 0.5
+       if(abs(e).lt.5d0) then ! ground state
         L = 0.
-       elseif(abs(e-471405.812).lt.5d0) then ! CIV 4658 (F-G)
-        S = 0.5
-        L = 4.
-       elseif(abs(e-320080.406).lt.2d2) then ! CIV 5800
-        S = 0.5
+       elseif(abs(e-64484.0).lt.1d3) then ! CIV
         L = 1.
-       elseif(abs(e-149076.516).lt.2d2) then ! NII 4621,4630
+       elseif(abs(e-302847.812).lt.1d2) then ! CIV 5800
+        L = 0.
+       elseif(abs(e-320050.1).lt.1e3) then ! CIV
+        L = 1.
+       elseif(abs(e-324879.8).lt.9d0) then ! CIV
+        L = 2.
+       elseif(abs(e-401348.1).lt.1d2) then ! CIV
+        L = 0.
+       elseif(abs(e-408311.1).lt.1d2) then ! CIV
+        L = 1.
+       elseif(abs(e-410339.).lt.1d1) then ! CIV
+        L = 2.
+       elseif(abs(e-410434.2).lt.1d1) then ! CIV
+        L = 3.
+       elseif(abs(e-445368.5).lt.1d3) then ! CIV
+        L = 0.
+       elseif(abs(e-448855.8).lt.1d2) then ! CIV
+        L = 1.
+       elseif(abs(e-449888.2).lt.2d1) then ! CIV
+        L = 2.
+       elseif(abs(e-449941.).lt.4d0) then ! CIV
+        L = 3.
+       elseif(abs(e-449948.4).lt.3d0) then ! CIV
+        L = 4.
+       elseif(abs(e-471405.812).lt.5d0) then ! CIV 4658 (F-G)
+        L = 4.
+       end if
+      elseif(iation.eq.702) then ! NII
+       if(abs(e-149076.516).lt.2d2) then ! NII 4621,4630
         S = 1.0
         L = 1.
        elseif(abs(e-166678.641).lt.1d2) then ! NII 5000
@@ -9612,8 +9669,29 @@ C      Jlo-L coupling, no LS term; will not reproduce spectrum
         L = 3.
        end if
       elseif(iation.eq.704) then ! NIV
-       if(abs(e-377284.812).lt.1d3) then ! NIV 3480
+       if(abs(e).lt.1d3) then ! ground state
+        S = 0.
+        L = 0.
+       elseif(abs(e-67300.).lt.1d3) then ! NIV
         S = 1.
+        L = 1.
+       elseif(abs(e-130693.9).lt.1d3) then ! NIV
+        S = 0.
+        L = 1.
+       elseif(abs(e-175600.).lt.1d3) then ! NIV
+        S = 1.
+        L = 1.
+       elseif(abs(e-188882.5).lt.1d3) then ! NIV
+        S = 0.
+        L = 2.
+       elseif(abs(e-235369.3).lt.1d3) then ! NIV
+        S = 0.
+        L = 0.
+       elseif(abs(e-377284.812).lt.1d3) then ! NIV 3480
+        S = 1.
+        L = 0.
+       elseif(abs(e-388854.6).lt.1d3) then ! NIV
+        S = 0.
         L = 0.
        elseif(abs(e-404522.406).lt.1d2) then ! NIV 4060
         S = 0.
@@ -9621,9 +9699,19 @@ C      Jlo-L coupling, no LS term; will not reproduce spectrum
        elseif(abs(e-405987.500).lt.2d2) then ! NIV 3480
         S = 1.
         L = 1.
+       elseif(abs(e-420049.6).lt.1d3) then ! NIV
+        S = 1.
+        L = 2.
        elseif(abs(e-429159.594).lt.2d2) then ! NIV 4060
         S = 0.
         L = 2.
+       end if
+      elseif(iation.eq.705) then ! NV
+       S = 0.5
+       if(abs(e).lt.1d3) then ! NV
+        L = 0.
+       elseif(abs(e-80500.).lt.1d3) then ! NV
+        L = 1.
        end if
       elseif(iation.eq.803) then
        if(abs(e-267634.000).lt.6d2) then ! OIII 3760l
@@ -9632,6 +9720,61 @@ C      Jlo-L coupling, no LS term; will not reproduce spectrum
        elseif(abs(e-294223.062).lt.8d2) then ! OIII 3760u
         S = 1.
         L = 2.
+       elseif(abs(e-380720.).lt.4d1) then ! OIII
+        S = 1.
+        L = 1.
+       end if
+      elseif(iation.eq.804) then ! OIV
+       if(abs(e).lt.6d2) then ! ground state
+        S = 0.5
+        L = 1.
+       elseif(abs(e-71570.1).lt.1d3) then ! OIV
+        S = 1.5
+        L = 1.
+       elseif(abs(e-126936.3).lt.1d3) then ! OIV
+        S = 0.5
+        L = 2.
+       elseif(abs(e-164366.4).lt.1d3) then ! OIV
+        S = 0.5
+        L = 0.
+       elseif(abs(e-180600.).lt.1d3) then ! OIV
+        S = 0.5
+        L = 1.
+       elseif(abs(e-231537.5).lt.1d3) then ! OIV
+        S = 1.5
+        L = 0.
+       elseif(abs(e-255155.9).lt.1d3) then ! OIV
+        S = 0.5
+        L = 2.
+       elseif(abs(e-289015.4).lt.1d3) then ! OIV
+        S = 0.5
+        L = 1.
+       elseif(abs(e-357614.3).lt.1d3) then ! OIV
+        S = 0.5
+        L = 0.
+       elseif(abs(e-390161.2).lt.1d3) then ! OIV
+        S = 0.5
+        L = 1.
+       end if
+      elseif(iation.eq.805) then ! OV
+       if(abs(e).lt.1d2) then ! ground state
+        S = 0.
+        L = 0.
+       elseif(abs(e-82078.6).lt.2d3) then ! OV
+        S = 1.
+        L = 1.
+       elseif(abs(e-158797.7).lt.2d3) then ! OV 1371 lo
+        S = 0.
+        L = 1.
+       elseif(abs(e-213618.2).lt.2d3) then ! OV
+        S = 1.
+        L = 1.
+       elseif(abs(e-231721.4).lt.2d3) then ! OV 1371 hi
+        S = 0.
+        L = 2.
+       elseif(abs(e-287910.3).lt.2d3) then ! OV
+        S = 0.
+        L = 0.
        end if
       elseif(iation.eq.1002) then
        if(abs(e-219130.766).lt.1d1) then ! NeII 3335
@@ -9649,27 +9792,91 @@ C      Jlo-L coupling, no LS term; will not reproduce spectrum
         S = 0.5
         L = 3.
        end if
+      elseif(iation.eq.1403) then ! SiIII
+       if(abs(e).lt.5d0) then ! ground state
+        S = 0.
+        L = 0.
+       elseif(abs(e-52853.).lt.2d3) then ! SiIII
+        S = 1.
+        L = 1.
+       elseif(abs(e-82884.41).lt.2d3) then ! SiIII
+        S = 0.
+        L = 1.
+       elseif(abs(e-122214.52).lt.1d3) then ! SiIII
+        S = 0.
+        L = 2.
+       elseif(abs(e-129841.).lt.2d3) then ! SiIII
+        S = 1.
+        L = 1.
+       elseif(abs(e-142945.84).lt.2d3) then ! SiIII
+        S = 1.
+        L = 2.
+       elseif(abs(e-153377.05).lt.4d1) then ! SiIII
+        S = 1.
+        L = 0.
+       elseif(abs(e-153444.23).lt.4d1) then ! SiIII
+        S = 0.
+        L = 0.
+       elseif(abs(e-159069.61).lt.1d3) then ! SiIII
+        S = 0.
+        L = 0.
+       elseif(abs(e-165765.00).lt.1d3) then ! SiIII
+        S = 0.
+        L = 2.
+       end if
       elseif(iation.eq.1404) then ! SiIV
-       if(abs(e-193978.891).lt.1d0) then ! SiIV 4100
-        S = 0.5
+       S = 0.5
+       if(abs(e).lt.5d0) then ! ground state
+        L = 0.
+       elseif(abs(e-71500.).lt.1d3) then ! SiIV
+        L = 1.
+       elseif(abs(e-160375.60).lt.1d3) then ! SiIV
+        L = 2.
+       elseif(abs(e-193978.891).lt.1d3) then ! SiIV 4100
         L = 0.
        elseif(abs(e-218428.672).lt.5d2) then ! SiIV 3165
-        S = 0.5
         L = 1.
        elseif(abs(e-250008.141).lt.1d2) then ! SiIV 3165
-        S = 0.5
         L = 2.
        elseif(abs(e-293719.000).lt.1d1) then ! SiIV 4631 (F-G)
-        S = 0.5
         L = 3.
        elseif(abs(e-315305.281).lt.1d2) then ! SiIV 4631 (F-G)
-        S = 0.5
         L = 4.
        end if
-      elseif(iation.eq.1604) then
-       if(abs(e-181448.203).lt.1d1) then ! SIV 3097,3118l
+      elseif(iation.eq.1604) then ! SIV
+       if(abs(e).lt.2d3) then ! ground state
+        S = 0.5
+        L = 1.
+       elseif(abs(e-71528.7).lt.1d3) then ! SIV
+        S = 1.5
+        L = 1.
+       elseif(abs(e-94150.3).lt.1d3) then ! SIV
+        S = 0.5
+        L = 2.
+       elseif(abs(e-123509.3).lt.1d3) then ! SIV
         S = 0.5
         L = 0.
+       elseif(abs(e-133900.).lt.1d3) then ! SIV
+        S = 0.5
+        L = 1.
+       elseif(abs(e-152146.8).lt.1d3) then ! SIV
+        S = 0.5
+        L = 2.
+       elseif(abs(e-181448.203).lt.1d3) then ! SIV 3097,3118l
+        S = 0.5
+        L = 0.
+       elseif(abs(e-185055.2).lt.1d3) then ! SIV
+        S = 0.5
+        L = 2.
+       elseif(abs(e-196455.4).lt.1d3) then ! SIV
+        S = 1.5
+        L = 0.
+       elseif(abs(e-203632.8).lt.2d3) then ! SIV
+        S = 1.5
+        L = 3.
+       elseif(abs(e-211376.3).lt.5d2) then ! SIV
+        S = 0.5
+        L = 1.
        elseif(abs(e-213725.297).lt.3d2) then ! SIV 3097u,3118u,3340u
         S = 0.5
         L = 1.
@@ -9690,6 +9897,47 @@ C      mixed with 3d 2Fo
         S = 1.5
         L = 2.
        end if
+      elseif(iation.eq.1605) then ! SV
+       if(abs(e).lt.1d2) then ! ground state
+        S = 0.
+        L = 0.
+       elseif(abs(e-83500.).lt.2d3) then ! SV
+        S = 1.
+        L = 1.
+       elseif(abs(e-127150.70).lt.1d3) then ! SV 1501 lo
+        S = 0.
+        L = 1.
+       elseif(abs(e-193739.1).lt.1d3) then ! SV 1501 hi
+        S = 0.
+        L = 2.
+       elseif(abs(e-200000.).lt.2d3) then ! SV
+        S = 1.
+        L = 1.
+       elseif(abs(e-234947.).lt.1d2) then ! SV
+        S = 1.
+        L = 2.
+       elseif(abs(e-235350.).lt.1d2) then ! SV
+        S = 0.
+        L = 0.
+       elseif(abs(e-270700.4).lt.1d3) then ! SV
+        S = 0.
+        L = 2.
+       elseif(abs(e-311595.1).lt.1d3) then ! SV
+        S = 1.
+        L = 0.
+       elseif(abs(e-320108.0).lt.1d3) then ! SV
+        S = 0.
+        L = 0.
+       elseif(abs(e-323547.3).lt.1d3) then ! SV
+        S = 1.
+        L = 3.
+       elseif(abs(e-328454.3).lt.1d3) then ! SV
+        S = 0.
+        L = 2.
+       elseif(abs(e-345712.8).lt.1d3) then ! SV
+        S = 1.
+        L = 1.
+       end if
       elseif(iation.eq.2204) then
        if(abs(e-230924.375).lt.4d2) then ! TiIV 3541,3576
         S = 0.5
@@ -9704,9 +9952,28 @@ C      mixed with 3d 2Fo
         S = 0.5
         L = 5.
        end if
-C      elseif((iation.eq.101).or.(iation.eq.202)) then ! H/HeII: S=0.5, L varies
-C       S = 0.5
-C       L = -1.
+      elseif(iation.eq.3004) then ! GaIV
+       if(abs(e).lt.1d2) then ! ground state
+        S = 0.
+        L = 0.
+       elseif(abs(e-151300.).lt.3d3) then ! Ga IV
+        S = 1.
+        L = 2.
+       elseif(abs(e-156024.7).lt.1d3) then ! Ga IV
+        S = 0.
+        L = 2.
+       elseif(abs(e-236311.9).lt.1d1) then ! Ga IV
+        S = 0.
+        L = 1.
+       end if
+      elseif(iation.eq.3104) then ! GeIV
+       if(abs(e).lt.1d2) then ! ground state
+        S = 0.5
+        L = 0.
+       elseif(abs(e-82500).lt.3d3) then ! Ge IV 1189.028, 1229.840
+        S = 0.5
+        L = 1.
+       end if
       else
        S = -1.
        L = -1.
