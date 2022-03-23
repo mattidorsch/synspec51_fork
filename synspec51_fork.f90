@@ -10974,6 +10974,305 @@ C      mixed with 3d 2Fo
         S = 0.0
         L = 2.0
        end if
+      elseif(iation.eq.2504) then ! MnIV
+       if(abs(e).lt.1d3) then ! MnIV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-20654.20).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-21278.80).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-22324.70).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-21280.70).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-21474.80).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-21679.30).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-22791.00).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-22862.30).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-22959.10).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-25440.40).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-25670.80).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-25877.70).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-31385.20).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-31473.50).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-31580.70).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-53212.30).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-53260.70).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-53286.70).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-111506.00).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-111710.40).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-112013.30).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-112408.90).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-112882.80).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-119445.50).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-119961.50).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-120603.10).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-130969.50).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-131170.10).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-131462.50).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-137853.00).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-137930.10).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-138123.10).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-152700.50).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-152858.20).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-152986.00).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-167890.10).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-168300.30).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-168839.70).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-169499.20).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-170285.80).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-170577.80).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-172398.70).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-172952.60).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-170866.30).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-171276.90).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-171383.90).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-171765.00).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-171698.30).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-172081.90).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-172090.60).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-172477.20).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-172871.50).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-175436.00).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-175813.40).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-176288.60).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-177629.80).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-178075.10).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-178579.50).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-184566.10).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-184901.20).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-185435.90).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-186659.40).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-187278.50).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-188184.80).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-187004.00).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-187679.50).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-188756.20).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-189210.90).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-189553.90).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-190032.40).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-190135.90).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-190282.80).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-192980.70).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-193739.60).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-194208.20).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-193761.70).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-193879.40).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-194155.70).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-195974.10).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 6.0
+       elseif(abs(e-196497.90).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 6.0
+       elseif(abs(e-197185.00).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 6.0
+       elseif(abs(e-197095.40).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-197554.80).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-197879.50).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-200192.20).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-200290.40).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-200333.20).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-209260.20).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-209315.50).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-209448.20).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-212399.30).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-212666.10).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-212965.70).lt.1d1) then ! MnIV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-248388.60).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 5.0
+       elseif(abs(e-248654.80).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 5.0
+       elseif(abs(e-248983.80).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 5.0
+       elseif(abs(e-249374.80).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 5.0
+       elseif(abs(e-249822.70).lt.1d1) then ! MnIV
+        S = 2.0
+        L = 5.0
+       end if
       elseif(iation.eq.2604) then ! FeIV
        if(abs(e).lt.1d2) then ! ground state
         S = 2.5
