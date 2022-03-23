@@ -9714,12 +9714,57 @@ C      Jlo-L coupling, no LS term; will not reproduce spectrum
         L = 1.
        end if
       elseif(iation.eq.803) then
-       if(abs(e-267634.000).lt.6d2) then ! OIII 3760l
+       if(abs(e).lt.1d3) then ! ground state
         S = 1.
+        L = 1.
+       elseif(abs(e-20273.27).lt.1d3) then ! OIII
+        S = 0.
+        L = 2.
+       elseif(abs(e-43185.74).lt.1d3) then ! OIII
+        S = 0.
+        L = 0.
+       elseif(abs(e-60324.79).lt.1d3) then ! OIII
+        S = 3.
+        L = 0.
+       elseif(abs(e-120053.4).lt.1d3) then ! OIII
+        S = 2.
+        L = 2.
+       elseif(abs(e-142381.8).lt.1d3) then ! OIII
+        S = 2.
+        L = 1.
+       elseif(abs(e-187054.0).lt.1d3) then ! OIII
+        S = 0.
+        L = 2.
+       elseif(abs(e-197087.7).lt.1d3) then ! OIII
+        S = 1.
+        L = 0.
+       elseif(abs(e-210461.8).lt.1d3) then ! OIII
+        S = 0.
+        L = 1.
+       elseif(abs(e-267634.000).lt.6d2) then ! OIII 3760l
+        S = 1.
+        L = 1.
+       elseif(abs(e-273081.33).lt.1d3) then ! OIII
+        S = 0.
+        L = 1.
+       elseif(abs(e-283977.40).lt.1d3) then ! OIII
+        S = 1.
+        L = 1.
+       elseif(abs(e-290958.25).lt.1d3) then ! OIII
+        S = 0.
         L = 1.
        elseif(abs(e-294223.062).lt.8d2) then ! OIII 3760u
         S = 1.
         L = 2.
+       elseif(abs(e-297558.66).lt.5d2) then ! OIII
+        S = 1.
+        L = 0.
+       elseif(abs(e-298294.0).lt.3d2) then ! OIII
+        S = 0.
+        L = 2.
+       elseif(abs(e-300311.96).lt.1d3) then ! OIII
+        S = 1.
+        L = 1.
        elseif(abs(e-380720.).lt.4d1) then ! OIII
         S = 1.
         L = 1.
@@ -9939,20 +9984,2805 @@ C      mixed with 3d 2Fo
         L = 1.
        end if
       elseif(iation.eq.2204) then
-       if(abs(e-230924.375).lt.4d2) then ! TiIV 3541,3576
-        S = 0.5
-        L = 1.
-       elseif(abs(e-258877.078).lt.1d2) then ! TiIV 3541,3576
-        S = 0.5
+       S = 0.5
+       if(abs(e).lt.1d3) then ! TiIV
         L = 2.
+       elseif(abs(e-80388.92).lt.1d3) then ! TiIV
+        L = 0.
+       elseif(abs(e-128000.).lt.2d3) then ! TiIV
+        L = 1.
+       elseif(abs(e-196850.).lt.2d3) then ! TiIV
+        L = 2.
+       elseif(abs(e-212407.).lt.2d3) then ! TiIV
+        L = 0.
+       elseif(abs(e-230924.375).lt.4d2) then ! TiIV 3541,3576
+        L = 1.
+       elseif(abs(e-236135.).lt.2d3) then ! TiIV
+        L = 3.
+       elseif(abs(e-258877.078).lt.1d3) then ! TiIV 3541,3576
+        L = 2.
+       elseif(abs(e-265847.42).lt.1d3) then ! TiIV
+        L = 0.
        elseif(abs(e-278511.219).lt.1d1) then ! TiIV 4618 (G-H)
-        S = 0.5
         L = 4.
        elseif(abs(e-300158.750).lt.1d1)then ! TiIV 4618 (G-H)
-        S = 0.5
         L = 5.
        end if
-      elseif(iation.eq.3004) then ! GaIV
+      elseif(iation.eq.2604) then ! FeIV
+       if(abs(e).lt.1d2) then ! ground state
+        S = 2.5
+        L = 0.
+       elseif(abs(e-32245.50).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-32292.80).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-32301.20).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-32305.70).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-35253.80).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-35333.30).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-35406.60).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-38779.40).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-38896.70).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-38935.10).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-38938.20).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-47078.60).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 6.0
+       elseif(abs(e-47090.50).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 6.0
+       elseif(abs(e-49541.50).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-50051.40).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-51394.20).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-52166.70).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-52620.70).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-52695.40).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-52837.10).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-52838.00).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-56058.30).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-56368.80).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-57408.00).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-57721.20).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-61156.50).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-61254.40).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-66720.10).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 0.0
+       elseif(abs(e-74096.60).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-74133.10).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-82894.90).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-82897.30).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-100118.00).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-100126.00).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-108242.10).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-108258.30).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-127766.15).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-127929.12).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-128191.54).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-128541.85).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-128967.67).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-137700.81).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-137949.29).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-138338.83).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-138844.03).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-153651.74).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-154474.85).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-155744.87).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-154185.85).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-154325.96).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-154512.67).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-154731.29).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-156012.29).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-156049.32).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-156123.77).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-156224.88).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-158738.69).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-159010.39).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-159227.90).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-159342.88).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-160015.88).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-161571.59).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-160311.64).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-160778.60).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-162074.42).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-162087.81).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-164950.50).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-165392.58).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-165493.10).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-165600.96).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-165720.94).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-165804.47).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-167712.50).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-167795.92).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-168526.37).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 6.0
+       elseif(abs(e-168566.43).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 6.0
+       elseif(abs(e-170729.49).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 0.0
+       elseif(abs(e-171345.33).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-171476.39).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-177005.97).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-177066.72).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-183159.61).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-183164.49).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-187878.81).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 3.0
+       elseif(abs(e-188086.05).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 3.0
+       elseif(abs(e-188428.78).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 3.0
+       elseif(abs(e-188904.55).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 3.0
+       elseif(abs(e-189515.88).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 3.0
+       elseif(abs(e-190276.85).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 3.0
+       elseif(abs(e-189885.11).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 1.0
+       elseif(abs(e-190008.28).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 1.0
+       elseif(abs(e-190226.87).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 1.0
+       elseif(abs(e-189975.01).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-190811.79).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-191337.82).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-190318.34).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-190406.45).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-190424.14).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-190435.47).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-191021.18).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-191694.11).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-193549.25).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-192595.28).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-193120.34).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-193271.27).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-193386.17).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-193789.19).lt.1d1) then ! Fe IV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-195864.15).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-196875.62).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-196131.19).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-196220.71).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-196186.88).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-196334.63).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-196549.59).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-196846.82).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-201178.05).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-201212.22).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-201919.38).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-202085.22).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-202328.53).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-202608.33).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-212135.79).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-212374.04).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-212714.37).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-213162.59).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-212812.66).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-213445.05).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-214317.21).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-215220.67).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-214821.74).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-215033.81).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-215385.23).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-216002.72).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-215155.69).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 6.0
+       elseif(abs(e-215808.91).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 6.0
+       elseif(abs(e-216367.80).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 6.0
+       elseif(abs(e-216877.83).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 6.0
+       elseif(abs(e-215860.50).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-217031.89).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-218023.81).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-216111.69).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-216428.44).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-217466.19).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-218478.36).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-218601.03).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-217607.71).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-217845.29).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-218159.77).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-218238.51).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-218375.12).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-218195.66).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-218613.88).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-218871.21).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-219091.67).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-219333.90).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-220360.44).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-219564.46).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 6.0
+       elseif(abs(e-219640.76).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 6.0
+       elseif(abs(e-219590.84).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-219700.53).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-219826.61).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-220059.33).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-220197.25).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-220649.22).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-220461.33).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-221161.02).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-220658.04).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-221104.17).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-221647.49).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-222154.99).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-221219.29).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-221239.21).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-221320.54).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-221346.06).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-222020.09).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-222880.23).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-222840.58).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-222851.68).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-223398.62).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-223478.96).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-224046.02).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-223550.14).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-223745.82).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-223629.59).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-224045.96).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-224230.60).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-224576.43).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-224870.85).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-226851.93).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-226892.10).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-226983.58).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-227258.80).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-227604.73).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-227660.25).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-227919.05).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-228589.67).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-229037.02).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-228193.67).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-229138.90).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-228204.33).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 6.0
+       elseif(abs(e-228315.03).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 6.0
+       elseif(abs(e-228793.86).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-229306.61).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-228862.61).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-229062.58).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-229288.02).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-229494.74).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-228946.59).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-233786.72).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-229428.91).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-233927.12).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-229472.83).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 7.0
+       elseif(abs(e-230195.02).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 7.0
+       elseif(abs(e-231473.32).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-231804.00).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-233272.84).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-233802.12).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-233780.86).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-234106.72).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-234472.00).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-234984.35).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-236918.79).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-237283.09).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-238512.84).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-239071.40).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-242259.25).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-242614.60).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-242965.62).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-244759.25).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-245742.29).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-246990.80).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-248077.97).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-250195.07).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-250249.39).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-250279.06).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-250502.29).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-250891.05).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-251156.94).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-251958.94).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-251014.02).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-251658.34).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-251984.20).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-251944.03).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-252884.48).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-253254.37).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-253827.43).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-254164.84).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-253575.65).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-253868.43).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-253923.59).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-254169.13).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-257503.26).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 0.0
+       elseif(abs(e-258566.02).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-259039.72).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-258591.92).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-258986.64).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-259183.82).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-259254.34).lt.1d1) then ! Fe IV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-259011.48).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-259581.64).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-262348.36).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 0.0
+       elseif(abs(e-262557.77).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-264011.54).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-262995.01).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-263876.91).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-265084.77).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-265369.48).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-266181.09).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-266335.24).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-280758.37).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-281446.30).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-285052.77).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-286084.72).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-289400.72).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-289818.77).lt.1d1) then ! Fe IV
+        S = 0.5
+        L = 2.0
+       end if
+      elseif(iation.eq.2605) then ! FeV
+       if(abs(e-0.00).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-142.40).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-417.50).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-803.10).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-1282.70).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-24055.50).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-24972.80).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-26468.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-24932.40).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-25225.50).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-25528.40).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-26760.70).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-26842.30).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-26973.70).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-29817.10).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-30147.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-30429.90).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-36585.60).lt.1d1) then ! FeV
+        S = 0.0
+        L = 4.0
+       elseif(abs(e-36630.00).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-36758.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-36925.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-37511.60).lt.1d1) then ! FeV
+        S = 0.0
+        L = 6.0
+       elseif(abs(e-39633.00).lt.1d1) then ! FeV
+        S = 0.0
+        L = 0.0
+       elseif(abs(e-46291.10).lt.1d1) then ! FeV
+        S = 0.0
+        L = 2.0
+       elseif(abs(e-52732.60).lt.1d1) then ! FeV
+        S = 0.0
+        L = 3.0
+       elseif(abs(e-61854.10).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-62914.10).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-63419.80).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-62238.00).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-62321.10).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-62364.30).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-71280.30).lt.1d1) then ! FeV
+        S = 0.0
+        L = 4.0
+       elseif(abs(e-93832.50).lt.1d1) then ! FeV
+        S = 0.0
+        L = 2.0
+       elseif(abs(e-121130.10).lt.1d1) then ! FeV
+        S = 0.0
+        L = 0.0
+       elseif(abs(e-186433.76).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-186725.71).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-187157.65).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-187719.04).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-188395.37).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-195196.47).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-195933.16).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-196838.70).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-204729.74).lt.1d1) then ! FeV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-204975.19).lt.1d1) then ! FeV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-205536.21).lt.1d1) then ! FeV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-208837.95).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-209109.88).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-209523.71).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-212541.95).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-212817.95).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-213649.03).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-213533.85).lt.1d1) then ! FeV
+        S = 0.0
+        L = 4.0
+       elseif(abs(e-214525.59).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-214611.27).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-214895.32).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-215782.44).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-216537.95).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-216651.97).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-216779.13).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-216860.23).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-217122.30).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-219486.73).lt.1d1) then ! FeV
+        S = 0.0
+        L = 1.0
+       elseif(abs(e-220620.76).lt.1d1) then ! FeV
+        S = 0.0
+        L = 2.0
+       elseif(abs(e-221304.88).lt.1d1) then ! FeV
+        S = 0.0
+        L = 5.0
+       elseif(abs(e-233633.45).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-233848.74).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-234027.15).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-237729.26).lt.1d1) then ! FeV
+        S = 0.0
+        L = 3.0
+       elseif(abs(e-254803.50).lt.1d1) then ! FeV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-255399.38).lt.1d1) then ! FeV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-256177.97).lt.1d1) then ! FeV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-257137.99).lt.1d1) then ! FeV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-258297.44).lt.1d1) then ! FeV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-257742.43).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-260411.59).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-261179.73).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-258128.69).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-258619.69).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-258680.10).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-258891.52).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-259344.97).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-258434.39).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-258628.65).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-258769.65).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-259376.31).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-259954.98).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-259995.44).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-260521.14).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-261052.01).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-262509.11).lt.1d1) then ! FeV
+        S = 0.0
+        L = 2.0
+       elseif(abs(e-263898.71).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-264434.15).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-265112.77).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-266612.93).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-267240.50).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-267928.54).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-273642.90).lt.1d1) then ! FeV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-274135.92).lt.1d1) then ! FeV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-274929.80).lt.1d1) then ! FeV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-274753.03).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-275374.10).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-276765.79).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-275146.52).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-276434.82).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-276759.06).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-277068.37).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-278075.58).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-276429.40).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-277292.48).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-278650.47).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-278793.99).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-279502.43).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-280039.49).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-279667.00).lt.1d1) then ! FeV
+        S = 0.0
+        L = 0.0
+       elseif(abs(e-280366.94).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-280539.57).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-280831.94).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-281944.77).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-282234.35).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-290406.90).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-282037.70).lt.1d1) then ! FeV
+        S = 0.0
+        L = 4.0
+       elseif(abs(e-282423.24).lt.1d1) then ! FeV
+        S = 2.0
+        L = 0.0
+       elseif(abs(e-282571.38).lt.1d1) then ! FeV
+        S = 0.0
+        L = 3.0
+       elseif(abs(e-282604.81).lt.1d1) then ! FeV
+        S = 0.0
+        L = 2.0
+       elseif(abs(e-282871.56).lt.1d1) then ! FeV
+        S = 0.0
+        L = 5.0
+       elseif(abs(e-283686.14).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-290583.59).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-290903.40).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-283753.89).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-284911.02).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-285474.05).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-284690.31).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-284790.49).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-285195.84).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-285961.44).lt.1d1) then ! FeV
+        S = 0.0
+        L = 1.0
+       elseif(abs(e-286154.59).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-287620.17).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-286187.52).lt.1d1) then ! FeV
+        S = 1.0
+        L = 0.0
+       elseif(abs(e-286431.11).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-286855.15).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-286862.55).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-287109.43).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-287440.38).lt.1d1) then ! FeV
+        S = 1.0
+        L = 6.0
+       elseif(abs(e-288167.02).lt.1d1) then ! FeV
+        S = 1.0
+        L = 6.0
+       elseif(abs(e-289171.64).lt.1d1) then ! FeV
+        S = 1.0
+        L = 6.0
+       elseif(abs(e-288669.49).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-289389.54).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-289912.85).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-289546.00).lt.1d1) then ! FeV
+        S = 0.0
+        L = 4.0
+       elseif(abs(e-290098.82).lt.1d1) then ! FeV
+        S = 0.0
+        L = 5.0
+       elseif(abs(e-291231.28).lt.1d1) then ! FeV
+        S = 0.0
+        L = 3.0
+       elseif(abs(e-292287.31).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-292430.64).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-292513.09).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-292365.63).lt.1d1) then ! FeV
+        S = 0.0
+        L = 6.0
+       elseif(abs(e-294643.94).lt.1d1) then ! FeV
+        S = 1.0
+        L = 0.0
+       elseif(abs(e-295716.18).lt.1d1) then ! FeV
+        S = 0.0
+        L = 2.0
+       elseif(abs(e-295973.00).lt.1d1) then ! FeV
+        S = 0.0
+        L = 1.0
+       elseif(abs(e-302292.47).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-302376.79).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-302602.33).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-306193.81).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-306622.68).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-307064.14).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-307288.72).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-308164.83).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-308671.29).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-307644.03).lt.1d1) then ! FeV
+        S = 0.0
+        L = 2.0
+       elseif(abs(e-311180.67).lt.1d1) then ! FeV
+        S = 0.0
+        L = 4.0
+       elseif(abs(e-311538.43).lt.1d1) then ! FeV
+        S = 0.0
+        L = 3.0
+       elseif(abs(e-327534.02).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-327605.70).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-327924.58).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-329848.38).lt.1d1) then ! FeV
+        S = 0.0
+        L = 2.0
+       elseif(abs(e-331333.77).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-331367.30).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-332017.59).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-334509.16).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-335267.93).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-335642.73).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-335947.22).lt.1d1) then ! FeV
+        S = 0.0
+        L = 3.0
+       elseif(abs(e-342462.10).lt.1d1) then ! FeV
+        S = 0.0
+        L = 1.0
+       elseif(abs(e-356468.00).lt.1d1) then ! FeV
+        S = 2.0
+        L = 5.0
+       elseif(abs(e-357028.20).lt.1d1) then ! FeV
+        S = 2.0
+        L = 5.0
+       elseif(abs(e-357328.90).lt.1d1) then ! FeV
+        S = 2.0
+        L = 5.0
+       elseif(abs(e-357891.40).lt.1d1) then ! FeV
+        S = 2.0
+        L = 5.0
+       elseif(abs(e-358532.80).lt.1d1) then ! FeV
+        S = 2.0
+        L = 5.0
+       elseif(abs(e-357849.30).lt.1d1) then ! FeV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-357972.90).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-358208.20).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-358425.70).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-358830.80).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-359383.20).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-358757.00).lt.1d1) then ! FeV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-359146.40).lt.1d1) then ! FeV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-359588.00).lt.1d1) then ! FeV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-360064.30).lt.1d1) then ! FeV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-360459.70).lt.1d1) then ! FeV
+        S = 2.0
+        L = 4.0
+       elseif(abs(e-359461.90).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-363754.10).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-364457.90).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-365284.40).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-364455.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-365245.00).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-366154.60).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-364664.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-365556.00).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-366018.10).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-366564.30).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-367229.50).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-367355.50).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-367602.80).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-367965.10).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-368433.60).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-376991.10).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-377102.90).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-377278.20).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-377577.40).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-378061.60).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-377294.00).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-377537.60).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-377682.83).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-378173.80).lt.1d1) then ! FeV
+        S = 1.0
+        L = 6.0
+       elseif(abs(e-378685.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 6.0
+       elseif(abs(e-379270.50).lt.1d1) then ! FeV
+        S = 1.0
+        L = 6.0
+       elseif(abs(e-378657.83).lt.1d1) then ! FeV
+        S = 0.0
+        L = 5.0
+       elseif(abs(e-378763.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-378831.60).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-379110.36).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-379617.46).lt.1d1) then ! FeV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-379726.81).lt.1d1) then ! FeV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-379874.40).lt.1d1) then ! FeV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-379817.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-380397.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-380736.60).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-381056.50).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-381163.30).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-381334.20).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-381531.70).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-381707.50).lt.1d1) then ! FeV
+        S = 2.0
+        L = 2.0
+       elseif(abs(e-381546.60).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-383400.86).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-381999.70).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-382105.61).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-382342.30).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-382925.40).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-393347.80).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-382452.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-393839.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-394167.10).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-384523.58).lt.1d1) then ! FeV
+        S = 0.0
+        L = 4.0
+       elseif(abs(e-384979.40).lt.1d1) then ! FeV
+        S = 1.0
+        L = 6.0
+       elseif(abs(e-385218.40).lt.1d1) then ! FeV
+        S = 1.0
+        L = 6.0
+       elseif(abs(e-385449.90).lt.1d1) then ! FeV
+        S = 1.0
+        L = 6.0
+       elseif(abs(e-385007.98).lt.1d1) then ! FeV
+        S = 0.0
+        L = 3.0
+       elseif(abs(e-385183.60).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-385366.93).lt.1d1) then ! FeV
+        S = 0.0
+        L = 5.0
+       elseif(abs(e-385938.00).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-386649.36).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-386718.30).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-386896.10).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-387843.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-388400.50).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-388029.50).lt.1d1) then ! FeV
+        S = 1.0
+        L = 7.0
+       elseif(abs(e-388366.10).lt.1d1) then ! FeV
+        S = 1.0
+        L = 7.0
+       elseif(abs(e-388885.40).lt.1d1) then ! FeV
+        S = 1.0
+        L = 7.0
+       elseif(abs(e-388208.80).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-390022.60).lt.1d1) then ! FeV
+        S = 0.0
+        L = 4.0
+       elseif(abs(e-390174.20).lt.1d1) then ! FeV
+        S = 0.0
+        L = 3.0
+       elseif(abs(e-390307.80).lt.1d1) then ! FeV
+        S = 0.0
+        L = 7.0
+       elseif(abs(e-392772.39).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-393010.30).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-393894.90).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-394443.40).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-394683.20).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-395055.00).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-395774.20).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-396432.70).lt.1d1) then ! FeV
+        S = 2.0
+        L = 3.0
+       elseif(abs(e-395049.70).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-395348.80).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-395744.60).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-395439.00).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-395695.90).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-395802.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-396391.80).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-396406.50).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-396976.30).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-397108.90).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-397961.50).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-398600.50).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-399457.30).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-398857.00).lt.1d1) then ! FeV
+        S = 0.0
+        L = 3.0
+       elseif(abs(e-400384.30).lt.1d1) then ! FeV
+        S = 0.0
+        L = 4.0
+       elseif(abs(e-400479.20).lt.1d1) then ! FeV
+        S = 0.0
+        L = 2.0
+       elseif(abs(e-402222.70).lt.1d1) then ! FeV
+        S = 0.0
+        L = 6.0
+       elseif(abs(e-406411.90).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-406462.50).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-406771.00).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-406754.00).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-406923.80).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-407724.50).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-408953.80).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-412172.20).lt.1d1) then ! FeV
+        S = 0.0
+        L = 3.0
+       elseif(abs(e-413059.20).lt.1d1) then ! FeV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-413289.10).lt.1d1) then ! FeV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-413889.60).lt.1d1) then ! FeV
+        S = 2.0
+        L = 1.0
+       elseif(abs(e-415576.60).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-415786.90).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-416272.60).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-415667.40).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-415912.30).lt.1d1) then ! FeV
+        S = 0.0
+        L = 2.0
+       elseif(abs(e-417092.00).lt.1d1) then ! FeV
+        S = 0.0
+        L = 4.0
+       elseif(abs(e-419506.20).lt.1d1) then ! FeV
+        S = 0.0
+        L = 4.0
+       elseif(abs(e-423325.70).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-423422.90).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-423605.60).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-423765.60).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-424066.00).lt.1d1) then ! FeV
+        S = 1.0
+        L = 5.0
+       elseif(abs(e-425255.80).lt.1d1) then ! FeV
+        S = 0.0
+        L = 5.0
+       elseif(abs(e-429422.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 2.0
+       elseif(abs(e-431349.40).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-431529.00).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-431659.40).lt.1d1) then ! FeV
+        S = 1.0
+        L = 4.0
+       elseif(abs(e-434040.40).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-434122.30).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-436209.00).lt.1d1) then ! FeV
+        S = 1.0
+        L = 1.0
+       elseif(abs(e-437400.70).lt.1d1) then ! FeV
+        S = 0.0
+        L = 4.0
+       elseif(abs(e-440953.00).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-441138.20).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-441334.30).lt.1d1) then ! FeV
+        S = 1.0
+        L = 3.0
+       elseif(abs(e-442499.70).lt.1d1) then ! FeV
+        S = 0.0
+        L = 3.0
+       end if
+      elseif(iation.eq.2804) then ! NiIV
+       if(abs(e-0.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-1189.70).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-2042.50).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-2621.10).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-18118.60).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-18366.80).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-18958.40).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-19829.60).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-20947.60).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-23648.90).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-24651.40).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-26649.10).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-27677.60).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-27096.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-28777.70).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-43437.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-43858.60).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-67360.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-67989.80).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-110410.60).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-111195.80).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-111763.30).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-112151.90).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-112379.30).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-120909.50).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-121807.70).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-122386.10).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-122717.40).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-138446.20).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-140343.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-141561.20).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-139289.40).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-139619.20).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-139886.70).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-140140.90).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-141220.30).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-141577.20).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-141832.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-142023.50).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-144815.10).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-145702.20).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-146061.50).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-146153.80).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-145192.10).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-145962.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-146194.30).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-147635.90).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-148358.20).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-151574.70).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-152343.70).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-153313.80).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-153338.80).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-153349.40).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-153533.60).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-155253.70).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 6.0
+       elseif(abs(e-155308.70).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 6.0
+       elseif(abs(e-156294.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-156351.20).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-159498.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-159818.40).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-171406.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-171408.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-175569.50).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-175869.10).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-176247.10).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-176554.40).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-176749.00).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 2.0
+       elseif(abs(e-179583.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-179655.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-179724.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-179792.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-181931.50).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 3.0
+       elseif(abs(e-182044.90).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 3.0
+       elseif(abs(e-182125.60).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 3.0
+       elseif(abs(e-182206.80).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 3.0
+       elseif(abs(e-182259.90).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 3.0
+       elseif(abs(e-182288.40).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 3.0
+       elseif(abs(e-184099.10).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 1.0
+       elseif(abs(e-185505.30).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 1.0
+       elseif(abs(e-186441.40).lt.1d1) then ! NiIV
+        S = 2.5
+        L = 1.0
+       elseif(abs(e-185890.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-186516.10).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-186957.20).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-187225.70).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-185967.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-185997.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-186470.10).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-187570.30).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-188320.10).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-188824.20).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-190830.30).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-191618.20).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-192033.50).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-190864.70).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-190932.80).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-205114.10).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 0.0
+       elseif(abs(e-206005.30).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-206340.90).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-206645.70).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-206847.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-206523.20).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-206740.70).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 6.0
+       elseif(abs(e-206754.50).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 6.0
+       elseif(abs(e-208046.80).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 6.0
+       elseif(abs(e-208149.50).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 6.0
+       elseif(abs(e-206865.50).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 6.0
+       elseif(abs(e-207136.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-208595.30).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-208631.30).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-207846.20).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-208009.10).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-208330.70).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-208461.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 0.0
+       elseif(abs(e-208605.70).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-208766.90).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-208933.60).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-208912.10).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-210313.30).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-209131.90).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-209391.40).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-209985.10).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-210121.80).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-210943.60).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-211246.80).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-211351.70).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-210177.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 6.0
+       elseif(abs(e-210987.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 6.0
+       elseif(abs(e-210590.60).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-211027.60).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-212150.90).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-212207.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-212275.90).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-212281.80).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-213131.10).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-213408.60).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-215516.80).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-215541.30).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-213412.10).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-213606.90).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-213640.20).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-213739.70).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-214055.80).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-214101.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-214316.80).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-214718.10).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-214910.50).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-214587.40).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-214622.80).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-215292.90).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-215506.60).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-215684.50).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-215724.50).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-215736.10).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-215531.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 0.0
+       elseif(abs(e-217414.30).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-217939.70).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-218860.60).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-219553.40).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-219896.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-219765.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-220762.60).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 7.0
+       elseif(abs(e-222202.80).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 7.0
+       elseif(abs(e-221991.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-222029.30).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-222333.30).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-222662.90).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-223225.40).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-222705.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-225758.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-222993.30).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-225903.70).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-223785.40).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-224021.30).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-224824.90).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-225096.40).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-224075.30).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-224174.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-224463.60).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-224761.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-224645.70).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-225136.90).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-224936.90).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-224996.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-225431.60).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-226685.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 6.0
+       elseif(abs(e-226702.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 6.0
+       elseif(abs(e-227181.10).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-227549.40).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-228214.20).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-232897.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-228518.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-229269.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-229297.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-231091.80).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-231742.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-232272.70).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-232539.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-234019.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-237480.30).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-238957.80).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-239009.70).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-240094.20).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-241172.40).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-241540.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-241817.90).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-241939.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-243520.10).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-243542.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-247731.70).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-248218.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-248855.40).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-249130.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 0.0
+       elseif(abs(e-250951.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-251694.30).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-251773.60).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-252523.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-252354.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-252975.40).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-253326.20).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-253579.30).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-253639.10).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-254123.70).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-254300.00).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-254663.40).lt.1d1) then ! NiIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-255064.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-257018.00).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-257406.40).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-258672.80).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-260065.10).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-260355.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-261226.30).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-262275.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-262538.70).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-282179.50).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-282645.20).lt.1d1) then ! NiIV
+        S = 0.5
+        L = 2.0
+       end if
+      elseif(iation.eq.3004) then ! ZnIV
+       if(abs(e-0.00).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-2759.10).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-128729.80).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-130366.10).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-131804.50).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-132777.30).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-135951.20).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-138479.40).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-148179.70).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-149190.80).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-151249.50).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-151392.40).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-151574.30).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-157074.80).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-157929.50).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-160886.00).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-160919.00).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-199369.00).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 0.0
+       elseif(abs(e-201319.00).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-203684.60).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-205453.00).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-206513.00).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-204447.00).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-205261.00).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-205991.00).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-207175.30).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-207737.00).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-208921.30).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-209899.00).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-210187.10).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 3.0
+       elseif(abs(e-208970.00).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-211189.50).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-211569.70).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-213479.80).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-211823.70).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-214167.30).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-221426.20).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-221737.40).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-222120.00).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-223609.40).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-225032.50).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-224997.60).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-226050.20).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-225414.00).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-226684.90).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-229162.80).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-229230.90).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-229252.80).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-229877.90).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-231693.00).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-232938.10).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-232245.70).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-234493.90).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-232981.00).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-234623.00).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-234802.20).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-236109.30).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 3.0
+       elseif(abs(e-235975.50).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 0.0
+       elseif(abs(e-236175.10).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 0.0
+       elseif(abs(e-242320.00).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-242640.00).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 4.0
+       elseif(abs(e-274746.30).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-276884.60).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 1.0
+       elseif(abs(e-304097.10).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-306370.00).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-307159.60).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-307599.40).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-304679.40).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-308162.00).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-308898.50).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-305066.80).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-307966.80).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-308078.00).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-309693.80).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 5.0
+       elseif(abs(e-305411.50).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-310043.00).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 5.0
+       elseif(abs(e-305928.30).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-306023.60).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-309885.10).lt.1d1) then ! ZnIV
+        S = 1.5
+        L = 4.0
+       elseif(abs(e-306411.10).lt.1d1) then ! ZnIV
+        S = 0.5
+        L = 3.0
+       end if
+      elseif(iation.eq.3104) then ! GaIV
        if(abs(e).lt.1d2) then ! ground state
         S = 0.
         L = 0.
@@ -9966,7 +12796,7 @@ C      mixed with 3d 2Fo
         S = 0.
         L = 1.
        end if
-      elseif(iation.eq.3104) then ! GeIV
+      elseif(iation.eq.3204) then ! GeIV
        if(abs(e).lt.1d2) then ! ground state
         S = 0.5
         L = 0.
