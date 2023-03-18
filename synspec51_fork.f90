@@ -10277,6 +10277,18 @@ C      Jlo-L coupling, no LS term; will not reproduce spectrum
        elseif(abs(e-213725.297).lt.3d2) then ! SIV 3097u,3118u,3340u
         S = 0.5
         L = 1.
+       elseif(abs(e-222198.30).lt.1d3) then ! SIV
+        S = 1.5
+        L = 1.0
+       elseif(abs(e-224342.70).lt.1d3) then ! SIV
+        S = 1.5
+        L = 2.0
+       elseif(abs(e-233610.40).lt.1d3) then ! SIV
+        S = 0.5
+        L = 2.0
+       elseif(abs(e-242000.00).lt.1d3) then ! SIV
+        S = 0.5
+        L = 3.0
        elseif(abs(e-255400.297).lt.3d2) then ! SIV 4504l, 3363l
         S = 0.5
         L = 2.
