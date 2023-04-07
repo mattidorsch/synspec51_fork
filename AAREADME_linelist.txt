@@ -22,6 +22,7 @@ GaVI
 GeIII
     Naslim+ 2011 for 3 optical lines
     Morton (2000) for 1088.463, 1600.001 AA
+    -> now updated with new data by Claudio Mendoza using Cowan's code
 
 GeIV
     Morton 2000 for UV
