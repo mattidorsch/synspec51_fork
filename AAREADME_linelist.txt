@@ -559,3 +559,5 @@ updates
 2020-09-11:
         changed loggf back - the Chayer value is incorrect:
             ZrIV 1183.973: -0.930 (Kurucz, TOSS) <- 0.00 (Chayer 2006, also better for HZ44)
+        changed Stark broadening for CIV 1550AA resonance doublet
+            -7.17 (new Kurucz) -> -6.1 (old Kurucz/Tlusty value)
