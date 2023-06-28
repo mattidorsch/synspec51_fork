@@ -106,7 +106,7 @@ ZrIII
     Kurucz
 
 ZrIV
-    TOSS
+    TOSS, including 1184AA
 
 ZrV
     TOSS
@@ -555,3 +555,7 @@ updates
 
 2021-12-03:
             moved two TeIV lines from to air wavelengths (from level energies)
+
+2020-09-11:
+        changed loggf back - the Chayer value is incorrect:
+            ZrIV 1183.973: -0.930 (Kurucz, TOSS) <- 0.00 (Chayer 2006, also better for HZ44)
