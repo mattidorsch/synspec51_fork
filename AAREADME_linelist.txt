@@ -189,12 +189,19 @@ TlIII
     Safronova & Johnson 2004
 
 Pt IV-VI: 2120 lines from NIST 5.10
-Pt IV
+PtIV
     Azarov & Gayasov (2016ADNDT.108..118A; NIST 5.10)
-Pt V
+PtV
     Azarov & Gayasov (2016ADNDT.108..154A; NIST 5.10)
-Pt VI
+PtVI
     Azarov & Gayasov (2017ADNDT.115..309A; NIST 5.10)
+
+IrIV
+    Azarov & Gayasov (2016ADNDT.108...81A; NIST 5.10)
+IrV
+    Gayasov+ (2000): energy levels, lines
+    loggf are estimated from line strengths, NOT reliable
+
 
 PbIII
     Morton 2000 (1 FUV)
