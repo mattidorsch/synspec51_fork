@@ -188,8 +188,8 @@ BaV
 TlIII
     Safronova & Johnson 2004
 
-Pt III-VI
-    NIST
+Pt IV-VI
+    2120 lines from NIST 5.10
 
 PbIII
     Morton 2000 (1 FUV)
