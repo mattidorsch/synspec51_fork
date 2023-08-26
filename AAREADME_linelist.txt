@@ -190,11 +190,11 @@ TlIII
 
 Pt IV-VI: 2120 lines from NIST 5.10
 Pt IV
-    Azarov & Gayasov (2016a; NIST 5.10)
+    Azarov & Gayasov (2016ADNDT.108..118A; NIST 5.10)
 Pt V
-    Azarov & Gayasov (2016b; NIST 5.10)
+    Azarov & Gayasov (2016ADNDT.108..154A; NIST 5.10)
 Pt VI
-    Azarov & Gayasov (2017; NIST 5.10)
+    Azarov & Gayasov (2017ADNDT.115..309A; NIST 5.10)
 
 PbIII
     Morton 2000 (1 FUV)
