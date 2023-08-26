@@ -20,3 +20,17 @@ gfortran-6 -fno-automatic -fno-align-commons -O3 -Wall -o synspec51_fork synspec
 --
 changed SUBROUTINE DWNFR1
 
+
+---
+
+To add new heavy metals, modify:
+
+- STATE0: increase max. std. ionisation
+- PFSPEC: add new atomic data
+          don't forget to add:
+            Z
+            N()
+            G()
+            EN()
+            S()
+            gotos
