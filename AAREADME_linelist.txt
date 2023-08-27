@@ -196,6 +196,14 @@ PtV
 PtVI
     Azarov & Gayasov (2017ADNDT.115..309A; NIST 5.10)
 
+ReIV
+    Azarov & Gayasov (2018ADNDT.119..218A; NIST 5.10)
+ReV
+    Azarov & Gayasov (2018ADNDT.119..175A; NIST 5.10)
+
+OsIV
+    Ryabtsev+ (1998PhyS...57...82R)
+
 IrIV
     Azarov & Gayasov (2016ADNDT.108...81A; NIST 5.10)
 IrV
