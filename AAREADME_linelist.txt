@@ -210,6 +210,13 @@ IrV
     Gayasov+ (2000): energy levels, lines
     loggf are estimated from line strengths, NOT reliable
 
+HgIV
+    Rashid & Tauheed (2021JQSRT.27007668R)
+
+HgV
+    Energy levels:
+        Raassen+ (1991PhyS...43...44R)
+        5d7 6s: Wyart+ (1993PhyS...47..784W)
 
 PbIII
     Morton 2000 (1 FUV)
