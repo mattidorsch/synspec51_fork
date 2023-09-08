@@ -201,6 +201,9 @@ ReIV
 ReV
     Azarov & Gayasov (2018ADNDT.119..175A; NIST 5.10)
 
+OsIII
+    Azarov+ (2018ADNDT.121..345A), NIST 5.10
+
 OsIV
     Ryabtsev+ (1998PhyS...57...82R)
 
@@ -589,8 +592,47 @@ updates
 2021-12-03:
             moved two TeIV lines from to air wavelengths (from level energies)
 
-2020-09-11:
+2023-0?-??:
         changed loggf back - the Chayer value is incorrect:
             ZrIV 1183.973: -0.930 (Kurucz, TOSS) <- 0.00 (Chayer 2006, also better for HZ44)
         changed Stark broadening for CIV 1550AA resonance doublet
             -7.17 (new Kurucz) -> -6.1 (old Kurucz/Tlusty value)
+
+
+2023-09-08:
+CIII
+    1623.253 -> 1623.137
+
+PIII 
+    1344.326 -> 1344.317
+
+Ge IV
+    1500.610 -> 1500.549
+
+Hg IV
+    1239.781 -> 1239.792
+    1296.951 -> 1296.972
+    1343.779 -> 1343.783
+    1360.934 -> 1360.952
+    1386.286 -> 1386.298
+    1414.911 -> 1414.933
+    1447.318 -> 1447.338
+    1454.150 -> 1454.164
+    1465.718 -> 1465.725
+    1466.763 -> 1466.776
+    1472.425 -> 1472.436
+    1481.324 -> 1481.336
+    1481.507 -> 1481.510
+    1488.218 -> 1488.233
+    1513.730 -> 1513.744
+
+PbIII 
+    1167.000 -> 1166.940
+    1203.500 -> 1203.479
+    1250.400 -> 1250.430
+    1266.800 -> 1266.770
+    1274.500 -> 1274.536
+    1308.100 -> 1308.084
+    1553.021 -> 1553.004
+
+
