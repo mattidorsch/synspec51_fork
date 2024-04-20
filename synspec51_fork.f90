@@ -25159,6 +25159,8 @@ C                           S*=SCREENING NO. OF LEVEL
         DATA SYVI/MYVI*1.0/
 
         DATA SZRIV/MZRIV*1.0/
+        SZRIV = 33.5545 + ENZRIV/ZRIV * (42.0-33.5545)
+        SZRIV(1) = 26.9284
         DATA SZRV/MZRV*1.0/
         DATA SZRVI/MZRVI*1.0/
         DATA SZRVII/MZRVII*1.0/
