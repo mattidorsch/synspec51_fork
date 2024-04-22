@@ -240,7 +240,10 @@ BiIII
     Morton 2000
 
 BiIV
-    Morton 2000
+    208 lines from Arya & Tauheed (2022JQSRT.29208353A)
+    -> WARNING hyperfine structure is not properly treated
+    -> fudged here for 1317, 1207, 1201.5, 1128.8, 1118, 1103.4, 992.8 AA
+    Morton 2000 (replaced by Arya & Tauheed 2022)
 
 BiV
     Sarfronova & Johnson 2004
