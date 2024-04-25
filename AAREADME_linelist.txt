@@ -185,16 +185,11 @@ XeV
 BaV
     TOSS
 
-TlIII
-    Safronova & Johnson 2004
+LuIV
+    Motoumba, Yoca & Quinet (2020ADNDT.13301340M)
 
-Pt IV-VI: 2120 lines from NIST 5.10
-PtIV
-    Azarov & Gayasov (2016ADNDT.108..118A; NIST 5.10)
-PtV
-    Azarov & Gayasov (2016ADNDT.108..154A; NIST 5.10)
-PtVI
-    Azarov & Gayasov (2017ADNDT.115..309A; NIST 5.10)
+HfV
+    Motoumba, Yoca & Quinet (2020ADNDT.13301340M)
 
 ReIV
     Azarov & Gayasov (2018ADNDT.119..218A; NIST 5.10)
@@ -213,6 +208,18 @@ IrV
     Gayasov+ (2000): energy levels, lines
     loggf are estimated from line strengths, NOT reliable
 
+
+Pt IV-VI: 2120 lines from NIST 5.10
+PtIV
+    Azarov & Gayasov (2016ADNDT.108..118A; NIST 5.10)
+PtV
+    Azarov & Gayasov (2016ADNDT.108..154A; NIST 5.10)
+PtVI
+    Azarov & Gayasov (2017ADNDT.115..309A; NIST 5.10)
+
+AuIV
+    Zainab+ (2023ApJS..267...12Z)
+
 HgIV
     Rashid & Tauheed (2021JQSRT.27007668R)
 
@@ -221,8 +228,8 @@ HgV
         Raassen+ (1991PhyS...43...44R)
         5d7 6s: Wyart+ (1993PhyS...47..784W)
 
-AuIV
-    Zainab+ (2023ApJS..267...12Z)
+TlIII
+    Safronova & Johnson 2004
 
 PbIII
     Morton 2000 (1 FUV)
