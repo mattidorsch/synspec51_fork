@@ -1035,6 +1035,7 @@ C
 C     =========================
 C
 C     Initialization of the basic parameters for the Saha equation
+C     Enable more ions here for PFSPEC!
 C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       parameter (enhe1=24.5799,enhe2=54.3999)
@@ -1138,7 +1139,7 @@ C                                     ionization stage
      *       168.9 ,   1.34896287e-12  ,  3.,   
      *       173.0 ,   8.91250917e-12  ,  3.,   
      *       175.0 ,   1.31825674e-12  ,  3.,   
-     *       178.5 ,   5.37031822e-12  ,  3.,   
+     *       178.49,   5.37031822e-12  ,  7.,   
      *       181.0 ,   1.34896287e-12  ,  3.,   
      *       183.9 ,   4.78630102e-12  ,  3.,   
      *       186.3 ,   1.86208719e-12  ,  7.,   
@@ -1146,7 +1147,7 @@ C                                     ionization stage
      *       192.2 ,   2.34422885e-11  ,  7.,   
      *       195.1 ,   4.78630036e-11  ,  7.,   
      *       196.97,   6.76082952e-12  ,  7.,   
-     *       200.6 ,   1.23026887e-11  ,  7.,   
+     *       200.59,   1.23026887e-11  ,  7.,   
      *       204.4 ,   6.60693440e-12  ,  6.,   
      *       207.2 ,   1.12201834e-10  ,  6.,   
      *       209.0 ,   5.12861361e-12  ,  6.,   
@@ -1245,15 +1246,15 @@ C
      *        6.180,12.050, 23.700, 99.99,99.99,99.99,99.99,99.99,   
      *        6.250,12.170, 20.000, 99.99,99.99,99.99,99.99,99.99,   
      *        6.099,13.899, 19.000, 99.99,99.99,99.99,99.99,99.99,   
-     *        7.000,14.899, 23.299, 99.99,99.99,99.99,99.99,99.99,   
+     *        6.82507,14.899,23.299,33.37,68.37,98.,118.,137., 
      *        7.879,16.200, 24.000, 99.99,99.99,99.99,99.99,99.99,   
      *        7.86404,17.700, 25.000, 99.99,99.99,99.99,99.99,99.99,   
-     *        7.870,16.600, 26.000, 99.99,99.99,99.99,99.99,99.99,   
-     *        8.500,17.000, 27.000, 99.99,99.99,99.99,99.99,99.99,   
-     *        9.100,20.000, 28.000, 99.99,99.99,99.99,99.99,99.99,   
-     *        8.95868,18.563,33.227, 99.99,99.99,99.99,99.99,99.99,   
-     *        9.220,20.500, 30.000, 99.99,99.99,99.99,99.99,99.99,   
-     *       10.430,18.750, 34.200, 99.99,99.99,99.99,99.99,99.99,   
+     *        7.83352,16.600, 27.000,39.1,51.9,67.0,82.71,144.4, 
+     *        8.43823,17.000, 25.000,41.,55.,70.1,85.1,102.02,   
+     *        8.96702,17.0,28.0,40.,57.,72.,89.,105.,   
+     *        8.95868,18.563,33.227,43.,56.,75.,91.,109.,   
+     *        9.225554, 20.203,30.,45.,60.,74.,94.,112.,   
+     *        10.437504,18.75688,34.49,48.55,61.2,76.6,93.,113.9,
      *        6.10829,20.4283,29.852,50.72,62.6,80.0,97.9,116.0,   
      *        7.416684,15.0325,31.9373,42.33,69.,82.9,100.1,120.0,   
      *        7.285519,16.679, 25.563,45.32,56.0,88.,103.,122.,   
@@ -19885,6 +19886,7 @@ C
      +     MBAVI=49,MTLV=1,MTLVI=1,MTHVI=1,MGAVII=180,MASVII=49,
      +     MSEVII=44,MTHVII=1,MGEVIII=1,MMOVIII=76,MTEVIII=1,MSBVII=1,
      +     MNBIV=182,MNBV=30,MNBVI=104,MNBVII=31,MNBVIII=1,
+     +     MHFIV=1,MHFV=72,MHFVI=1,MHFVII=1,
      +     MREIV=161,MREV=79,MREVI=1,MREVII=1,
      +     MOSIV=371,MOSV=1,MOSVI=1,MOSVII=1,
      +     MIRIV=223,MIRV=320,MIRVI=1,MIRVII=1,
@@ -19948,6 +19950,10 @@ C
      +     GNBVI(MNBVI),ENNBVI(MNBVI),SNBVI(MNBVI),
      +     GNBVII(MNBVII),ENNBVII(MNBVII),SNBVII(MNBVII),
      +     GNBVIII(MNBVIII),ENNBVIII(MNBVIII),SNBVIII(MNBVIII),
+     +     GHFIV(MHFIV),ENHFIV(MHFIV),SHFIV(MHFIV),
+     +     GHFV(MHFV),ENHFV(MHFV),SHFV(MHFV),
+     +     GHFVI(MHFVI),ENHFVI(MHFVI),SHFVI(MHFVI),
+     +     GHFVII(MHFVII),ENHFVII(MHFVII),SHFVII(MHFVII),
      +     GOSIV(MOSIV),ENOSIV(MOSIV),SOSIV(MOSIV),
      +     GOSV(MOSV),ENOSV(MOSV),SOSV(MOSV),
      +     GOSVI(MOSVI),ENOSVI(MOSVI),SOSVI(MOSVI),
@@ -20037,6 +20043,7 @@ C
      +     NGEVIII(MGEVIII),NMOVIII(MMOVIII),NTEVIII(MTEVIII),
      +     NSBVII(MSBVII),NNBIV(MNBIV),NNBV(MNBV),NNBVI(MNBVI),
      +     NNBVII(MNBVII),NNBVIII(MNBVIII),
+     +     NHFIV(MHFIV),NHFV(MHFV),NHFVI(MHFVI),NHFVII(MHFVII),
      +     NREIV(MREIV),NREV(MREV),NREVI(MREVI),NREVII(MREVII),
      +     NOSIV(MOSIV),NOSV(MOSV),NOSVI(MOSVI),NOSVII(MOSVII),
      +     NIRIV(MIRIV),NIRV(MIRV),NIRVI(MIRVI),NIRVII(MIRVII),
@@ -20054,6 +20061,7 @@ C
      +     ZAS=33.0,ZSE=34.0,ZKR=36.0,ZSR=38.0,ZY=39.0,ZZR=40.0,
      +     ZMO=42.0,ZSN=50.0,ZSB=51.0,ZTE=52.0,ZXE=54.0,ZBA=56.0,
      +     ZTL=81.0,ZPB=82.0,ZBI=83.0,ZTH=90.0,ZIN=49.0,ZNB=41.0,
+     +     ZHF=72.0,
      +     ZRE=75.0,ZOS=76.0,ZIR=77.0,ZPT=78.0,ZHG=80.0,ZAU=79.0)
 C                           N***=QUANTUM NO. OF LEVEL
 C      DATA FOR IONS        G***=STATISTICAL WEIGHT OF LEVEL
@@ -23253,6 +23261,47 @@ C                           S*=SCREENING NO. OF LEVEL
      +          31.83602,31.90100,32.42980,32.93680,33.18430,
      +          33.61000,35.77750,36.06740,38.11110/
 
+        DATA NHFIV/5/
+        DATA GHFIV/4.0/
+        DATA ENHFIV/0.0/
+
+        DATA NHFV/4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,6,6,6,6,5,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,5,7,5,7,5,5,5,5,5,5,5,5,
+     +          5,6,6,6,6,6,6,6,6,5,5,7/
+        DATA GHFV/1.,5.,11.,7.,9.,3.,13.,5.,9.,7.,
+     +          11.,1.,9.,5.,3.,7.,11.,5.,3.,7.,
+     +          9.,9.,7.,5.,7.,3.,7.,9.,11.,5.,
+     +          7.,7.,9.,5.,3.,9.,5.,7.,3.,5.,
+     +          11.,7.,9.,13.,5.,9.,7.,11.,5.,9.,
+     +          13.,7.,3.,15.,7.,9.,11.,7.,13.,9.,
+     +          11.,9.,5.,7.,3.,11.,5.,7.,9.,3.,
+     +          11.,5./
+        DATA ENHFV/0.00000,19.43897,20.04897,20.41049,20.58778,
+     +          20.66408,20.67813,20.87167,21.23116,21.36585,
+     +          21.47559,21.62695,21.70631,21.92666,22.44663,
+     +          22.47476,22.54864,22.72147,22.73212,23.01627,
+     +          23.13423,26.35084,26.41711,28.02556,28.07767,
+     +          33.30674,33.43926,33.50117,34.97442,34.99494,
+     +          35.06657,35.19608,35.22801,35.23680,36.52978,
+     +          36.70406,36.79693,36.88099,40.32896,44.73849,
+     +          44.84712,44.93605,44.98206,45.03783,45.09147,
+     +          45.19086,45.21388,45.23054,45.82343,45.87417,
+     +          45.87764,45.89870,45.90160,45.92000,45.93400,
+     +          46.02333,46.03779,46.05462,46.07813,46.09471,
+     +          46.09861,46.50231,46.57719,46.69226,46.71742,
+     +          46.75475,46.80493,46.87523,46.90056,47.43759,
+     +          47.53496,47.54903/
+
+        DATA NHFVI/5/
+        DATA GHFVI/8.0/
+        DATA ENHFVI/0.0/
+
+        DATA NHFVII/5/
+        DATA GHFVII/8.0/
+        DATA ENHFVII/0.0/
+
         DATA NREIV/5,5,5,5,5,5,5,5,5,5,
      +          5,5,5,5,5,5,5,5,5,5,
      +          5,5,5,5,5,6,6,5,6,5,
@@ -23571,13 +23620,15 @@ C                           S*=SCREENING NO. OF LEVEL
      +          24.52676,24.53079,24.53770,24.57502,24.59896,
      +          24.63958,24.66576,24.68617,24.80242,24.90220,
      +          26.14744/
-        DATA NOSV/5.0/
+        DATA NOSV/5/
         DATA GOSV/1.0/
         DATA ENOSV/0.0/
-        DATA NOSVI/5.0/
+
+        DATA NOSVI/5/
         DATA GOSVI/4.0/
         DATA ENOSVI/0.0/
-        DATA NOSVII/5.0/
+
+        DATA NOSVII/5/
         DATA GOSVII/5.0/
         DATA ENOSVII/0.0/
 
@@ -25206,6 +25257,11 @@ C                           S*=SCREENING NO. OF LEVEL
         DATA SBAV/MBAV*1.0/
         DATA SBAVI/MBAVI*1.0/
 
+        DATA SHFIV/MHFIV*1.0/
+        DATA SHFV/MHFV*1.0/
+        DATA SHFVI/MHFVI*1.0/
+        DATA SHFVII/MHFVII*1.0/
+
         DATA SREIV/MREIV*1.0/
         SREIV = 57.6170 + ENREIV/MAXVAL(ENREIV) * (75.0-57.6170)
         DATA SREV/MREV*1.0/
@@ -25328,6 +25384,10 @@ C        WRITE(*,*)'PFSPEC IND:',IND
         IF(IND.EQ.564) GO TO 564
         IF(IND.EQ.565) GO TO 565
         IF(IND.EQ.566) GO TO 566
+        IF(IND.EQ.724) GO TO 724
+        IF(IND.EQ.725) GO TO 725
+        IF(IND.EQ.726) GO TO 726
+        IF(IND.EQ.727) GO TO 727
         IF(IND.EQ.754) GO TO 754
         IF(IND.EQ.755) GO TO 755
         IF(IND.EQ.756) GO TO 756
@@ -25901,6 +25961,17 @@ C        WRITE(*,*)'PARTDV:BA5:U=',U
 *
  566    CALL PARTDV(T,ANE,ZBA,MBAVI,NBAVI,GBAVI,ENBAVI,SBAVI,U)
 C        WRITE(*,*)'PARTDV:BA6:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR HF IV-VII
+*
+ 724    CALL PARTDV(T,ANE,ZHF,MHFIV,NHFIV,GHFIV,ENHFIV,SHFIV,U)
+        GO TO 8888
+ 725    CALL PARTDV(T,ANE,ZHF,MHFV,NHFV,GHFV,ENHFV,SHFV,U)
+        GO TO 8888
+ 726    CALL PARTDV(T,ANE,ZHF,MHFVI,NHFVI,GHFVI,ENHFVI,SHFVI,U)
+        GO TO 8888
+ 727    CALL PARTDV(T,ANE,ZHF,MHFVII,NHFVII,GHFVII,ENHFVII,SHFVII,U)
         GO TO 8888
 *
 *       CALCULATING PARTITION FUNCTIONS FOR RE IV-VII
