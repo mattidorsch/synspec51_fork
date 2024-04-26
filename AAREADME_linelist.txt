@@ -185,6 +185,10 @@ XeV
 BaV
     TOSS
 
+YbIV
+    DREAM; Wyart, Tchang-Brillet et al. (2001PhyS...63..113W)
+    Energy levels from NIST
+
 LuIV
     Motoumba, Yoca & Quinet (2020ADNDT.13301340M)
 
