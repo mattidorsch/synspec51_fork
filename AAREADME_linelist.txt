@@ -185,6 +185,22 @@ XeV
 BaV
     TOSS
 
+PrIII
+    DREAM; Palmeri, Quinet et al. (2000ApJS..129..367P)
+           Biémont, Garnir el al. (2001PhRvA..64b2503B)
+
+PrIV
+    DREAM;
+
+NdIII
+    DREAM;
+
+NdIV
+    DREAM;
+
+YbIII
+    DREAM;
+
 YbIV
     DREAM; Wyart, Tchang-Brillet et al. (2001PhyS...63..113W)
     Energy levels from NIST
