@@ -198,6 +198,12 @@ NdIII
 NdIV
     DREAM;
 
+TmIII
+    DREAM;
+
+TmIV
+    DREAM;
+
 YbIII
     DREAM;
 
@@ -211,6 +217,12 @@ LuIV
 HfV
     Motoumba, Yoca & Quinet (2020ADNDT.13301340M)
 
+WIV
+    Enzonga Yoca, Quinet & Biemont (2012JPhB...45c5001E)
+
+WV
+    Enzonga Yoca, Quinet & Biemont (2012JPhB...45f5001E)
+    
 ReIV
     Azarov & Gayasov (2018ADNDT.119..218A; NIST 5.10)
 ReV
