@@ -1125,7 +1125,7 @@ C                                     ionization stage
      *       132.9 ,   1.31825676e-11  ,  3.,   
      *       137.4 ,   1.62181025e-10  ,  6.,   
      *       138.9 ,   1.58489337e-11  ,  3.,   
-     *       140.1 ,   4.07380293e-11  ,  3.,   
+     *       140.12,   4.07380293e-11  ,  7.,   
      *       140.91,   6.02559549e-12  ,  7.,   
      *       144.24,   2.95120943e-11  ,  7.,   
      *       147.0 ,   1.00000000e-24  ,  3.,   
@@ -1231,8 +1231,8 @@ C
      *       12.12984,20.975,31.05,45.,54.14,66.703,91.6,105.9778,   
      *        3.893,25.100, 35.000, 99.99,99.99,99.99,99.99,99.99,   
      *        5.210,10.000, 37.000, 47.0,58.0,71.0,86.0,101.0,   
-     *        5.580,11.060, 19.169, 99.99,99.99,99.99,99.99,99.99,   
-     *        5.650,10.850, 20.080, 99.99,99.99,99.99,99.99,99.99,   
+     *        5.5769,11.18496,19.1773,49.95,61.6,74.,88.,105.,   
+     *        5.5386,10.956,20.1974,36.906,65.55,77.6,91.,106.,   
      *        5.4702,10.631,21.6237,38.981,57.53,82.,97.,112.,   
      *        5.525,10.783, 22.09, 40.60,60.,84.,99.,114.,   
      *        5.550,10.899, 20.000, 99.99,99.99,99.99,99.99,99.99,   
@@ -19886,12 +19886,13 @@ C
      +     MBAVI=49,MTLV=1,MTLVI=1,MTHVI=1,MGAVII=180,MASVII=49,
      +     MSEVII=44,MTHVII=1,MGEVIII=1,MMOVIII=76,MTEVIII=1,MSBVII=1,
      +     MNBIV=182,MNBV=30,MNBVI=104,MNBVII=31,MNBVIII=1,
+     +     MCEIV=16,MCEV=55,MCEVI=3,MCEVII=1,
      +     MPRIV=88,MPRV=8,MPRVI=1,MPRVII=1,
      +     MNDIV=230,MNDV=1,MNDVI=1,MNDVII=1,
      +     MTMIV=209,MTMV=1,MTMVI=1,MTMVII=1,
      +     MYBIV=114,MYBV=1,MYBVI=1,MYBVII=1,
      +     MLUIV=70,MLUV=36,MLUVI=1,MLUVII=1,
-     +     MHFIV=1,MHFV=72,MHFVI=1,MHFVII=1,
+     +     MHFIV=4,MHFV=72,MHFVI=1,MHFVII=1,
      +     MWIV=105,MWV=59,MWVI=14,MWVII=108,MWVIII=1,
      +     MREIV=161,MREV=79,MREVI=1,MREVII=1,
      +     MOSIV=371,MOSV=1,MOSVI=1,MOSVII=1,
@@ -19956,6 +19957,10 @@ C
      +     GNBVI(MNBVI),ENNBVI(MNBVI),SNBVI(MNBVI),
      +     GNBVII(MNBVII),ENNBVII(MNBVII),SNBVII(MNBVII),
      +     GNBVIII(MNBVIII),ENNBVIII(MNBVIII),SNBVIII(MNBVIII),
+     +     GCEIV(MCEIV),ENCEIV(MCEIV),SCEIV(MCEIV),
+     +     GCEV(MCEV),ENCEV(MCEV),SCEV(MCEV),
+     +     GCEVI(MCEVI),ENCEVI(MCEVI),SCEVI(MCEVI),
+     +     GCEVII(MCEVII),ENCEVII(MCEVII),SCEVII(MCEVII),
      +     GPRIV(MPRIV),ENPRIV(MPRIV),SPRIV(MPRIV),
      +     GPRV(MPRV),ENPRV(MPRV),SPRV(MPRV),
      +     GPRVI(MPRVI),ENPRVI(MPRVI),SPRVI(MPRVI),
@@ -20074,6 +20079,7 @@ C
      +     NGEVIII(MGEVIII),NMOVIII(MMOVIII),NTEVIII(MTEVIII),
      +     NSBVII(MSBVII),NNBIV(MNBIV),NNBV(MNBV),NNBVI(MNBVI),
      +     NNBVII(MNBVII),NNBVIII(MNBVIII),
+     +     NCEIV(MCEIV),NCEV(MCEV),NCEVI(MCEVI),NCEVII(MCEVII),
      +     NPRIV(MPRIV),NPRV(MPRV),NPRVI(MPRVI),NPRVII(MPRVII),
      +     NNDIV(MNDIV),NNDV(MNDV),NNDVI(MNDVI),NNDVII(MNDVII),
      +     NTMIV(MTMIV),NTMV(MTMV),NTMVI(MTMVI),NTMVII(MTMVII),
@@ -20098,7 +20104,7 @@ C
       PARAMETER (ZH=1.0,ZHE=2.0,ZC=6.0,ZN=7.0,ZO=8.0,ZGA=31.0,ZGE=32.0,
      +     ZAS=33.0,ZSE=34.0,ZKR=36.0,ZSR=38.0,ZY=39.0,ZZR=40.0,
      +     ZMO=42.0,ZSN=50.0,ZSB=51.0,ZTE=52.0,ZXE=54.0,ZBA=56.0,
-     +     ZTL=81.0,ZPB=82.0,ZBI=83.0,ZTH=90.0,ZIN=49.0,ZNB=41.0,
+     +     ZTL=81.0,ZPB=82.0,ZBI=83.0,ZTH=90.0,ZIN=49.,ZNB=41.,ZCE=58.,
      +     ZPR=59.,ZND=60.,ZTM=69.,ZYB=70.0,ZLU=71.,ZHF=72.,ZW=74.,
      +     ZRE=75.0,ZOS=76.0,ZIR=77.0,ZPT=78.0,ZHG=80.0,ZAU=79.0)
 C                           N***=QUANTUM NO. OF LEVEL
@@ -23299,6 +23305,45 @@ C                           S*=SCREENING NO. OF LEVEL
      +          31.83602,31.90100,32.42980,32.93680,33.18430,
      +          33.61000,35.77750,36.06740,38.11110/
 
+        DATA NCEIV/4,4,5,5,6,6,6,6,6,7,5,5,7,7,8,
+     +          5/
+        DATA GCEIV/6.,8.,4.,6.,2.,2.,4.,6.,4.,2.,
+     +          6.,8.,4.,6.,2.,8./
+        DATA ENCEIV/0.00000,0.27934,6.16660,6.47520,10.73728,
+     +          15.19860,15.78220,21.96975,22.18238,22.75135,
+     +          22.88066,22.90558,27.48246,27.50441,27.91231,
+     +          27.97393/
+
+        DATA NCEV/5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,6,6,5,6,6,6,
+     +          6,6,6,6,6,5,5,5,6,5,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6/
+        DATA GCEV/1.,3.,5.,9.,11.,7.,7.,9.,5.,7.,
+     +          7.,9.,5.,1.,3.,5.,9.,7.,5.,7.,
+     +          3.,5.,5.,7.,5.,3.,3.,1.,3.,3.,
+     +          5.,7.,3.,5.,1.,5.,7.,9.,3.,7.,
+     +          3.,5.,1.,1.,3.,5.,9.,7.,5.,7.,
+     +          3.,5.,5.,7.,3./
+        DATA ENCEV/0.00000,13.31341,13.69308,14.10513,14.11711,
+     +          14.26970,14.63853,15.12902,15.44033,17.00501,
+     +          17.43106,17.52739,17.80277,22.11163,22.45547,
+     +          23.11898,23.21938,23.34635,23.73715,24.55154,
+     +          25.67158,26.13252,26.74235,27.06982,30.59093,
+     +          30.67341,31.04555,33.73375,33.90659,35.61782,
+     +          35.84318,36.34340,36.45071,36.81715,37.46709,
+     +          37.73459,38.01046,38.27603,38.83044,38.84214,
+     +          39.69095,39.71376,39.89372,43.66575,43.78489,
+     +          44.02307,44.05310,44.06711,44.25670,44.34567,
+     +          44.78582,47.32734,47.33831,47.46452,47.59228/
+
+        DATA NCEVI/5,5,5/
+        DATA GCEVI/4.,2.,2./
+        DATA ENCEVI/0.00000,3.22161,19.88905/
+
+        DATA NCEVII/5/
+        DATA GCEVII/5.0/
+        DATA ENCEVII/0.0/
+
         DATA NPRIV/4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,
      +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
      +          5,5,6,6,6,6,6,6,5,5,6,6,6,6,6,
@@ -23757,9 +23802,9 @@ C                           S*=SCREENING NO. OF LEVEL
         DATA GWVIII/8.0/
         DATA ENWVIII/0.0/
 
-        DATA NHFIV/5/
-        DATA GHFIV/4.0/
-        DATA ENHFIV/0.0/
+        DATA NHFIV/5,5,6,6/
+        DATA GHFIV/4.,5.,2.,2./
+        DATA ENHFIV/0.0,0.58173,2.27883,8.31178/
 
         DATA NHFV/4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
      +          5,5,5,5,5,5,6,6,6,6,5,6,6,6,6,
@@ -25753,6 +25798,11 @@ C                           S*=SCREENING NO. OF LEVEL
         DATA SBAV/MBAV*1.0/
         DATA SBAVI/MBAVI*1.0/
 
+        DATA SCEIV/MCEIV*1.0/
+        DATA SCEV/MCEV*1.0/
+        DATA SCEVI/MCEVI*1.0/
+        DATA SCEVII/MCEVII*1.0/
+
         DATA SPRIV/MPRIV*1.0/
         DATA SPRV/MPRV*1.0/
         DATA SPRVI/MPRVI*1.0/
@@ -25911,6 +25961,10 @@ C        WRITE(*,*)'PFSPEC IND:',IND
         IF(IND.EQ.564) GO TO 564
         IF(IND.EQ.565) GO TO 565
         IF(IND.EQ.566) GO TO 566
+        IF(IND.EQ.584) GO TO 584
+        IF(IND.EQ.585) GO TO 585
+        IF(IND.EQ.586) GO TO 586
+        IF(IND.EQ.587) GO TO 587
         IF(IND.EQ.594) GO TO 594
         IF(IND.EQ.595) GO TO 595
         IF(IND.EQ.596) GO TO 596
@@ -26513,6 +26567,17 @@ C        WRITE(*,*)'PARTDV:BA5:U=',U
 *
  566    CALL PARTDV(T,ANE,ZBA,MBAVI,NBAVI,GBAVI,ENBAVI,SBAVI,U)
 C        WRITE(*,*)'PARTDV:BA6:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR CE IV-VII
+*
+ 584    CALL PARTDV(T,ANE,ZCE,MCEIV,NCEIV,GCEIV,ENCEIV,SCEIV,U)
+        GO TO 8888
+ 585    CALL PARTDV(T,ANE,ZCE,MCEV,NCEV,GCEV,ENCEV,SCEV,U)
+        GO TO 8888
+ 586    CALL PARTDV(T,ANE,ZCE,MCEVI,NCEVI,GCEVI,ENCEVI,SCEVI,U)
+        GO TO 8888
+ 587    CALL PARTDV(T,ANE,ZCE,MCEVII,NCEVII,GCEVII,ENCEVII,SCEVII,U)
         GO TO 8888
 *
 *       CALCULATING PARTITION FUNCTIONS FOR PR IV-VII

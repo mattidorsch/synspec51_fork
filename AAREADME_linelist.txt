@@ -185,6 +185,16 @@ XeV
 BaV
     TOSS
 
+CeIII, CeIV
+    Carvajal Gallego, Palmeri & Quinet (2021MNRAS.501.1440C)
+    wavelengths for CeIV 1319 etc seem to be wrong, or loggf too high
+        CeIV 1280.229 -> 1289.41
+        CeIV 1319.348 -> 1332.16
+        CeIV 1356.282 -> 1372.72
+CeV
+    Wajid, Tauheed & Jabeen (2021JQSRT.25807387W)
+    some updated loggf from Carvajal Gallego et al. (2022MNRAS.509.6138C)
+
 PrIII
     DREAM; Palmeri, Quinet et al. (2000ApJS..129..367P)
            Biémont, Garnir el al. (2001PhRvA..64b2503B)
@@ -214,14 +224,18 @@ YbIV
 LuIV
     Motoumba, Yoca & Quinet (2020ADNDT.13301340M)
 
+HfIV
+    Allehabi, Dzuba & Flambaum (2022PhRvA.106c2807A)
+    -> only two lines (1491.669, 2055.118AA)
 HfV
     Motoumba, Yoca & Quinet (2020ADNDT.13301340M)
 
 WIV
     Enzonga Yoca, Quinet & Biemont (2012JPhB...45c5001E)
-
 WV
-    Enzonga Yoca, Quinet & Biemont (2012JPhB...45f5001E)
+    Enzonga Yoca, Quinet, Palmeri & Biemont (2012JPhB...45f5001E)
+WVI
+    Enzonga Yoca, Palmeri et al. (2012JPhB...45c5002E)
     
 ReIV
     Azarov & Gayasov (2018ADNDT.119..218A; NIST 5.10)
