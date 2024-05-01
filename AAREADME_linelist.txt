@@ -189,6 +189,10 @@ XeV
 BaV
     TOSS
 
+LaIV
+    Karaçoban Usta & Eser (2020AcPPA.137.1187K, 2020AcPPA.137S...1K)
+    -> moved some lines
+
 CeIII, CeIV
     Carvajal Gallego, Palmeri & Quinet (2021MNRAS.501.1440C)
     wavelengths for CeIV 1319 etc seem to be wrong, or loggf too high
@@ -227,7 +231,6 @@ YbIV
 
 LuIV
     Motoumba, Yoca & Quinet (2020ADNDT.13301340M)
-
 LuV
     Maison, Carvajal Gallego & Quinet (2022Atoms..10..130M)
 

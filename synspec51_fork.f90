@@ -1124,7 +1124,7 @@ C                                     ionization stage
      *       131.3 ,   1.69824373e-10  ,  7.,   
      *       132.9 ,   1.31825676e-11  ,  3.,   
      *       137.4 ,   1.62181025e-10  ,  6.,   
-     *       138.9 ,   1.58489337e-11  ,  3.,   
+     *       138.91,   1.58489337e-11  ,  7.,   
      *       140.12,   4.07380293e-11  ,  7.,   
      *       140.91,   6.02559549e-12  ,  7.,   
      *       144.24,   2.95120943e-11  ,  7.,   
@@ -19887,6 +19887,7 @@ C
      +     MSEVII=44,MTHVII=1,MGEVIII=1,MMOVIII=76,MTEVIII=1,MSBVII=1,
      +     MNBIV=182,MNBV=30,MNBVI=104,MNBVII=31,MNBVIII=1,
      +     MAGIV=184,MAGV=1,MAGVI=1,MAGVII=1,
+     +     MLAIV=64,MLAV=36,MLAVI=1,MLAVII=1,
      +     MCEIV=16,MCEV=55,MCEVI=3,MCEVII=1,
      +     MPRIV=88,MPRV=8,MPRVI=1,MPRVII=1,
      +     MNDIV=230,MNDV=1,MNDVI=1,MNDVII=1,
@@ -19962,6 +19963,10 @@ C
      +     GAGV(MAGV),ENAGV(MAGV),SAGV(MAGV),
      +     GAGVI(MAGVI),ENAGVI(MAGVI),SAGVI(MAGVI),
      +     GAGVII(MAGVII),ENAGVII(MAGVII),SAGVII(MAGVII),
+     +     GLAIV(MLAIV),ENLAIV(MLAIV),SLAIV(MLAIV),
+     +     GLAV(MLAV),ENLAV(MLAV),SLAV(MLAV),
+     +     GLAVI(MLAVI),ENLAVI(MLAVI),SLAVI(MLAVI),
+     +     GLAVII(MLAVII),ENLAVII(MLAVII),SLAVII(MLAVII),
      +     GCEIV(MCEIV),ENCEIV(MCEIV),SCEIV(MCEIV),
      +     GCEV(MCEV),ENCEV(MCEV),SCEV(MCEV),
      +     GCEVI(MCEVI),ENCEVI(MCEVI),SCEVI(MCEVI),
@@ -20085,6 +20090,7 @@ C
      +     NSBVII(MSBVII),NNBIV(MNBIV),NNBV(MNBV),NNBVI(MNBVI),
      +     NNBVII(MNBVII),NNBVIII(MNBVIII),
      +     NAGIV(MAGIV),NAGV(MAGV),NAGVI(MAGVI),NAGVII(MAGVII),
+     +     NLAIV(MLAIV),NLAV(MLAV),NLAVI(MLAVI),NLAVII(MLAVII),
      +     NCEIV(MCEIV),NCEV(MCEV),NCEVI(MCEVI),NCEVII(MCEVII),
      +     NPRIV(MPRIV),NPRV(MPRV),NPRVI(MPRVI),NPRVII(MPRVII),
      +     NNDIV(MNDIV),NNDV(MNDV),NNDVI(MNDVI),NNDVII(MNDVII),
@@ -20108,7 +20114,7 @@ C
      +     XEIV=42.20,XEV=54.1,BAIV=47.0,BAV=58.0,
      +     PBIV=42.33256,PBV=68.8)
       PARAMETER (ZH=1.0,ZHE=2.0,ZC=6.0,ZN=7.0,ZO=8.,ZGA=31.,ZGE=32.,
-     +     ZAS=33.,ZSE=34.,ZKR=36.,ZSR=38.,ZY=39.,ZZR=40.,
+     +     ZAS=33.,ZSE=34.,ZKR=36.,ZSR=38.,ZY=39.,ZZR=40.,ZLA=57.,
      +     ZMO=42.,ZAG=47.,ZSN=50.,ZSB=51.,ZTE=52.,ZXE=54.,ZBA=56.,
      +     ZTL=81.,ZPB=82.,ZBI=83.,ZTH=90.,ZIN=49.,ZNB=41.,ZCE=58.,
      +     ZPR=59.,ZND=60.,ZTM=69.,ZYB=70.,ZLU=71.,ZHF=72.,ZW=74.,
@@ -23394,6 +23400,56 @@ C                           S*=SCREENING NO. OF LEVEL
         DATA GAGVII/6.0/
         DATA ENAGVII/0.0/
 
+        DATA NLAIV/5,4,4,4,4,4,4,4,4,4,4,4,5,5,5,
+     +          5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+     +          6,6,7,7,7,7,7,7,7,7,7,7,7,7,7,
+     +          8,8,8,8/
+        DATA GLAIV/1.,3.,5.,11.,9.,7.,7.,9.,5.,7.,
+     +          9.,5.,1.,3.,5.,9.,7.,7.,3.,5.,
+     +          5.,7.,3.,5.,3.,1.,3.,3.,5.,7.,
+     +          3.,5.,1.,3.,3.,1.,1.,3.,9.,7.,
+     +          5.,5.,7.,3.,5.,5.,3.,5.,3.,1.,
+     +          3.,3.,7.,3.,5.,1.,3.,5.,3.,1.,
+     +          5.,3.,1.,3./
+        DATA ENLAIV/0.00000,18.63379,18.98633,19.39627,19.54633,
+     +          19.55417,20.17791,23.39151,21.23587,22.69224,
+     +          20.68005,23.34746,19.35767,19.66964,20.28044,
+     +          20.47878,20.76913,21.84417,22.96123,23.29772,
+     +          23.75377,24.04961,28.43492,24.93048,25.25127,
+     +          27.04309,27.19861,28.07075,28.48903,28.83299,
+     +          29.02113,29.24149,29.96055,31.16133,31.69570,
+     +          32.07520,34.51161,34.66053,34.84306,34.93152,
+     +          34.89725,35.15248,35.29076,39.13419,37.60222,
+     +          37.71933,36.35050,35.52326,35.40310,38.18436,
+     +          38.12398,37.64703,38.06474,38.29901,38.41955,
+     +          41.77812,40.65761,40.91299,40.93410,39.32446,
+     +          40.19885,40.25144,42.93561,42.96039/
+
+        DATA NLAV/5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,6,6,5,5,5,5,
+     +          5,6,6,6,6,6/
+        DATA GLAV/4.,2.,2.,8.,6.,4.,2.,4.,2.,6.,
+     +          2.,8.,10.,6.,4.,4.,4.,6.,8.,6.,
+     +          8.,6.,4.,6.,6.,4.,2.,6.,4.,4.,
+     +          2.,2.,4.,2.,6.,4./
+        DATA ENLAV/0.00000,2.68229,17.72603,20.65588,20.65588,
+     +          20.74354,21.04613,22.64819,22.75755,23.53741,
+     +          22.95133,23.25138,23.25138,23.25138,23.34610,
+     +          23.58390,24.39935,24.62041,24.89243,24.89243,
+     +          25.71407,25.71407,27.52734,29.30552,27.92013,
+     +          28.33597,28.38197,28.48413,31.11024,28.69292,
+     +          29.41178,29.79439,30.60600,31.04701,31.73202,
+     +          31.86977/
+
+        DATA NLAVI/5/
+        DATA GLAVI/5.0/
+        DATA ENLAVI/0.0/
+
+        DATA NLAVII/5/
+        DATA GLAVII/4.0/
+        DATA ENLAVII/0.0/
+
         DATA NCEIV/4,4,5,5,6,6,6,6,6,7,5,5,7,7,8,
      +          5/
         DATA GCEIV/6.,8.,4.,6.,2.,2.,4.,6.,4.,2.,
@@ -25892,6 +25948,11 @@ C                           S*=SCREENING NO. OF LEVEL
         DATA SAGVI/MAGVI*1.0/
         DATA SAGVII/MAGVII*1.0/
 
+        DATA SLAIV/MLAIV*1.0/
+        DATA SLAV/MLAV*1.0/
+        DATA SLAVI/MLAVI*1.0/
+        DATA SLAVII/MLAVII*1.0/
+
         DATA SCEIV/MCEIV*1.0/
         DATA SCEV/MCEV*1.0/
         DATA SCEVI/MCEVI*1.0/
@@ -26059,6 +26120,10 @@ C        WRITE(*,*)'PFSPEC IND:',IND
         IF(IND.EQ.564) GO TO 564
         IF(IND.EQ.565) GO TO 565
         IF(IND.EQ.566) GO TO 566
+        IF(IND.EQ.574) GO TO 574
+        IF(IND.EQ.575) GO TO 575
+        IF(IND.EQ.576) GO TO 576
+        IF(IND.EQ.577) GO TO 577
         IF(IND.EQ.584) GO TO 584
         IF(IND.EQ.585) GO TO 585
         IF(IND.EQ.586) GO TO 586
@@ -26676,6 +26741,17 @@ C        WRITE(*,*)'PARTDV:BA5:U=',U
 *
  566    CALL PARTDV(T,ANE,ZBA,MBAVI,NBAVI,GBAVI,ENBAVI,SBAVI,U)
 C        WRITE(*,*)'PARTDV:BA6:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR LA IV-VII
+*
+ 574    CALL PARTDV(T,ANE,ZLA,MLAIV,NLAIV,GLAIV,ENLAIV,SLAIV,U)
+        GO TO 8888
+ 575    CALL PARTDV(T,ANE,ZLA,MLAV,NLAV,GLAV,ENLAV,SLAV,U)
+        GO TO 8888
+ 576    CALL PARTDV(T,ANE,ZLA,MLAVI,NLAVI,GLAVI,ENLAVI,SLAVI,U)
+        GO TO 8888
+ 577    CALL PARTDV(T,ANE,ZLA,MLAVII,NLAVII,GLAVII,ENLAVII,SLAVII,U)
         GO TO 8888
 *
 *       CALCULATING PARTITION FUNCTIONS FOR CE IV-VII
