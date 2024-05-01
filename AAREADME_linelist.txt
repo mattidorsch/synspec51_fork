@@ -132,6 +132,9 @@ MoV
 MoVI
     TOSS
 
+AgIV
+    Ankita & Tauheed (2020JQSRT.25407193A)
+
 InIII
     Safronova+ 2003
 
@@ -224,6 +227,9 @@ YbIV
 
 LuIV
     Motoumba, Yoca & Quinet (2020ADNDT.13301340M)
+
+LuV
+    Maison, Carvajal Gallego & Quinet (2022Atoms..10..130M)
 
 HfIV
     Allehabi, Dzuba & Flambaum (2022PhRvA.106c2807A)
