@@ -179,12 +179,11 @@ XeIII
     -> only 3454 to 4061 AA
     Eser & Özdemir 2017, supplemented with NIST energies (loggf = -2.5)
     -> 1 to 2980AA, weak lines due to generally low loggf
-
-XeIV
+XeIV, XeV
     TOSS
 
-XeV
-    TOSS
+CsIV, CsV, CsVI
+    Chayer, Mendoza et al. (2023MNRAS.518..368C); only FUV!
 
 BaV
     TOSS
