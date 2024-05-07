@@ -185,6 +185,8 @@ XeIV, XeV
 CsIV, CsV, CsVI
     Chayer, Mendoza et al. (2023MNRAS.518..368C); only FUV!
 
+BaIV
+    Sharma & Tauheed (2014); only (F)UV!
 BaV
     TOSS
 
