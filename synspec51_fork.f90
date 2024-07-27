@@ -1123,7 +1123,7 @@ C                                     ionization stage
      *       126.9 ,   3.23593651e-11  ,  3.,   
      *       131.3 ,   1.69824373e-10  ,  7.,   
      *       132.91,   1.31825676e-11  ,  7.,   
-     *       137.4 ,   1.62181025e-10  ,  6.,   
+     *       137.33,   1.62181025e-10  ,  7.,   
      *       138.91,   1.58489337e-11  ,  7.,   
      *       140.12,   4.07380293e-11  ,  7.,   
      *       140.91,   6.02559549e-12  ,  7.,   
@@ -1230,7 +1230,7 @@ C
      *       10.454,19.090, 32.000, 99.99,99.99,99.99,99.99,99.99,   
      *       12.12984,20.975,31.05,45.,54.14,66.703,91.6,105.9778,   
      *        3.8939057274,23.15745,33.195,43.,56.,69.1,82.9,110.1,
-     *        5.210,10.000, 37.000, 47.0,58.0,71.0,86.0,101.0,   
+     *        5.2116646,10.003826,35.8438,47.,58.,71.,86.,101.,   
      *        5.5769,11.18496,19.1773,49.95,61.6,74.,88.,105.,   
      *        5.5386,10.956,20.1974,36.906,65.55,77.6,91.,106.,   
      *        5.4702,10.631,21.6237,38.981,57.53,82.,97.,112.,   
@@ -10181,6 +10181,95 @@ C      Jlo-L coupling, no LS term; will not reproduce spectrum
        elseif(abs(e-249108.609).lt.1d1) then ! NeII 3335
         S = 1.5
         L = 2.
+       elseif(abs(e-279137.6053).lt.1d0) then ! NeII 4219
+        S = 1.5
+        L = 2.
+       elseif(abs(e-279218.6416).lt.1d0) then ! NeII 4219
+        S = 1.5
+        L = 2.
+       elseif(abs(e-279324.8733).lt.1d0) then ! NeII 4219
+        S = 1.5
+        L = 2.
+       elseif(abs(e-280172.9854).lt.1d0) then ! NeII 4428
+        S = 1.5
+        L = 3.
+       elseif(abs(e-280700.7426).lt.1d0) then ! NeII 4428
+        S = 1.5
+        L = 3.
+       elseif(abs(e-280797.2387).lt.1d0) then ! NeII 4428
+        S = 1.5
+        L = 3.
+       elseif(abs(e-280947.0768).lt.1d0) then ! NeII 4428
+        S = 1.5
+        L = 3.
+       elseif(abs(e-281025.9326).lt.1d0) then ! NeII 4428
+        S = 0.5
+        L = 3.
+       elseif(abs(e-280262.3163).lt.1d0) then ! NeII 4428, 4409
+        S = 0.5
+        L = 3.
+       elseif(abs(e-302844.085).lt.1d1) then ! NeII 4428
+        S = 0.5
+        L = 3.
+       elseif(abs(e-328818.054).lt.1d1) then ! NeII 4428
+        S = 0.5
+        L = 3.
+       elseif(abs(e-303600.498).lt.1d1) then ! NeII 4428
+        S = 0.5
+        L = 3.
+       elseif(abs(e-302843.509).lt.1d1) then ! NeII 4428
+        S = 0.5
+        L = 3.
+       elseif(abs(e-302935.2919).lt.1d1) then ! NeII 4409
+        S = 0.5
+        L = 3. ! no LS: 2[5]*
+       elseif(abs(e-303599.9098).lt.1d1) then ! NeII
+        S = 0.5
+        L = 3. ! no LS
+       elseif(abs(e-302903.635).lt.1d1) then ! NeII
+        S = 0.5
+        L = 3. ! no LS
+       elseif(abs(e-302829.0453).lt.1d1) then ! NeII 4428
+        S = 0.5
+        L = 3.
+       elseif(abs(e-302831.176).lt.1d1) then ! NeII 4428
+        S = 0.5
+        L = 3.
+       elseif(abs(e-303509.514).lt.1d1) then ! NeII 4428
+        S = 0.5
+        L = 3.
+       elseif(abs(e-302831.176).lt.1d1) then ! NeII 4428
+        S = 0.5
+        L = 3.
+       elseif(abs(e-302935.312).lt.1d1) then ! NeII 4392
+        S = 1.5
+        L = 3. ! no LS: 2[5]*
+       elseif(abs(e-303508.458).lt.1d1) then ! NeII 4428
+        S = 0.5
+        L = 3.
+       elseif(abs(e-303528.5122).lt.1d1) then ! NeII 4398
+        S = 1.5
+        L = 3.
+       elseif(abs(e-305364.004).lt.1d1) then ! NeII 4290
+        S = 0.5
+        L = 4.
+       elseif(abs(e-328665.35).lt.1d1) then ! NeII 4290
+        S = 0.5
+        L = 4. ! no LS: 2[5]o
+       end if
+      elseif(iation.eq.1003) then
+       if(abs(e-449552.388).lt.1d1) then ! NeIII 4453
+        S = 2.
+        L = 3.
+       elseif(abs(e-449583.48).lt.1d1) then ! NeIII 4459
+        S = 1.
+        L = 3.
+       elseif(abs(e-472004.1).lt.1d-1) then ! NeIII 4453
+        S = 2.
+        L = 4.
+       elseif(abs(e-472004.44).lt.1d-1) then ! NeIII 4459
+        S = 1.
+        L = 4.
        end if
       elseif(iation.eq.1202) then
        if(abs(e-71490.19).lt.1d1) then ! MgII 4481l
@@ -19878,12 +19967,13 @@ C
      +     MYIV=129,MYV=113,MZRIV=34,MZRV=101,MMOIV=80,MMOV=257,
      +     MXEIV=94,MXEV=53,MSNIV=20,MSNV=24,MSBIV=28,MSBV=8,
      +     MTEIV=15,MTEV=44,MINIV=17,MINV=32,MSBVI=59,MTLIV=43,
-     +     MBAIV=31,MBAV=51,MPBIV=102,MBIIV=37,MBIV=14,MPBV=44,
+     +     MBAIV=31,MBAV=51,MBAVI=49,MBAVII=1,
+     +     MPBIV=102,MBIIV=37,MBIV=14,MPBV=44,
      +     MTHIV=24,MASVI=43,MMOVI=112,MGAVI=157,MGEVI=104,MSEVI=6,
      +     MZRVI=96,MSNVI=29,MXEVI=72,MPBVI=1,MBIVI=114,MTHV=1,
      +     MKRVI=44,MSRVI=21,MTEVI=8,MTEVII=59,MZRVII=1,MZRVIII=1,
      +     MYVI=1,MGEVII=167,MMOVII=95,MSRVII=19,MINVI=1,MXEVII=67,
-     +     MBAVI=49,MTLV=1,MTLVI=1,MTHVI=1,MGAVII=180,MASVII=49,
+     +     MTLV=1,MTLVI=1,MTHVI=1,MGAVII=180,MASVII=49,
      +     MSEVII=44,MTHVII=1,MGEVIII=1,MMOVIII=76,MTEVIII=1,MSBVII=1,
      +     MNBIV=182,MNBV=30,MNBVI=104,MNBVII=31,MNBVIII=1,
      +     MAGIV=184,MAGV=1,MAGVI=1,MAGVII=1,
@@ -19995,6 +20085,7 @@ C
      +     GBAIV(MBAIV),ENBAIV(MBAIV),SBAIV(MBAIV),
      +     GBAV(MBAV),ENBAV(MBAV),SBAV(MBAV),
      +     GBAVI(MBAVI),ENBAVI(MBAVI),SBAVI(MBAVI),
+     +     GBAVII(MBAVII),ENBAVII(MBAVII),SBAVII(MBAVII),
      +     GLAIV(MLAIV),ENLAIV(MLAIV),SLAIV(MLAIV),
      +     GLAV(MLAV),ENLAV(MLAV),SLAV(MLAV),
      +     GLAVI(MLAVI),ENLAVI(MLAVI),SLAVI(MLAVI),
@@ -20081,8 +20172,9 @@ C
      +     NXEIV(MXEIV),NXEV(MXEV),NINIV(MINIV),NINV(MINV),
      +     NBIIV(MBIIV),NBIV(MBIV),NTHIV(MTHIV),NSBVI(MSBVI),
      +     NTLIV(MTLIV),NASVI(MASVI),NMOVI(MMOVI),NGAVI(MGAVI),
-     +     NINVI(MINVI),NXEVII(MXEVII),NBAVI(MBAVI),
-     +     NBAIV(MBAIV),NBAV(MBAV),NPBIV(MPBIV),NPBV(MPBV),
+     +     NINVI(MINVI),NXEVII(MXEVII),
+     +     NBAIV(MBAIV),NBAV(MBAV),NBAVI(MBAVI),NBAVII(MBAVII),
+     +     NPBIV(MPBIV),NPBV(MPBV),
      +     NGEVI(MGEVI),NSEVI(MSEVI),NZRVI(MZRVI),NSNVI(MSNVI),
      +     NXEVI(MXEVI),NPBVI(MPBVI),NBIVI(MBIVI),NTHV(MTHV),
      +     NKRVI(MKRVI),NSRVI(MSRVI),NTEVI(MTEVI),NTEVII(MTEVII),
@@ -23405,7 +23497,9 @@ C                           S*=SCREENING NO. OF LEVEL
      +          30.02367,30.14098,30.56163,30.71410,31.12110,
      +          31.83602,31.90100,32.42980,32.93680,33.18430,
      +          33.61000,35.77750,36.06740,38.11110/
-
+        DATA NBAVII/5/
+        DATA GBAVII/1.0/
+        DATA ENBAVII/0.0/
 
         DATA NAGIV/4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,
      +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
@@ -26036,6 +26130,7 @@ C                           S*=SCREENING NO. OF LEVEL
         DATA SBAIV/MBAIV*1.0/
         DATA SBAV/MBAV*1.0/
         DATA SBAVI/MBAVI*1.0/
+        DATA SBAVII/MBAVII*1.0/
 
         DATA SAGIV/MAGIV*1.0/
         DATA SAGV/MAGV*1.0/
@@ -26218,6 +26313,7 @@ C        WRITE(*,*)'PFSPEC IND:',IND
         IF(IND.EQ.564) GO TO 564
         IF(IND.EQ.565) GO TO 565
         IF(IND.EQ.566) GO TO 566
+        IF(IND.EQ.567) GO TO 567
         IF(IND.EQ.574) GO TO 574
         IF(IND.EQ.575) GO TO 575
         IF(IND.EQ.576) GO TO 576
@@ -26834,22 +26930,15 @@ C        WRITE(*,*)'PARTDV:XE7:U=',U
  557    CALL PARTDV(T,ANE,ZCS,MCSVII,NCSVII,GCSVII,ENCSVII,SCSVII,U)
         GO TO 8888
 * 
-*       CALCULATING PARTITION FUNCTIONS FOR BAIV
+*       CALCULATING PARTITION FUNCTIONS FOR BAIV-VII
 * 
  564    CALL PARTDV(T,ANE,ZBA,MBAIV,NBAIV,GBAIV,ENBAIV,SBAIV,U)
-C        WRITE(*,*)'PARTDV:BA4:U=',U
         GO TO 8888
-* 
-*       CALCULATING PARTITION FUNCTIONS FOR BAV
-* 
  565    CALL PARTDV(T,ANE,ZBA,MBAV,NBAV,GBAV,ENBAV,SBAV,U)
-C        WRITE(*,*)'PARTDV:BA5:U=',U
         GO TO 8888
-*
-*       CALCULATING PARTITION FUNCTIONS FOR BAVI
-*
  566    CALL PARTDV(T,ANE,ZBA,MBAVI,NBAVI,GBAVI,ENBAVI,SBAVI,U)
-C        WRITE(*,*)'PARTDV:BA6:U=',U
+        GO TO 8888
+ 567    CALL PARTDV(T,ANE,ZBA,MBAVII,NBAVII,GBAVII,ENBAVII,SBAVII,U)
         GO TO 8888
 *
 *       CALCULATING PARTITION FUNCTIONS FOR LA IV-VII
