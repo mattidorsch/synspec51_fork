@@ -50,7 +50,8 @@ AsV
 
 SeIII
     430AA to 1550AA: Tauheed 2012
-    no fosc for optical lines
+    -> replaced with Kitoviene (2024JPCRD..53c3101K)
+    -> covers EUV to mid-IR; the optical-IR line positions are incorrect
 
 SeIV
     Morton 2000
