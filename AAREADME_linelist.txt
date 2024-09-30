@@ -5,6 +5,9 @@ sources
 ArVII
     added from ALL
 
+ZnIV
+    1280.500 -> 1280.451
+
 GaIII
     ALL (O'Reilly & Dunne 1998)
     Nielsen+ 2005
@@ -52,12 +55,15 @@ SeIII
     430AA to 1550AA: Tauheed 2012
     -> replaced with Kitoviene (2024JPCRD..53c3101K)
     -> covers EUV to mid-IR; the optical-IR line positions are incorrect
+    1486.868 -> 1486.773
 
 SeIV
     Morton 2000
 
 SeV
     TOSS
+    1433.466 -> 1433.556
+
 
 KrIII
     Raineri+ 1998
@@ -123,6 +129,10 @@ NbIV
 
 NbV
     Kurucz/Atoms
+
+MoIII
+    Kurucz?
+    1169.327 -> 1169.354
 
 MoIV
     TOSS
@@ -262,6 +272,7 @@ OsIV
 
 IrIV
     Azarov & Gayasov (2016ADNDT.108...81A; NIST 5.10)
+
 IrV
     Gayasov+ (2000): energy levels, lines
     loggf are estimated from line strengths, NOT reliable
