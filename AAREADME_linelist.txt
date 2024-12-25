@@ -286,6 +286,8 @@ PtV
 PtVI
     Azarov & Gayasov (2017ADNDT.115..309A; NIST 5.10)
 
+AuIII
+    Zainab & Tauheed (2019JQSRT.23706614Z)
 AuIV
     Zainab+ (2023ApJS..267...12Z)
 
