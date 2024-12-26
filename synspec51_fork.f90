@@ -1136,7 +1136,7 @@ C                                     ionization stage
      *       162.5 ,   1.41253747e-11  ,  3.,   
      *       164.9 ,   3.16227767e-12  ,  3.,   
      *       167.3 ,   8.91250917e-12  ,  3.,   
-     *       168.93,   1.34896287e-12  ,  7.,   
+     *       168.93,   1.34896287e-12  ,  6.,   
      *       173.05,   8.91250917e-12  ,  7.,   
      *       174.97,   1.31825674e-12  ,  7.,   
      *       178.49,   5.37031822e-12  ,  7.,   
@@ -23900,11 +23900,11 @@ C                           S*=SCREENING NO. OF LEVEL
         DATA ENTMV/0./
 
         DATA NTMVI/5/
-        DATA GTMVI/3./
+        DATA GTMVI/17./
         DATA ENTMVI/0./
 
         DATA NTMVII/5/
-        DATA GTMVII/3./
+        DATA GTMVII/16./
         DATA ENTMVII/0./
 
         DATA NYBIV/4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,
