@@ -247,8 +247,14 @@ LuV
     Maison, Carvajal Gallego & Quinet (2022Atoms..10..130M)
 
 HfIV
-    Allehabi, Dzuba & Flambaum (2022PhRvA.106c2807A)
-    -> only two lines (1491.669, 2055.118AA)
+#    Allehabi, Dzuba & Flambaum (2022PhRvA.106c2807A)
+#    -> only two lines (1491.669, 2055.118AA)
+    Solène, Jerome Deprince (2025)
+    1305.241 -> 1305.211
+    1357.399 -> 1357.339
+    1390.403 -> 1390.381
+    1528.821 -> 1528.777
+    1717.207 -> 1717.181
 HfV
     Motoumba, Yoca & Quinet (2020ADNDT.13301340M)
 
