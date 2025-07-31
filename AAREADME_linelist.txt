@@ -5,8 +5,90 @@ sources
 ArVII
     added from ALL
 
+NIII
+    1312.424 -> 1312.398
+    1313.865 -> 1313.800
+    1346.181 -> 1346.144
+    1346.665 -> 1346.722
+
+CrIV
+    1334.844 -> 1334.825
+    1334.369 -> 1334.346
+    1340.669 -> 1340.749
+    1352.517 -> 1352.527
+
+
+FeIV
+    1314.492 -> 1314.517
+
+FeV
+    1352.602 -> 1352.586
+
+CoIII
+    1695.996 -> 1695.940
+
+NiIII
+    1687.908 -> 1687.895
+
+
+NiIV
+    1324.865 -> 1324.883 
+    1398.873 -> 1398.830
+    1416.419 -> 1416.387
+    1418.343 -> 1418.310
+    1433.108 -> 1433.081
+    1435.804 -> 1435.785
+    1441.182 -> 1441.266
+    1521.253 -> 1521.186
+    1522.140 -> 1522.268
+    1665.143 -> 1665.054
+    1235.105 -> 1235.142
+    1297.464 -> 1297.483
+    1310.151 -> 1310.071
+    1317.150 -> 1317.207
+    1321.648 -> 1321.705
+    1351.642 -> 1351.736
+    1341.549 -> 1341.577
+    1299.954 -> removed
+
+NiV
+    1313.280 -> 1313.303
+
+ZnIII
+    1262.508 -> 1262.540
+    1307.350 -> 1307.391
+
 ZnIV
+    1182.022 -> 1182.001
+    1234.826 -> 1234.850
+    1243.109 -> 1243.152
+    1265.707 -> 1265.724
+    1277.080 -> 1277.116
     1280.500 -> 1280.451
+    1284.350 -> 1284.401
+    1296.652 -> 1296.609
+    1326.774 -> 1326.722
+    1342.716 -> 1342.741
+    1343.750 -> 1343.810
+    1344.122 -> 1344.078
+    1348.354 -> 1348.374
+    1352.305 -> 1352.261
+    1529.805 -> 1529.836
+    1558.932 -> 1558.965
+    1291.826 -> 1291.803
+    1311.937 -> 1311.948
+
+KrV
+    1346.557 -> 1346.438
+
+MoIV
+    # todo
+#    1264.069 -> 1264.087
+
+WV
+    1305.611 -> 1305.601
+    1311.465 -> 1311.462
+
 
 GaIII
     ALL (O'Reilly & Dunne 1998)
@@ -43,10 +125,17 @@ GeVI
 AsIII
     Morton 2000
     optical data lacking
+#    1196.943 is overlap wiht TaIV? -> removed for now (-0.74 -> -9.74)
 
 AsIV
     ALL (Churilov & Joshi 1996)
-    Morton 2000
+    -> only weak optical lines)
+    Morton 2000 (Curis 1992)
+    -> As IV 1299.254 resonance
+    Chi & Chou (2010PhRvA..82c2518C)
+    -> As IV lines in the FUSE range (4s4p lower levels)
+    Pinnington+ (1981JPhB...14.1291P)
+    -> As IV 1481
 
 AsV
     Morton 2000
@@ -55,15 +144,58 @@ SeIII
     430AA to 1550AA: Tauheed 2012
     -> replaced with Kitoviene (2024JPCRD..53c3101K)
     -> covers EUV to mid-IR; the optical-IR line positions are incorrect
-    1486.868 -> 1486.773
+    -> move to observed energy levels!
+    1486.868 -> 1486.773; 17  63
+    # 
+    # 2025; LSIV
+    1207.940 -> 1207.685; 13  67
+    # 1230.855 # needs shift; 13  57
+    # -> -0.364 -> -9.364
+    1438.016 -> 1438.064; 14  57
+    1458.182 -> 1457.817; 15  59
+    1507.573 -> 1507.446; 14  49
+    # 1511.609 needs shift; 14  47
+    # -> -0.089 -> -9.089
+    # 1518.612 wrong wavelength; 14  46
+    # -> 0.027 -> -9.027
+    # 1518.643 wrong wavelength; 8  37
+    # -1.345 -> -9.345
+    # 1535.110 wrong wavelength; 15  50
+    # 0.319 -> -9.319
+    1587.647 -> 1587.718; 7  34
+    1607.410 -> 1606.852; 3   6
+    # 1630.387 wrong; 8  32
+    # -1.249 -> -9.249
 
 SeIV
-    Morton 2000
+    Morton 2000 for FUSE resonance lines
+    Energy from NIST,
+    lifetimes for 4 lines from Bahr+ 1981
+    1157.340 -> 1157.297
+    1166.834 -> 1166.795
+    1307.241 -> 1307.259
 
 SeV
     TOSS
-    1433.466 -> 1433.556
+#    1433.466 -> 1433.556 ?
+#    1150.986 -> 1151.016 by Rauch, bad shift?
+    # 1184.343 needs shift, not sure where
+    # -> -0.710 -> -9.710
+    1227.446 -> 1227.527 # RE, also Rauch
+    # 1249.048 needs to be shifted
+    # -> -2.580 -> -9.580
+    1264.063 -> 1264.129 # from LSIV
+    1433.466 -> 1431.586 # RE, confirmed by LSIV
+    1447.283 -> 1447.116 # RE 
+    1447.408 -> 1447.447 # RE
+    1451.779 -> 1451.634 # RE, also Rauch
 
+BrIV
+    Riyaz, Rahimullah & Tauheed (2014JQSRT.133..624R)
+    1263.560: loggf 0.067 -> -9.067
+
+BrV
+    Riyaz, Tauheed, Rahimullah (2014JQSRT.147...86R)
 
 KrIII
     Raineri+ 1998
@@ -85,9 +217,11 @@ SrII
         Brage+ 1998
 SrIII
     Kurucz/Atoms
+    1351.681 -> 1351.708
 
 SrIV
     TOSS
+    1389.285 -> 1389.307
 
 SrV
     TOSS
@@ -111,6 +245,7 @@ YV
 
 ZrIII
     Kurucz
+    1593.561 -> 1593.534
 
 ZrIV
     TOSS, including 1184AA
@@ -126,6 +261,7 @@ ZrVII
 
 NbIV
     NIST (Tauheed & Reader 2005)
+    1212.099 -> 1212.145
 
 NbV
     Kurucz/Atoms
@@ -146,15 +282,39 @@ MoVI
 AgIV
     Ankita & Tauheed (2020JQSRT.25407193A)
 
+----
+
+RuIII
+    Kurucz
+
+RuIV, RuV
+    Kurucz/Atoms (todo)
+
+RhIV, RhV
+    Kurucz/Atoms (todo)
+
+PdIII, PdIV, PdV
+    Kurucz/Atoms
+    PdV -> only up to FUSE
+
+---
+
 InIII
     Safronova+ 2003
 
+InIV
+    Henderson+ (1996PhyS...53..557H)
+InV
+    Rauch+ (2020A&A...637A...4R)
+
 SnIII
     Haris & Tauheed 2012 - only the optical lines
+    1251.387 resonance too strong at loggf = 0.340
+    -> 0.340 -> -0.34; Morton: loggf = 0.176
 
 SnIV
     used:
-        Kaur+ 2020 (2020arXiv200102011K)
+        Kaur+ 2020 (2020JPhB...53f5002K)
     for comparison:
         Biswas+ 2018
         Safronova+ 2003?
@@ -163,10 +323,30 @@ SbIII
     Morton 2000
 
 SbIV
-    Morton 2000
+    fosc: Jönsson+ (2012JPhB...45p5002J)
+    wave: Rana+ (2001PhyS...63..108R)
+    # manual
+    1385.550 -> 1385.540 
+    # Jönsson+ -> Rana+ (NOT completely updated)!
+    933.271 -> 932.284
+    1019.077 -> 1025.771
+    1046.562 -> 1042.132
+    1173.916 -> 1171.436
+    1196.001 -> 1192.934
+    1196.244 -> 1199.150
+    1204.805 -> 1207.575
+    1268.923 -> 1272.653
+    1325.803 -> 1329.246
+    1499.293 -> 1499.295
+    1645.522 -> 1666.908
+    # 1666.919 wrong wave
 
 SbV
-    Safronova+ 2003
+    Morton 2000 for 1226A, from lifetime by Pinnington (1985JOSAB...2.1653P)
+#   see also Safronova+ 2003PhRvA..68f2505S
+    # Sb 1226 is a actually a doublet, from E140H of HD127493
+    1225.941
+    1226.002
 
 TeII
     Zhang+ 2014
@@ -175,7 +355,9 @@ TeIII
     Zhang+ 2014
 
 TeIV
-    Energy+Config. from NIST, assuming loggf=-1
+    Marcinek & Migdalek (1994JPhB...27.5587M)
+    -> Osciallator strengths converted from multiplets
+    Line positions from energies by Crooker & Joshi (1964JOSA...54..553C)
 
 TeV
     Morton 2000
@@ -183,6 +365,16 @@ TeV
 
 TeVI
     TOSS
+
+I IV
+    
+    
+I V
+    line pos (no fosc):
+        Tauheed+ (1998JPhB...31..393T)
+        Kaufman+ (1988)
+    loggf for 1244.831:
+        Ansbacher+ (1991JPhB...24..587A)
 
 XeIII
     Romeo y Bidegain+ 1998, not all lines added
@@ -220,19 +412,26 @@ PrIII
            Biémont, Garnir el al. (2001PhRvA..64b2503B)
 
 PrIV
-    DREAM;
+    DREAM (2013JPhB...46n5003E);
+
+PrV
+    only three weak lines from
+    Carvajal Gallego+ (2023MNRAS.518..332C)
 
 NdIII
     DREAM;
 
 NdIV
-    DREAM;
+    DREAM (2014JPhB...47c5002E);
+
+NdV
+    no data, no STIS lines in 2023MNRAS.518..332C (but FUSE)
 
 TmIII
     DREAM;
 
 TmIV
-    DREAM;
+    DREAM (2017Atoms...5...28E);
 
 YbIII
     DREAM;
@@ -311,10 +510,12 @@ TlIII
 PbIII
     Morton 2000 (1 FUV)
     Alonso-Medina+ 2009 (rest, optical)
+    Pb III 1447.5: loggf = -0.121 -> -2.121
+
 
 PbIV
     Safronova & Johnson 2004 (some UV, 3962.467,  4049.832)
-    Alonso-Medina+ 2013 (rest)
+    Alonso-Medina+ 2011 (rest)
     Morton 2000 (1313)
 
 PbV
