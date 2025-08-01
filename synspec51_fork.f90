@@ -19990,6 +19990,207 @@ C
       END
 C
 C ********************************************************************
+C
+C
+      SUBROUTINE APPROX_ION_LEVELS(Z, ION_STAGE, NLEV_MAX,
+     &                             NE, GEE, ENRGY, S)
+C     ---------------------------------------------------------------
+C     General approximation for any ion
+C     ---------------------------------------------------------------
+      IMPLICIT NONE
+C     Arguments
+      INTEGER Z, ION_STAGE, NLEV_MAX
+      INTEGER NE(NLEV_MAX)
+      REAL*8 GEE(NLEV_MAX), ENRGY(NLEV_MAX), S(NLEV_MAX)
+C     Local variables
+      REAL*8 E_ION, ZEFF, N_EFF
+C     REAL*8 SIGMA_CORE
+      REAL*8 DELTA_L(0:3), SCALE_FACTOR
+      INTEGER N, L, N_ELECTRONS, N_CORE, K, N_MAX
+      INTEGER L_MAX, I, N_START
+      REAL*8 GET_EION
+      EXTERNAL GET_EION
+C     Get ionization energy
+      E_ION = GET_EION(Z, ION_STAGE)
+C     Number of electrons
+      N_ELECTRONS = Z - ION_STAGE + 1
+C     Estimate core electrons (filled shells)
+      IF (N_ELECTRONS .LE. 2) THEN
+          N_CORE = 0
+      ELSE IF (N_ELECTRONS .LE. 10) THEN
+          N_CORE = 2
+      ELSE IF (N_ELECTRONS .LE. 18) THEN
+          N_CORE = 10
+      ELSE IF (N_ELECTRONS .LE. 36) THEN
+          N_CORE = 18
+      ELSE IF (N_ELECTRONS .LE. 54) THEN
+          N_CORE = 36
+      ELSE IF (N_ELECTRONS .LE. 86) THEN
+          N_CORE = 54
+      ELSE
+          N_CORE = 86
+      END IF
+C     Core screening using N_CORE
+C      SIGMA_CORE = 0.35D0 * N_CORE +
+C     &             0.85D0 * (N_ELECTRONS - N_CORE - 1)
+C     Estimate starting quantum number based on element
+      IF (Z .LE. 20) THEN
+          N_START = 2
+      ELSE IF (Z .LE. 38) THEN
+          N_START = 3
+      ELSE IF (Z .LE. 56) THEN
+          N_START = 4
+      ELSE
+          N_START = 4  ! Lanthanides and beyond
+      END IF
+C     Quantum defects
+      SCALE_FACTOR = 1.0D0 + 0.1D0 * (ION_STAGE - 1)
+      DELTA_L(0) = 3.5D0 / SCALE_FACTOR
+      DELTA_L(1) = 2.5D0 / SCALE_FACTOR
+      DELTA_L(2) = 1.0D0 / SCALE_FACTOR
+      DELTA_L(3) = 0.1D0 / SCALE_FACTOR
+C     Generate levels
+      K = 0
+      N_MAX = MIN(N_START + 5, 20)
+      DO 20 N = N_START, N_MAX
+          L_MAX = MIN(N-1, 3)
+          DO 10 L = 0, L_MAX
+              K = K + 1
+              IF (K .GT. NLEV_MAX) GOTO 100
+              NE(K) = N
+              GEE(K) = 2.0D0 * (2*L + 1)
+C             Effective quantum number
+              N_EFF = N - DELTA_L(L)
+C             Basic energy estimate
+              IF (K .EQ. 1) THEN
+                  ENRGY(K) = 0.0D0
+              ELSE
+                  ZEFF = SQRT(E_ION * (N_EFF**2) / 13.6D0)
+                  ENRGY(K) = E_ION * (1.0D0 - 1.0D0/(N_EFF**2))
+              END IF
+C             Screening based on core electrons and L
+C              S(K) = SIGMA_CORE - 2.0D0 * L
+   10     CONTINUE
+   20 CONTINUE
+  100 CONTINUE
+C     Fill remaining slots if needed
+      IF (K .LT. NLEV_MAX) THEN
+          DO 30 I = K+1, NLEV_MAX
+              NE(I) = N_MAX
+              GEE(I) = 2.0D0
+              ENRGY(I) = E_ION * 0.25D0
+C              S(I) = SIGMA_CORE
+   30     CONTINUE
+          K = NLEV_MAX
+      END IF
+C     Apply element and ion-specific corrections
+      CALL APPLY_ION_CORR(Z, ION_STAGE, E_ION, K, NE,
+     &                    GEE, ENRGY)
+      CALL EST_SCREEN(Z, ION_STAGE, NLEV_MAX, NE, ENRGY, S)
+      RETURN
+      END
+C
+C ********************************************************************
+C
+C
+      SUBROUTINE APPLY_ION_CORR(Z, ION_STAGE, E_ION, NLEV,
+     &                          NE, GEE, ENRGY)
+C     ---------------------------------------------------------------
+C      Apply element-specific corrections
+C     ---------------------------------------------------------------
+      IMPLICIT NONE
+      INTEGER Z, ION_STAGE, NLEV
+      INTEGER NE(NLEV)
+      REAL*8 E_ION, GEE(NLEV), ENRGY(NLEV)
+      INTEGER I, N_ELECTRONS, N_4F
+      REAL*8 SHIFT, ION_FACTOR, SCALE
+      REAL*8 MAX_E
+      N_ELECTRONS = Z - ION_STAGE + 1
+C     Ionization correction factor
+      ION_FACTOR = 1.0D0 / (1.0D0 + 0.2D0 * (ION_STAGE - 1))
+C     LANTHANIDES (Z=57-71): Major corrections needed
+      IF (Z .GE. 57 .AND. Z .LE. 71) THEN
+C         Number of 4f electrons (approximate)
+          N_4F = MAX(0, MIN(14, N_ELECTRONS - 54))
+C         Compress energy scale dramatically for 4f states
+          DO 10 I = 2, NLEV
+              IF (NE(I) .EQ. 4) THEN
+C                 4f levels: very low energy
+                  SCALE = 0.05D0 + 0.02D0 * ION_STAGE
+                  ENRGY(I) = ENRGY(I) * SCALE
+C                   For 4f states, use realistic weights (keep integers!)
+                  IF (N_4F .GT. 0 .AND. N_4F .LT. 14) THEN
+C                     Common J values for 4f^n configurations
+                      IF (MOD(I,3) .EQ. 0) THEN
+                          GEE(I) = 16.0D0  ! J=7.5
+                      ELSE IF (MOD(I,3) .EQ. 1) THEN
+                          GEE(I) = 14.0D0  ! J=6.5
+                      ELSE
+                          GEE(I) = 12.0D0  ! J=5.5
+                      END IF
+                  END IF
+              ELSE IF (NE(I) .EQ. 5) THEN
+C                 5d/6s levels: intermediate energy
+                  SCALE = 0.15D0 + 0.05D0 * ION_STAGE
+                  ENRGY(I) = ENRGY(I) * SCALE
+C             Keep original integer weights
+              ELSE
+C                 Higher states
+                  SCALE = 0.25D0
+                  ENRGY(I) = ENRGY(I) * SCALE
+              END IF
+   10     CONTINUE
+C         Specific corrections for Er IV
+          IF (Z .EQ. 68 .AND. ION_STAGE .EQ. 4) THEN
+C             Spread out low-lying 4f states
+              DO 15 I = 2, MIN(18, NLEV)
+                  IF (NE(I) .EQ. 4) THEN
+                      ENRGY(I) = 0.5D0 + 0.3D0 * (I-1)
+                  END IF
+   15         CONTINUE
+          END IF
+      END IF
+C     TRANSITION METALS
+      IF ((Z .GE. 21 .AND. Z .LE. 30) .OR.
+     &    (Z .GE. 39 .AND. Z .LE. 48) .OR.
+     &    (Z .GE. 72 .AND. Z .LE. 80)) THEN
+          DO 20 I = 2, NLEV
+              IF (ENRGY(I) .GT. 2.0D0 .AND. 
+     &            ENRGY(I) .LT. 8.0D0) THEN
+                  SHIFT = 0.05D0 + 0.05D0 * ION_FACTOR
+                  ENRGY(I) = ENRGY(I) * (1.0D0 - SHIFT)
+              END IF
+   20     CONTINUE
+      END IF
+C     POST-TRANSITION ELEMENTS
+      IF ((Z .GE. 31 .AND. Z .LE. 36) .OR.
+     &    (Z .GE. 49 .AND. Z .LE. 54) .OR.
+     &    (Z .GE. 81 .AND. Z .LE. 86)) THEN
+          IF (ION_STAGE .LE. 3) THEN
+              DO 30 I = 2, NLEV
+                  IF (ENRGY(I) .LT. 15.0D0) THEN
+                      SHIFT = 0.03D0 * (1.0D0 + Z/100.0D0)
+                      ENRGY(I) = ENRGY(I) * (1.0D0 + SHIFT)
+                  END IF
+   30         CONTINUE
+          END IF
+      END IF
+C     GENERAL SCALING: Ensure reasonable energy range
+      MAX_E = 0.0D0
+      DO 40 I = 2, NLEV
+          IF (ENRGY(I) .GT. MAX_E) MAX_E = ENRGY(I)
+C          IF (GEE(I) .LT. 1.D0) GEE(I) = 1.D0
+   40 CONTINUE
+C     Cap at 30% of ionization energy
+      IF (MAX_E .GT. 0.3D0 * E_ION) THEN
+          SCALE = 0.3D0 * E_ION / MAX_E
+          DO 50 I = 2, NLEV
+              ENRGY(I) = ENRGY(I) * SCALE
+   50     CONTINUE
+      END IF
+      RETURN
+      END
+C
 C ********************************************************************
 C
       SUBROUTINE PFSPEC(IAT,IZI,T,ANE,U)
@@ -20037,7 +20238,7 @@ C
      +     MZRVI=96,MSNVI=29,MXEVI=72,MPBVI=40,MBIVI=114,MTHV=1,
      +     MKRVI=44,MSRVI=21,MTEVI=8,MTEVII=59,MZRVII=1,MZRVIII=1,
      +     MYVI=1,MGEVII=167,MMOVII=95,MSRVII=19,MINVI=1,MXEVII=67,
-     +     MTLV=1,MTLVI=1,MTHVI=1,MGAVII=180,MASVII=49,
+     +     MTLV=18,MTLVI=1,MTHVI=1,MGAVII=180,MASVII=49,
      +     MSEVII=44,MTHVII=1,MGEVIII=1,MMOVIII=76,MTEVIII=1,MSBVII=1,
      +     MIIV=9,MIV=10,MIVI=5,MIVII=1,
      +     MNBIV=182,MNBV=30,MNBVI=104,MNBVII=31,MNBVIII=1,
@@ -20049,10 +20250,10 @@ C
      +     MLAIV=64,MLAV=36,MLAVI=1,MLAVII=1,
      +     MCEIV=16,MCEV=55,MCEVI=3,MCEVII=1,
      +     MPRIV=88,MPRV=8,MPRVI=1,MPRVII=1,
-     +     MNDIV=230,MNDV=1,MNDVI=1,MNDVII=1,
-     +     MERIV=76,MERV=1,MERVI=1,MERVII=1,
-     +     MTMIV=209,MTMV=1,MTMVI=1,MTMVII=1,
-     +     MYBIV=114,MYBV=1,MYBVI=1,MYBVII=1,
+     +     MNDIV=230,MNDV=32,MNDVI=1,MNDVII=1,
+     +     MERIV=76,MERV=14,MERVI=1,MERVII=1,
+     +     MTMIV=209,MTMV=18,MTMVI=1,MTMVII=1,
+     +     MYBIV=114,MYBV=30,MYBVI=1,MYBVII=1,
      +     MLUIV=70,MLUV=36,MLUVI=1,MLUVII=1,
      +     MHFIV=38,MHFV=72,MHFVI=1,MHFVII=1,
      +     MTAIV=30,MTAV=10,MTAVI=22,MTAVII=1,
@@ -24331,9 +24532,27 @@ C                           S*=SCREENING NO. OF LEVEL
      +          21.61739,21.64591,21.67293,21.81700,22.08977,
      +          22.23272,22.25157,22.31269,22.35249,22.50908/
 
-        DATA NNDV/5/
-        DATA GNDV/9./
-        DATA ENNDV/0./
+C        CALL APPROX_ION_LEVELS(60, 5,
+C     &                         MNDV, NNDV, GNDV, ENNDV,
+C     &                         SNDV)
+C        NNDV(1) = 5
+C        GNDV(1) = 9.D0
+C        ENNDV(1) = 0.D0
+        DATA NNDV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5/
+        DATA GNDV/9.,11.,13.,5.,7.,9.,9.,5.,1.,3.,
+     +          13.,5.,5.,9.,7.,9.,7.,9.,5.,11.,
+     +          3.,9.,11.,7.,5.,13.,3.,1.,7.,5.,
+     +          11.,3./
+        DATA ENNDV/0.00000,0.35141,0.71209,0.73074,0.96519,
+     +          1.03049,1.52125,2.54805,3.10588,3.21031,
+     +          3.23451,3.40692,15.81527,15.81605,16.00692,
+     +          16.18651,16.25491,16.38601,16.43606,16.43999,
+     +          16.53531,16.65847,16.74124,16.77733,16.78240,
+     +          16.90691,17.14396,17.17419,17.30197,17.38020,
+     +          17.71868,18.30024/
 
         DATA NNDVI/5/
         DATA GNDVI/2./
@@ -24376,17 +24595,28 @@ C                           S*=SCREENING NO. OF LEVEL
      +          12.03197,12.04912,12.07001,12.18165,12.23281,
      +          12.39690/
 
-        DATA NERV/5/
-        DATA GERV/17./
-        DATA EERDV/0./
+C    isoelectric from Ho IV (Freidzon, Kurbatov, Vovna 2018)
+        DATA NERV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4/
+        DATA GERV/17.,15.,13.,11.,9.,11.,5.,9.,7.,5.,
+     +          3.,13.,17.,11./
+        DATA ENERV/0.00000,0.69603,1.19156,1.54660,1.84928,
+     +          2.08044,2.52105,2.60023,2.80585,2.90674,
+     +          2.96294,3.16217,3.17750,3.29244/
+C        CALL APPROX_ION_LEVELS(68, 5,
+C     &                         MERV, NERV, GERV, ENERV,
+C     &                         SERV)
+C        NERV(1) = 5
+C        GERV(1) = 17.D0
+C        ENERV(1) = 0.D0
 
         DATA NERVI/5/
         DATA GERVI/16./
-        DATA EERDVI/0./
+        DATA ENERVI/0./
 
         DATA NERVII/5/
         DATA GERVII/13./
-        DATA EERDVII/0./
+        DATA ENERVII/0./
 
         DATA NTMIV/4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
      +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
@@ -24466,9 +24696,15 @@ C                           S*=SCREENING NO. OF LEVEL
      +          20.82339,20.83753,20.84782,20.92580,21.19497,
      +          21.20998,21.23812,21.46811,21.49241/
 
-        DATA NTMV/5/
-        DATA GTMV/16./
-        DATA ENTMV/0./
+C       isoelectric from Er IV
+        DATA NTMV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4/
+        DATA GTMV/16.,14.,12.,10.,10.,12.,8.,6.,10.,12.,
+     +          10.,16.,8.,14.,10.,12.,18.,14./
+        DATA ENTMV/0.00000,0.83077,1.29851,1.59169,1.96653,
+     +          2.46781,2.61113,2.86161,3.15771,3.40943,
+     +          3.54463,3.61430,3.60499,4.28364,4.69967,
+     +          5.31173,5.43578,5.66674/
 
         DATA NTMVI/5/
         DATA GTMVI/17./
@@ -24522,9 +24758,18 @@ C                           S*=SCREENING NO. OF LEVEL
      +          22.07537,22.13423,22.15410,22.23105,22.87479,
      +          23.04484,23.05376,23.05761,23.11830/
 
-        DATA NYBV/5/
-        DATA GYBV/13./
-        DATA ENYBV/0.0/
+        DATA NYBV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5/
+        DATA GYBV/13.,9.,11.,9.,7.,5.,9.,5.,13.,1.,
+     +          3.,5.,1.,13.,15.,17.,17.,21.,11.,19.,
+     +          13.,15.,17.,17.,9.,11.,15.,13.,11.,9./
+        DATA ENYBV/0.00000,0.75780,1.18775,1.78599,2.02989,
+     +          2.09252,2.99954,3.88315,4.84008,4.93354,
+     +          5.09338,5.34614,10.39037,16.93809,17.08381,
+     +          17.30604,17.45509,17.81202,17.90576,18.02140,
+     +          18.03780,18.20029,18.21089,18.44355,18.58542,
+     +          18.59192,18.61142,18.72425,18.93718,18.96338/
 
         DATA NYBVI/5/
         DATA GYBVI/14./
@@ -25815,9 +26060,16 @@ C                           S*=SCREENING NO. OF LEVEL
      +          33.82372,33.94650,34.02048,34.06720,34.11555,
      +          34.12460,34.23970,34.32700,35.08600,39.74481,
      +          39.80117,42.05590,42.08743/
-        DATA NTLV/5/
-        DATA GTLV/6.0D0/
-        DATA ENTLV/0.00000/
+
+        DATA NTLV/5,5,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6/
+        DATA GTLV/6.,4.,10.,8.,6.,4.,6.,8.,2.,4.,
+     +          6.,4.,10.,8.,2.,4.,6.,2./
+        DATA ENTLV/0.00000,2.33383,11.57354,12.50808,12.99672,
+     +          13.26229,14.25631,14.37846,14.75962,15.10349,
+     +          15.36627,15.79303,16.20472,16.31917,16.36362,
+     +          17.44187,17.57278,20.63829/
+
         DATA NTLVI/5/
         DATA GTLVI/9.0D0/
         DATA ENTLVI/0.00000/
@@ -26856,9 +27108,15 @@ C       1931PPS....43..538B
         DATA SPRVII/MPRVII*1.0/
 
         DATA SNDIV/MNDIV*1.0/
-        DATA SNDV/MNDV*1.0/
+C        DATA SNDV/MNDV*1.0/
+        CALL EST_SCREEN(60, 5, MNDIV, NNDIV, ENNDIV, SNDIV)
         DATA SNDVI/MNDVI*1.0/
         DATA SNDVII/MNDVII*1.0/
+
+        DATA SERIV/MERIV*1.0/
+C        DATA SERV/MERV*1.0/
+        DATA SERVI/MERVI*1.0/
+        DATA SERVII/MERVII*1.0/
 
         DATA STMIV/MTMIV*1.0/
         DATA STMV/MTMV*1.0/
