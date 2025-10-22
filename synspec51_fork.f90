@@ -1120,7 +1120,7 @@ C                                     ionization stage
      *       102.9 ,   1.23026887e-11  ,  7.,   
      *       106.4 ,   5.01187291e-11  ,  7.,   
      *       107.87,   1.73780087e-11  ,  7.,   
-     *       112.4 ,   5.75439927e-11  ,  3.,   
+     *       112.4 ,   5.75439927e-11  ,  7.,   
      *       114.8 ,   6.60693440e-12  ,  6.,   
      *       118.7 ,   1.38038460e-10  ,  6.,   
      *       121.8 ,   1.09647810e-11  ,  7.,   
@@ -20246,6 +20246,7 @@ C
      +     MRHIV=35,MRHV=28,MRHVI=1,MRHVII=1,
      +     MPDIV=260,MPDV=231,MPDVI=1,MPDVII=1,
      +     MAGIV=184,MAGV=45,MAGVI=1,MAGVII=1,
+     +     MCDIV=51,MCDV=26,MCDVI=19,MCDVII=1,
      +     MCSIV=113,MCSV=49,MCSVI=31,MCSVII=5,
      +     MLAIV=64,MLAV=36,MLAVI=1,MLAVII=1,
      +     MCEIV=16,MCEV=55,MCEVI=3,MCEVII=1,
@@ -20354,6 +20355,10 @@ C
      +     GAGV(MAGV),ENAGV(MAGV),SAGV(MAGV),
      +     GAGVI(MAGVI),ENAGVI(MAGVI),SAGVI(MAGVI),
      +     GAGVII(MAGVII),ENAGVII(MAGVII),SAGVII(MAGVII),
+     +     GCDIV(MCDIV),ENCDIV(MCDIV),SCDIV(MCDIV),
+     +     GCDV(MCDV),ENCDV(MCDV),SCDV(MCDV),
+     +     GCDVI(MCDVI),ENCDVI(MCDVI),SCDVI(MCDVI),
+     +     GCDVII(MCDVII),ENCDVII(MCDVII),SCDVII(MCDVII),
      +     GINIV(MINIV),ENINIV(MINIV),SINIV(MINIV),
      +     GINV(MINV),ENINV(MINV),SINV(MINV),
      +     GINVI(MINVI),ENINVI(MINVI),SINVI(MINVI),
@@ -20498,6 +20503,7 @@ C
      +     NRHIV(MRHIV),NRHV(MRHV),NRHVI(MRHVI),NRHVII(MRHVII),
      +     NPDIV(MPDIV),NPDV(MPDV),NPDVI(MPDVI),NPDVII(MPDVII),
      +     NAGIV(MAGIV),NAGV(MAGV),NAGVI(MAGVI),NAGVII(MAGVII),
+     +     NCDIV(MCDIV),NCDV(MCDV),NCDVI(MCDVI),NCDVII(MCDVII),
      +     NCSIV(MCSIV),NCSV(MCSV),NCSVI(MCSVI),NCSVII(MCSVII),
      +     NLAIV(MLAIV),NLAV(MLAV),NLAVI(MLAVI),NLAVII(MLAVII),
      +     NCEIV(MCEIV),NCEV(MCEV),NCEVI(MCEVI),NCEVII(MCEVII),
@@ -20531,7 +20537,7 @@ C
       PARAMETER (ZH=1.0,ZHE=2.0,ZC=6.0,ZN=7.0,ZO=8.,ZGA=31.,ZGE=32.,
      +     ZAS=33.,ZSE=34.,ZBR=35.,ZKR=36.,ZSR=38.,ZY=39.,ZZR=40.,
      +     ZNB=41.,ZMO=42.,ZPD=46., ZAG=47.,ZIN=49.,ZRB=37.,
-     +     ZRU=44.,ZRH=45.,
+     +     ZRU=44.,ZRH=45.,ZCD=48.,
      +     ZSN=50.,ZSB=51.,ZTE=52.,ZI=53.,ZXE=54.,
      +     ZCS=55.,ZBA=56.,ZLA=57.,ZCE=58.,ZPR=59.,ZND=60.,
      +     ZTM=69.,ZYB=70.,ZLU=71.,ZHF=72.,ZTA=73.,ZW=74.,
@@ -24310,6 +24316,56 @@ C                           S*=SCREENING NO. OF LEVEL
         DATA GAGVII/6.0/
         DATA ENAGVII/0.0/
 
+        DATA NCDIV/4,4,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5/
+        DATA GCDIV/6.,4.,10.,8.,6.,4.,8.,6.,10.,8.,
+     +          8.,10.,6.,12.,8.,6.,4.,10.,4.,2.,
+     +          8.,6.,10.,6.,8.,4.,8.,6.,2.,4.,
+     +          6.,6.,2.,8.,4.,6.,2.,4.,10.,8.,
+     +          4.,6.,6.,4.,12.,4.,2.,8.,6.,4.,
+     +          2./
+        DATA ENCDIV/0.00000,0.72060,13.47758,13.85325,14.22818,
+     +          14.39766,14.67142,14.94716,16.59652,16.61512,
+     +          21.37326,21.73679,21.97645,22.21462,22.23967,
+     +          22.41783,22.42477,22.52446,22.58695,22.67225,
+     +          22.68576,22.85041,22.98245,23.09912,23.20587,
+     +          23.21145,23.32725,23.34573,23.48310,23.60796,
+     +          23.64304,23.79914,24.07922,24.09844,24.24412,
+     +          24.33252,24.34678,24.36104,24.37033,24.48787,
+     +          24.57615,24.59078,24.73795,24.88896,24.95715,
+     +          25.04072,25.12602,25.14846,25.31708,25.32923,
+     +          25.59059/
+
+        DATA NCDV/4,4,4,4,4,4,4,4,4,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5/
+        DATA GCDV/9.,7.,5.,5.,3.,1.,5.,9.,1.,11.,
+     +          9.,7.,5.,3.,9.,7.,5.,7.,3.,5.,
+     +          11.,9.,3.,1.,5.,7./
+        DATA ENCDV/0.00000,0.65061,0.86738,1.67066,2.26342,
+     +          2.27671,2.50928,2.87733,6.55610,18.13283,
+     +          18.55269,18.88083,19.08634,19.21017,19.56466,
+     +          20.06490,20.09080,20.17359,20.38440,20.42062,
+     +          20.76046,20.94008,21.14543,21.14543,21.17796,
+     +          21.30936/
+
+        DATA NCDVI/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4/
+        DATA GCDVI/10.,8.,6.,4.,4.,6.,10.,2.,8.,4.,
+     +          12.,6.,2.,10.,4.,6.,8.,4.,6./
+        DATA ENCDVI/0.00000,0.57566,0.89079,1.07653,1.93098,
+     +          2.06922,2.32433,2.39221,2.87233,3.02612,
+     +          3.10712,3.39040,3.47042,3.71226,4.28202,
+     +          4.74344,5.05686,7.53089,7.78545/
+
+        DATA NCDVII/4/
+        DATA GCDVII/6.0/
+        DATA ENCDVII/0.0/
+
         DATA NLAIV/5,4,4,4,4,4,4,4,4,4,4,4,5,5,5,
      +          5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,
      +          6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
@@ -27093,6 +27149,11 @@ C       1931PPS....43..538B
         DATA SAGVI/MAGVI*1.0/
         DATA SAGVII/MAGVII*1.0/
 
+        DATA SCDIV/MCDIV*1.0/
+        DATA SCDV/MCDV*1.0/
+        DATA SCDVI/MCDVI*1.0/
+        DATA SCDVII/MCDVII*1.0/
+
         DATA SLAIV/MLAIV*1.0/
         DATA SLAV/MLAV*1.0/
         DATA SLAVI/MLAVI*1.0/
@@ -27285,6 +27346,10 @@ C        WRITE(*,*)'PFSPEC IND:',IND
         IF(IND.EQ.475) GO TO 475
         IF(IND.EQ.476) GO TO 476
         IF(IND.EQ.477) GO TO 477
+        IF(IND.EQ.484) GO TO 484
+        IF(IND.EQ.485) GO TO 485
+        IF(IND.EQ.486) GO TO 486
+        IF(IND.EQ.487) GO TO 487
         IF(IND.EQ.494) GO TO 494
         IF(IND.EQ.495) GO TO 495
         IF(IND.EQ.496) GO TO 496
@@ -27825,6 +27890,17 @@ C        WRITE(*,*)'PARTDV:MO8:U=',U
  476    CALL PARTDV(T,ANE,ZAG,MAGVI,NAGVI,GAGVI,ENAGVI,SAGVI,U)
         GO TO 8888
  477    CALL PARTDV(T,ANE,ZAG,MAGVII,NAGVII,GAGVII,ENAGVII,SAGVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR CD IV-VII
+*
+ 484    CALL PARTDV(T,ANE,ZCD,MCDIV,NCDIV,GCDIV,ENCDIV,SCDIV,U)
+        GO TO 8888
+ 485    CALL PARTDV(T,ANE,ZCD,MCDV,NCDV,GCDV,ENCDV,SCDV,U)
+        GO TO 8888
+ 486    CALL PARTDV(T,ANE,ZCD,MCDVI,NCDVI,GCDVI,ENCDVI,SCDVI,U)
+        GO TO 8888
+ 487    CALL PARTDV(T,ANE,ZCD,MCDVII,NCDVII,GCDVII,ENCDVII,SCDVII,U)
         GO TO 8888
 *
 *       CALCULATING PARTITION FUNCTIONS FOR INIV
