@@ -1153,7 +1153,7 @@ C                                     ionization stage
      *       195.1 ,   4.78630036e-11  ,  7.,   
      *       196.97,   6.76082952e-12  ,  7.,   
      *       200.59,   1.23026887e-11  ,  7.,   
-     *       204.4 ,   6.60693440e-12  ,  6.,   
+     *       204.4 ,   6.60693440e-12  ,  7.,   
      *       207.2 ,   1.12201834e-10  ,  7.,   
      *       209.0 ,   5.12861361e-12  ,  6.,   
      *       210.0 ,   1.00000000e-24  ,  3.,   
@@ -20238,7 +20238,7 @@ C
      +     MZRVI=96,MSNVI=29,MXEVI=72,MPBVI=40,MBIVI=114,MTHV=9,
      +     MKRVI=44,MSRVI=21,MTEVI=8,MTEVII=59,MZRVII=1,MZRVIII=1,
      +     MYVI=1,MGEVII=167,MMOVII=95,MSRVII=19,MINVI=1,MXEVII=67,
-     +     MTLV=18,MTLVI=1,MTHVI=1,MGAVII=180,MASVII=49,
+     +     MTLV=18,MTLVI=48,MTLVII=1,MTHVI=1,MGAVII=180,MASVII=49,
      +     MSEVII=44,MTHVII=1,MGEVIII=1,MMOVIII=76,MTEVIII=1,MSBVII=1,
      +     MIIV=9,MIV=10,MIVI=5,MIVII=1,
      +     MNBIV=182,MNBV=30,MNBVI=104,MNBVII=31,MNBVIII=1,
@@ -20462,6 +20462,7 @@ C
      +     GTLIV(MTLIV),ENTLIV(MTLIV),STLIV(MTLIV),
      +     GTLV(MTLV),ENTLV(MTLV),STLV(MTLV),
      +     GTLVI(MTLVI),ENTLVI(MTLVI),STLVI(MTLVI),
+     +     GTLVII(MTLVII),ENTLVII(MTLVII),STLVII(MTLVII),
      +     GPBIV(MPBIV),ENPBIV(MPBIV),SPBIV(MPBIV),
      +     GPBV(MPBV),ENPBV(MPBV),SPBV(MPBV),
      +     GPBVI(MPBVI),ENPBVI(MPBVI),SPBVI(MPBVI),
@@ -20496,6 +20497,7 @@ C
      +     NSRVII(MSRVII),NYVI(MYVI),NMOVII(MMOVII),
      +     NMOIV(MMOIV),NMOV(MMOV),NSNIV(MSNIV),NSNV(MSNV),
      +     NTLV(MTLV),NTLVI(MTLVI),NTHVI(MTHVI),NTHVII(MTHVII),
+     +     NTLVII(MTLVII),
      +     NGEVIII(MGEVIII),NMOVIII(MMOVIII),NTEVIII(MTEVIII),
      +     NSBVII(MSBVII),NNBIV(MNBIV),NNBV(MNBV),NNBVI(MNBVI),
      +     NNBVII(MNBVII),NNBVIII(MNBVIII),
@@ -26126,9 +26128,29 @@ C       isoelectric from Er IV
      +          15.36627,15.79303,16.20472,16.31917,16.36362,
      +          17.44187,17.57278,20.63829/
 
-        DATA NTLVI/5/
-        DATA GTLVI/9.0D0/
-        DATA ENTLVI/0.00000/
+        DATA NTLVI/5,5,5,5,5,5,5,5,5,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6/
+        DATA GTLVI/7.,5.,7.,1.,5.,3.,7.,5.,1.,11.,
+     +          9.,5.,7.,3.,5.,9.,7.,3.,11.,7.,
+     +          5.,9.,3.,5.,13.,1.,7.,11.,9.,5.,
+     +          7.,7.,5.,3.,7.,5.,3.,9.,11.,1.,
+     +          9.,5.,3.,7.,3.,7.,5.,5./
+        DATA ENTLVI/0.00000,1.01704,2.23019,2.86067,3.15524,
+     +          3.66350,4.18241,5.37033,8.82270,15.02793,
+     +          16.08539,16.91211,17.04463,17.21620,17.54762,
+     +          17.65448,17.89827,18.52974,18.78259,18.91176,
+     +          19.18178,19.27157,19.45750,19.49531,19.73178,
+     +          19.89882,20.22703,20.26827,20.40409,21.18637,
+     +          21.22481,21.22481,21.23498,21.31332,21.33467,
+     +          21.71644,22.07752,22.24258,22.38123,22.56562,
+     +          22.85178,23.08465,23.11726,23.21331,25.53546,
+     +          25.57014,25.61342,26.31852/
+        DATA NTLVII/5/
+        DATA GTLVII/10./
+        DATA ENTLVII/0.0/
 
         DATA NAUIV/5,5,5,5,5,5,5,5,6,5,
      +          6,6,6,6,6,6,6,6,6,6,
@@ -27252,7 +27274,7 @@ C        DATA SHGVII/MHGVII*1.0/
         CALL EST_SCREEN(81, 6, MTLVI, NTLVI, ENTLVI, STLVI)
 C        DATA STLIV/MTLIV*1.0/
 C        DATA STLV/MTLV*1.0/
-C        DATA STLVI/MTLVI*1.0/
+        DATA STLVII/MTLVII*1.0/
 
         DATA SPBIV/MPBIV*1.0/
 C       use screening from Clementi (1967); fake the higher levels
@@ -27453,6 +27475,7 @@ C        WRITE(*,*)'PFSPEC IND:',IND
         IF(IND.EQ.814) GO TO 814
         IF(IND.EQ.815) GO TO 815
         IF(IND.EQ.816) GO TO 816
+        IF(IND.EQ.817) GO TO 817
         IF(IND.EQ.824) GO TO 824
         IF(IND.EQ.825) GO TO 825
         IF(IND.EQ.826) GO TO 826
@@ -28262,6 +28285,8 @@ C        WRITE(*,*)'PARTDV:XE7:U=',U
  815    CALL PARTDV(T,ANE,ZTL,MTLV,NTLV,GTLV,ENTLV,STLV,U)
         GO TO 8888
  816    CALL PARTDV(T,ANE,ZTL,MTLVI,NTLVI,GTLVI,ENTLVI,STLVI,U)
+        GO TO 8888
+ 817    CALL PARTDV(T,ANE,ZTL,MTLVII,NTLVII,GTLVII,ENTLVII,STLVII,U)
         GO TO 8888
 *
 *       CALCULATING PARTITION FUNCTIONS FOR PB
