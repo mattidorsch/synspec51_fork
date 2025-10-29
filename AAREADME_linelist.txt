@@ -667,6 +667,9 @@ HgV
 TlIII
     Safronova & Johnson 2004
 
+TlIV
+    Jerome Deprince, HFS doublets correct using 6j symbols
+
 PbIII
     Morton 2000 (1 FUV)
     Alonso-Medina+ 2009 (rest, optical)
