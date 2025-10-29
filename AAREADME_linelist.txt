@@ -251,7 +251,8 @@ PdIV
     1704.475 -> 1704.443
     1708.689 -> 1708.657
 
-
+PbIV
+    1404.326 -> 1404.346
 
 GaIII
     ALL (O'Reilly & Dunne 1998)
@@ -676,12 +677,13 @@ PbIII
     Morton 2000 (1 FUV)
     Alonso-Medina+ 2009 (rest, optical)
     Pb III 1447.5: loggf = -0.121 -> -2.121
-
+    added some lines from Dougan+2025
 
 PbIV
     Safronova & Johnson 2004 (some UV, 3962.467,  4049.832)
     Alonso-Medina+ 2011 (rest)
     Morton 2000 (1313)
+    Dougan+2025 for FUV
 
 PbV
     Colon+ 2014
