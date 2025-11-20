@@ -215,6 +215,9 @@ NiIV
     1235.105 -> 1235.142
     1245.620 -> 1245.629
     1269.052 -> 1269.063
+    1269.625 -> removed
+    1269.657 -> removed
+    1269.872 -> 1269.891
     1282.712 -> 1282.752
     1284.010 -> 1283.771
     1284.233 -> 1284.273
@@ -945,6 +948,7 @@ PbV
 
 BiIII
     Morton 2000, replaced by Arya & Tauheed (2020); HFS for 1346.
+    HFS for 1423.4 from Wahlgren+ (2001ApJ...551..520W)
 
 BiIV
     208 lines from Arya & Tauheed (2022JQSRT.29208353A)
