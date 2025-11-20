@@ -182,6 +182,7 @@ FeV
     1171.737 -> 1171.758
     1173.716 -> 1173.604
     1173.902 -> 1173.983
+    1177.764 -> 1177.755
     1196.202 -> 1196.232
     1246.418 -> 1246.453
     1288.172 -> 1288.159
@@ -542,6 +543,9 @@ GeIV
         - O'Reilly & Dunne 1998 
         - lines slightly too blue
         - fosc slightly too low?
+    Stark broadening for 1189.017, 1229.838 from 
+    Elabidi+ (2023MNRAS.522..819E)
+    -> had to reduce their Stark widths by a factor of TEN!
 
 GeV
     TOSS
