@@ -1712,7 +1712,7 @@ C
          TI0(ID)=(T-TT(J-2))*(T-TT(J-1))*(TT(J-1)-TT(J-2))/X
          TI1(ID)=(T-TT(J-2))*(TT(J)-T)*(TT(J)-TT(J-2))/X
          TI2(ID)=(T-TT(J-1))*(T-TT(J))*(TT(J)-TT(J-1))/X
-      ENd dO
+      END dO
       RETURN
       END
 C
@@ -15991,6 +15991,58 @@ C
       if(ifwin.gt.0) DOP1=DOP1/FREQ0(IL)
       AGAM=AGAM*DOP1*PI4
 C
+      RETURN
+      END
+
+      SUBROUTINE GRIEMEXT(ID,T,ANE,ION,FR,WGR,GAM)
+C     =========================================
+C
+C     STARK DAMPING PARAMETER (GAM) CALCULATED FROM INPUT VALUES
+C     OF STARK WIDTHS FOR  T=5000, 10000, 20000, 40000 K,
+C     EXTENDED WITH POWER-LAW EXTRAPOLATION FOR T > 40000 K
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      DIMENSION WGR(4)
+      REAL*8 WGR3_LAST, WGR4_LAST, ALPHA_LAST
+      SAVE WGR3_LAST, WGR4_LAST, ALPHA_LAST
+      DATA WGR3_LAST /-1.D0/, WGR4_LAST /-1.D0/, ALPHA_LAST /0.D0/
+
+      if(t.le.0.) return
+      J=JT(ID)
+
+      if(t.gt.40000.) then
+C       Compute alpha only if WGR values changed (simple caching)
+        IF(WGR(3).NE.WGR3_LAST .OR. WGR(4).NE.WGR4_LAST) THEN
+          WGR3_LAST = WGR(3)
+          WGR4_LAST = WGR(4)
+          IF(WGR(3).GT.0. .AND. WGR(4).GT.0.) THEN
+            ALPHA_LAST = LOG10(WGR(4)/WGR(3))/0.30103D0
+          ELSE
+            ALPHA_LAST = 0.0D0
+          ENDIF
+        ENDIF
+
+        IF(ALPHA_LAST.NE.0.0) THEN
+          GAM = WGR(4)*(T/40000.D0)**ALPHA_LAST
+     *          *ANE*1.E-10*FR*1.E-10*FR*4.2E-14
+        ELSE
+          GAM = WGR(4)*ANE*1.E-10*FR*1.E-10*FR*4.2E-14
+        ENDIF
+      else
+C       Standard interpolation for T <= 40,000 K
+        GAM=(TI0(ID)*WGR(J)+TI1(ID)*WGR(J-1)+TI2(ID)*WGR(J-2))
+     *      *ANE*1.E-10*FR*1.E-10*FR*4.2E-14
+      end if
+
+      IF(ION.GT.1) GAM=GAM*0.1
+      IF(GAM.LT.0.) GAM=0.
+
+C     Debug output
+C      WAVEL = 2.99792458D18/FR
+C      WRITE(*,'(A,F8.2,A,F10.1,A,I3,A,E12.5)')
+C     *     'GRIEM: lam=',WAVEL,'AA T=',T,' ION=',ION,' GAM=',GAM
+
       RETURN
       END
 C
