@@ -15977,7 +15977,7 @@ C
    10       WGR(I)=WGR0(I,IGRIEM(IL))
          FR=FREQ0(IL)
          ION=MOD(INDAT(IL),100)
-         CALL GRIEM(ID,T,ANE,ION,FR,WGR,GAM)
+         CALL GRIEM(ID,T,ANE,FR,WGR,GAM)
          AGAM=AGAM+GAM
       END IF
 C
@@ -15994,61 +15994,54 @@ C
       RETURN
       END
 
-      SUBROUTINE GRIEMEXT(ID,T,ANE,ION,FR,WGR,GAM)
-C     =========================================
-C
-C     STARK DAMPING PARAMETER (GAM) CALCULATED FROM INPUT VALUES
-C     OF STARK WIDTHS FOR  T=5000, 10000, 20000, 40000 K,
-C     EXTENDED WITH POWER-LAW EXTRAPOLATION FOR T > 40000 K
-C
-      INCLUDE 'INCLUDE/PARAMS.FOR'
-      INCLUDE 'INCLUDE/MODELP.FOR'
-      DIMENSION WGR(4)
-      REAL*8 WGR3_LAST, WGR4_LAST, ALPHA_LAST
-      SAVE WGR3_LAST, WGR4_LAST, ALPHA_LAST
-      DATA WGR3_LAST /-1.D0/, WGR4_LAST /-1.D0/, ALPHA_LAST /0.D0/
-
-      if(t.le.0.) return
-      J=JT(ID)
-
-      if(t.gt.40000.) then
-C       Compute alpha only if WGR values changed (simple caching)
-        IF(WGR(3).NE.WGR3_LAST .OR. WGR(4).NE.WGR4_LAST) THEN
-          WGR3_LAST = WGR(3)
-          WGR4_LAST = WGR(4)
-          IF(WGR(3).GT.0. .AND. WGR(4).GT.0.) THEN
-            ALPHA_LAST = LOG10(WGR(4)/WGR(3))/0.30103D0
-          ELSE
-            ALPHA_LAST = 0.0D0
-          ENDIF
-        ENDIF
-
-        IF(ALPHA_LAST.NE.0.0) THEN
-          GAM = WGR(4)*(T/40000.D0)**ALPHA_LAST
-     *          *ANE*1.E-10*FR*1.E-10*FR*4.2E-14
-        ELSE
-          GAM = WGR(4)*ANE*1.E-10*FR*1.E-10*FR*4.2E-14
-        ENDIF
-      else
-C       Standard interpolation for T <= 40,000 K
-        GAM=(TI0(ID)*WGR(J)+TI1(ID)*WGR(J-1)+TI2(ID)*WGR(J-2))
-     *      *ANE*1.E-10*FR*1.E-10*FR*4.2E-14
-      end if
-
-      IF(ION.GT.1) GAM=GAM*0.1
-      IF(GAM.LT.0.) GAM=0.
-
-C     Debug output
-C      WAVEL = 2.99792458D18/FR
-C      WRITE(*,'(A,F8.2,A,F10.1,A,I3,A,E12.5)')
-C     *     'GRIEM: lam=',WAVEL,'AA T=',T,' ION=',ION,' GAM=',GAM
-
-      RETURN
-      END
 C
 C ********************************************************************
 C
-      SUBROUTINE GRIEM(ID,T,ANE,ION,FR,WGR,GAM)
+      SUBROUTINE GRIEM(ID,T,ANE,FR,WGR,GAM)
+C     =========================================
+C     STARK DAMPING PARAMETER (GAM) FROM TABULATED WGR (ANGSTROM)
+C     WGR(*) are widths (Angstrom) at n_ref = 1.0D+17 cm-3
+C     FR is frequency (s-1), not wavelength
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      DIMENSION WGR(4)
+      DOUBLE PRECISION WGR_ITP, GAM, ANE, FR, T
+      DOUBLE PRECISION TI0, TI1, TI2
+      DOUBLE PRECISION PI2, C_AA, NREF
+C      DOUBLE PRECISION LOGGAM, WAVEL
+      INTEGER ID, J
+
+C     physical constants (double precision)
+      PI2 = 6.28318530717958647692D0
+      C_AA = 2.99792458D18       ! speed of light in Angstrom / s
+      NREF = 1.0D+17             ! reference density for tabulated WGR
+
+      IF (T .LE. 0D0) RETURN
+      J = JT(ID)
+
+C    interpolate
+      WGR_ITP = TI0(ID)*WGR(J)
+     1        + TI1(ID)*WGR(J-1)
+     2        + TI2(ID)*WGR(J-2)
+
+C    Gamma = 2*pi * DeltaLambda * (ne/NREF) * FR**2 / C_AA
+      GAM = PI2 * WGR_ITP * (ANE / NREF) * ( FR * FR ) / C_AA
+
+      IF (GAM .LT. 0D0) GAM = 0D0
+
+C      LOGGAM = LOG10(GAM / ANE)
+C      WAVEL = C_AA / FR
+C      WRITE(*,'(A,F8.2,A,F10.1,A,I3,A,ES12.3,A,F9.3)') 
+C     1     'GRIEM: lam=', WAVEL, 'AA T=', T, ' ION=', ION,
+C     2     ' WGR_ITP=', WGR_ITP, ' LOG10(GAM/NE)=', LOGGAM
+
+      RETURN
+      END
+
+C
+C ********************************************************************
+C
+      SUBROUTINE GRIEMOLD(ID,T,ANE,ION,FR,WGR,GAM)
 C     =========================================
 C
 C     STARK DAMPING PARAMETER (GAM) CALCULATED FROM INPUT VALUES
@@ -16060,16 +16053,13 @@ C
       DIMENSION WGR(4)
       if(t.le.0.) return
       J=JT(ID)
-      if(t.gt.40000) then
-        GAM = WGR(J)*ANE*1.E-10*FR*1.E-10*FR*4.2E-14
-      else
-        GAM=(TI0(ID)*WGR(J)+TI1(ID)*WGR(J-1)+TI2(ID)*WGR(J-2))
-     *      *ANE*1.E-10*FR*1.E-10*FR*4.2E-14
-      end if
+      GAM=(TI0(ID)*WGR(J)+TI1(ID)*WGR(J-1)+TI2(ID)*WGR(J-2))
+     *    *ANE*1.E-10*FR*1.E-10*FR*4.2E-14
       IF(ION.GT.1) GAM=GAM*0.1
       IF(GAM.LT.0.) GAM=0.
       RETURN
       END
+
 C
 C ********************************************************************
 C
