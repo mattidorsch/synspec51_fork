@@ -1,5 +1,5 @@
       PARAMETER (MLIN0   = 500000, 
-     *           MGRIEM  =     10,
+     *           MGRIEM  =     40,
      *           MNLT    =   2000,
      *           MSPHE2  =     20,
      *           MLIN    =  10000,
