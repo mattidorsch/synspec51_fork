@@ -8073,7 +8073,7 @@ C    INEXT   = 0  - no other record necessary for a given line
 C            > 0  - next record is read, which contains:
 C    WGR1,WGR2,WGR3,WGR4 - Stark broadening values from Griem (in Angst)
 C                   for T=5000,10000,20000,40000 K, respectively;
-C                   and n(el)=1e16 for neutrals, =1e17 for ions.
+C                   and n(el)=1e17 for neutrals AND for ions.
 C    ILWN    = 0  - line taken in LTE (default)
 C            > 0  - line taken in NLTE, ILWN is then index of the
 C                   lower level
