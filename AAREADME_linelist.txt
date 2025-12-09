@@ -667,7 +667,8 @@ GeVI
 AsIII
     Morton 2000
     optical data lacking
-#    1196.943 is overlap wiht TaIV? -> removed for now (-0.74 -> -9.74)
+    -> Helene Dupuis & Jerome Deprince
+#    1196.943 blends with TaIV? -> removed for now (-0.74 -> -9.74)
 
 AsIV
     ALL (Churilov & Joshi 1996)
@@ -1053,10 +1054,8 @@ TlIV
     Jerome Deprince, HFS doublets correct using 6j symbols
 
 PbIII
-    Morton 2000 (1 FUV)
-    Alonso-Medina+ 2009 (rest, optical)
+    Dougan+2025, supplemented by Alonso-Medina+ 2009
     Pb III 1447.5: loggf = -0.121 -> -2.121
-    added some lines from Dougan+2025
 
 PbIV
     Safronova & Johnson 2004 (some UV, 3962.467,  4049.832)
