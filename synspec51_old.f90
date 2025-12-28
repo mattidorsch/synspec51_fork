@@ -1,287 +1,3 @@
-C===============================================================================
-C     MODULE: atomic_data_storage
-C     Purpose: Store atomic level data read from external file
-C     Place this at the very beginning of synspec51_fork.f90
-C===============================================================================
-      MODULE atomic_data_storage
-      IMPLICIT NONE
-      SAVE
-C
-C     Maximum dimensions
-      INTEGER, PARAMETER :: MAX_IONS = 500
-      INTEGER, PARAMETER :: MAX_LEVELS = 500
-      INTEGER, PARAMETER :: MAX_Z = 92
-      INTEGER, PARAMETER :: MAX_ION_STAGE = 10
-C
-C     Storage for each ion's data
-      TYPE :: ion_level_data
-          INTEGER :: num_levels
-          INTEGER :: n(MAX_LEVELS)
-          REAL*8  :: g(MAX_LEVELS)
-          REAL*8  :: en(MAX_LEVELS)
-          REAL*8  :: s(MAX_LEVELS)
-          REAL*8  :: z_eff
-      END TYPE ion_level_data
-C
-C     Array of ion data, indexed by lookup table
-      TYPE(ion_level_data) :: ion_data(MAX_IONS)
-      INTEGER :: num_ions_loaded = 0
-C
-C     Lookup table: ion_index(Z, ion_stage) gives index into ion_data
-C     ion_stage: 1=neutral, 2=once ionized, etc.
-      INTEGER :: ion_index(MAX_Z, MAX_ION_STAGE)
-C
-C     Initialization flag
-      LOGICAL :: atomic_data_initialized = .FALSE.
-C
-      CONTAINS
-C
-C-----------------------------------------------------------------------
-      SUBROUTINE init_atomic_data_from_file(filename, ierr)
-C-----------------------------------------------------------------------
-C     Read atomic data file and populate module storage
-C     Called once on first use of PFSPEC
-C
-C     File format:
-C       Header: ELEMENT ION_STAGE NLEVELS IONIZATION_POT ATOMIC_NUMBER
-C       Levels: N G EN S (one line per level)
-C-----------------------------------------------------------------------
-      CHARACTER(LEN=*), INTENT(IN) :: filename
-      INTEGER, INTENT(OUT) :: ierr
-C
-      INTEGER :: iunit, ios
-      CHARACTER(LEN=256) :: line
-      CHARACTER(LEN=10) :: ion_symbol
-      INTEGER :: z_int, ion_stage, num_levels
-      REAL*8 :: ion_pot, z_real
-      INTEGER :: j, idx
-      INTEGER :: n_val
-      REAL*8 :: g_val, en_val, s_val
-      CHARACTER(LEN=1) :: firstchar
-      LOGICAL :: is_header
-C
-      ierr = 0
-C
-      IF (atomic_data_initialized) RETURN
-C
-C     Initialize lookup table
-      ion_index = 0
-      num_ions_loaded = 0
-C
-C     Initialize ion_data array
-      DO idx = 1, MAX_IONS
-          ion_data(idx)%num_levels = 0
-          ion_data(idx)%z_eff = 0.0D0
-          DO j = 1, MAX_LEVELS
-              ion_data(idx)%n(j) = 0
-              ion_data(idx)%g(j) = 0.0D0
-              ion_data(idx)%en(j) = 0.0D0
-              ion_data(idx)%s(j) = 1.0D0
-          END DO
-      END DO
-C
-C     Open file
-      iunit = 99
-      OPEN(UNIT=iunit, FILE=filename, STATUS='OLD',
-     +     ACTION='READ', IOSTAT=ios)
-      IF (ios .NE. 0) THEN
-          ierr = -1
-          WRITE(*,*) 'ATOMIC_DATA: Cannot open file: ', TRIM(filename)
-          RETURN
-      END IF
-C
-      WRITE(*,'(A,A)') ' ATOMIC_DATA: Reading from ', TRIM(filename)
-C
-C     Read file
-      idx = 0
- 100  CONTINUE
-          READ(iunit, '(A)', IOSTAT=ios) line
-          IF (ios .NE. 0) GO TO 200
-C
-C         Skip empty lines
-          IF (LEN_TRIM(line) .EQ. 0) GO TO 100
-C
-C         Skip comment lines (start with #)
-          firstchar = line(1:1)
-          IF (firstchar .EQ. '#') GO TO 100
-C
-C         Check if this is a header line (starts with a letter A-Z)
-C         Header format: ELEMENT ION_STAGE NLEVELS IONIZ_POT Z
-          is_header = (firstchar.GE.'A' .AND. firstchar.LE.'Z')
-C
-          IF (is_header) THEN
-C             Parse ion header
-C             Example: "C 1 135 11.26400 6.0"
-C             Format: symbol ion_stage num_levels ioniz_pot atomic_number
-              READ(line, *, IOSTAT=ios) ion_symbol, ion_stage,
-     +                                  num_levels, ion_pot, z_real
-              IF (ios .NE. 0) THEN
-                  WRITE(*,*) 'ATOMIC_DATA: Error parsing header: ',
-     +                       TRIM(line)
-                  WRITE(*,*) 'ATOMIC_DATA: IOSTAT = ', ios
-                  GO TO 100
-              END IF
-C
-C             Convert z_real to integer for lookup
-              z_int = NINT(z_real)
-C
-C             Debug output
-              WRITE(*,'(A,A,A,I3,A,I2,A,I4)')
-     +            ' ATOMIC_DATA: Found ', TRIM(ion_symbol),
-     +            ' Z=', z_int, ' ion=', ion_stage,
-     +            ' levels=', num_levels
-C
-C             Check bounds
-              IF (z_int .LT. 1 .OR. z_int .GT. MAX_Z) THEN
-                  WRITE(*,*) 'ATOMIC_DATA: Z out of range: ', z_int
-                  DO j = 1, num_levels
-                      READ(iunit, '(A)', IOSTAT=ios) line
-                      IF (ios .NE. 0) GO TO 200
-                  END DO
-                  GO TO 100
-              END IF
-C
-              IF (ion_stage.LT.1 .OR. ion_stage.GT.MAX_ION_STAGE) THEN
-                  WRITE(*,*) 'ATOMIC_DATA: Ion stage out of range: ',
-     +                       ion_stage
-                  DO j = 1, num_levels
-                      READ(iunit, '(A)', IOSTAT=ios) line
-                      IF (ios .NE. 0) GO TO 200
-                  END DO
-                  GO TO 100
-              END IF
-C
-              IF (num_levels .GT. MAX_LEVELS) THEN
-                  WRITE(*,*) 'ATOMIC_DATA: Too many levels for ',
-     +                       TRIM(ion_symbol), ' truncating to ',
-     +                       MAX_LEVELS
-              END IF
-C
-C             Store data
-              idx = idx + 1
-              IF (idx .GT. MAX_IONS) THEN
-                  WRITE(*,*) 'ATOMIC_DATA: MAX_IONS exceeded'
-                  ierr = -2
-                  GO TO 200
-              END IF
-C
-              ion_data(idx)%num_levels = MIN(num_levels, MAX_LEVELS)
-              ion_data(idx)%z_eff = z_real
-C
-C             Read energy levels (N G EN S)
-              DO j = 1, num_levels
-                  READ(iunit, '(A)', IOSTAT=ios) line
-                  IF (ios .NE. 0) THEN
-                      WRITE(*,*) 'ATOMIC_DATA: EOF reading level ',
-     +                           j, ' for ', TRIM(ion_symbol)
-                      ion_data(idx)%num_levels = j - 1
-                      GO TO 200
-                  END IF
-C
-C                 Skip if we've exceeded MAX_LEVELS
-                  IF (j .GT. MAX_LEVELS) GO TO 110
-C
-C                 Parse level data: N G EN S
-                  READ(line, *, IOSTAT=ios) n_val, g_val, en_val, s_val
-                  IF (ios .NE. 0) THEN
-                      WRITE(*,*) 'ATOMIC_DATA: Error parsing level: ',
-     +                           TRIM(line)
-                      WRITE(*,*) 'ATOMIC_DATA: IOSTAT = ', ios
-                      ion_data(idx)%num_levels = j - 1
-                      GO TO 100
-                  END IF
-C
-                  ion_data(idx)%n(j) = n_val
-                  ion_data(idx)%g(j) = g_val
-                  ion_data(idx)%en(j) = en_val
-                  ion_data(idx)%s(j) = s_val
-C
- 110              CONTINUE
-              END DO
-C
-C             Add to lookup table
-              ion_index(z_int, ion_stage) = idx
-C
-          END IF
-      GO TO 100
-C
- 200  CONTINUE
-      CLOSE(iunit)
-C
-      num_ions_loaded = idx
-      atomic_data_initialized = .TRUE.
-C
-      WRITE(*,'(A,I4,A)') ' ATOMIC_DATA: Loaded ', num_ions_loaded,
-     +                    ' ions'
-C
-      RETURN
-      END SUBROUTINE init_atomic_data_from_file
-C
-C-----------------------------------------------------------------------
-      SUBROUTINE get_ion_level_data(iat, izi, nlev, n_arr, g_arr,
-     +                              en_arr, s_arr, z_eff, found)
-C-----------------------------------------------------------------------
-C     Retrieve level data for specified ion
-C
-C     Input:
-C       iat - atomic number
-C       izi - ion charge (1=neutral, 2=once ionized, etc.)
-C
-C     Output:
-C       nlev   - number of levels
-C       n_arr  - principal quantum numbers
-C       g_arr  - statistical weights
-C       en_arr - energies (eV)
-C       s_arr  - scale factors
-C       z_eff  - effective atomic number
-C       found  - .TRUE. if ion found in database
-C-----------------------------------------------------------------------
-      INTEGER, INTENT(IN) :: iat, izi
-      INTEGER, INTENT(OUT) :: nlev
-      INTEGER, INTENT(OUT) :: n_arr(MAX_LEVELS)
-      REAL*8, INTENT(OUT) :: g_arr(MAX_LEVELS)
-      REAL*8, INTENT(OUT) :: en_arr(MAX_LEVELS)
-      REAL*8, INTENT(OUT) :: s_arr(MAX_LEVELS)
-      REAL*8, INTENT(OUT) :: z_eff
-      LOGICAL, INTENT(OUT) :: found
-C
-      INTEGER :: idx, j
-C
-      found = .FALSE.
-      nlev = 0
-      z_eff = DBLE(iat)
-      DO j = 1, MAX_LEVELS
-          n_arr(j) = 0
-          g_arr(j) = 0.0D0
-          en_arr(j) = 0.0D0
-          s_arr(j) = 1.0D0
-      END DO
-C
-      IF (.NOT. atomic_data_initialized) RETURN
-C
-      IF (iat .LT. 1 .OR. iat .GT. MAX_Z) RETURN
-      IF (izi .LT. 1 .OR. izi .GT. MAX_ION_STAGE) RETURN
-C
-      idx = ion_index(iat, izi)
-      IF (idx .EQ. 0) RETURN
-C
-      found = .TRUE.
-      nlev = ion_data(idx)%num_levels
-      z_eff = ion_data(idx)%z_eff
-C
-      DO j = 1, nlev
-          n_arr(j) = ion_data(idx)%n(j)
-          g_arr(j) = ion_data(idx)%g(j)
-          en_arr(j) = ion_data(idx)%en(j)
-          s_arr(j) = ion_data(idx)%s(j)
-      END DO
-C
-      RETURN
-      END SUBROUTINE get_ion_level_data
-C
-      END MODULE atomic_data_storage
-C
-C =====================================================================I
       PROGRAM SYNSPEC
 C
 C =====================================================================I
@@ -20317,83 +20033,8479 @@ C
 C
 C ********************************************************************
 C
+C
+      SUBROUTINE APPROX_ION_LEVELS(Z, ION_STAGE, NLEV_MAX,
+     &                             NE, GEE, ENRGY, S)
+C     ---------------------------------------------------------------
+C     General approximation for any ion
+C     ---------------------------------------------------------------
+      IMPLICIT NONE
+C     Arguments
+      INTEGER Z, ION_STAGE, NLEV_MAX
+      INTEGER NE(NLEV_MAX)
+      REAL*8 GEE(NLEV_MAX), ENRGY(NLEV_MAX), S(NLEV_MAX)
+C     Local variables
+      REAL*8 E_ION, ZEFF, N_EFF
+C     REAL*8 SIGMA_CORE
+      REAL*8 DELTA_L(0:3), SCALE_FACTOR
+      INTEGER N, L, N_ELECTRONS, N_CORE, K, N_MAX
+      INTEGER L_MAX, I, N_START
+      REAL*8 GET_EION
+      EXTERNAL GET_EION
+C     Get ionization energy
+      E_ION = GET_EION(Z, ION_STAGE)
+C     Number of electrons
+      N_ELECTRONS = Z - ION_STAGE + 1
+C     Estimate core electrons (filled shells)
+      IF (N_ELECTRONS .LE. 2) THEN
+          N_CORE = 0
+      ELSE IF (N_ELECTRONS .LE. 10) THEN
+          N_CORE = 2
+      ELSE IF (N_ELECTRONS .LE. 18) THEN
+          N_CORE = 10
+      ELSE IF (N_ELECTRONS .LE. 36) THEN
+          N_CORE = 18
+      ELSE IF (N_ELECTRONS .LE. 54) THEN
+          N_CORE = 36
+      ELSE IF (N_ELECTRONS .LE. 86) THEN
+          N_CORE = 54
+      ELSE
+          N_CORE = 86
+      END IF
+C     Core screening using N_CORE
+C      SIGMA_CORE = 0.35D0 * N_CORE +
+C     &             0.85D0 * (N_ELECTRONS - N_CORE - 1)
+C     Estimate starting quantum number based on element
+      IF (Z .LE. 20) THEN
+          N_START = 2
+      ELSE IF (Z .LE. 38) THEN
+          N_START = 3
+      ELSE IF (Z .LE. 56) THEN
+          N_START = 4
+      ELSE
+          N_START = 4  ! Lanthanides and beyond
+      END IF
+C     Quantum defects
+      SCALE_FACTOR = 1.0D0 + 0.1D0 * (ION_STAGE - 1)
+      DELTA_L(0) = 3.5D0 / SCALE_FACTOR
+      DELTA_L(1) = 2.5D0 / SCALE_FACTOR
+      DELTA_L(2) = 1.0D0 / SCALE_FACTOR
+      DELTA_L(3) = 0.1D0 / SCALE_FACTOR
+C     Generate levels
+      K = 0
+      N_MAX = MIN(N_START + 5, 20)
+      DO 20 N = N_START, N_MAX
+          L_MAX = MIN(N-1, 3)
+          DO 10 L = 0, L_MAX
+              K = K + 1
+              IF (K .GT. NLEV_MAX) GOTO 100
+              NE(K) = N
+              GEE(K) = 2.0D0 * (2*L + 1)
+C             Effective quantum number
+              N_EFF = N - DELTA_L(L)
+C             Basic energy estimate
+              IF (K .EQ. 1) THEN
+                  ENRGY(K) = 0.0D0
+              ELSE
+                  ZEFF = SQRT(E_ION * (N_EFF**2) / 13.6D0)
+                  ENRGY(K) = E_ION * (1.0D0 - 1.0D0/(N_EFF**2))
+              END IF
+C             Screening based on core electrons and L
+C              S(K) = SIGMA_CORE - 2.0D0 * L
+   10     CONTINUE
+   20 CONTINUE
+  100 CONTINUE
+C     Fill remaining slots if needed
+      IF (K .LT. NLEV_MAX) THEN
+          DO 30 I = K+1, NLEV_MAX
+              NE(I) = N_MAX
+              GEE(I) = 2.0D0
+              ENRGY(I) = E_ION * 0.25D0
+C              S(I) = SIGMA_CORE
+   30     CONTINUE
+          K = NLEV_MAX
+      END IF
+C     Apply element and ion-specific corrections
+      CALL APPLY_ION_CORR(Z, ION_STAGE, E_ION, K, NE,
+     &                    GEE, ENRGY)
+      CALL EST_SCREEN(Z, ION_STAGE, NLEV_MAX, NE, ENRGY, S)
+      RETURN
+      END
+C
+C ********************************************************************
+C
+C
+      SUBROUTINE APPLY_ION_CORR(Z, ION_STAGE, E_ION, NLEV,
+     &                          NE, GEE, ENRGY)
+C     ---------------------------------------------------------------
+C      Apply element-specific corrections
+C     ---------------------------------------------------------------
+      IMPLICIT NONE
+      INTEGER Z, ION_STAGE, NLEV
+      INTEGER NE(NLEV)
+      REAL*8 E_ION, GEE(NLEV), ENRGY(NLEV)
+      INTEGER I, N_ELECTRONS, N_4F
+      REAL*8 SHIFT, ION_FACTOR, SCALE
+      REAL*8 MAX_E
+      N_ELECTRONS = Z - ION_STAGE + 1
+C     Ionization correction factor
+      ION_FACTOR = 1.0D0 / (1.0D0 + 0.2D0 * (ION_STAGE - 1))
+C     LANTHANIDES (Z=57-71): Major corrections needed
+      IF (Z .GE. 57 .AND. Z .LE. 71) THEN
+C         Number of 4f electrons (approximate)
+          N_4F = MAX(0, MIN(14, N_ELECTRONS - 54))
+C         Compress energy scale dramatically for 4f states
+          DO 10 I = 2, NLEV
+              IF (NE(I) .EQ. 4) THEN
+C                 4f levels: very low energy
+                  SCALE = 0.05D0 + 0.02D0 * ION_STAGE
+                  ENRGY(I) = ENRGY(I) * SCALE
+C                   For 4f states, use realistic weights (keep integers!)
+                  IF (N_4F .GT. 0 .AND. N_4F .LT. 14) THEN
+C                     Common J values for 4f^n configurations
+                      IF (MOD(I,3) .EQ. 0) THEN
+                          GEE(I) = 16.0D0  ! J=7.5
+                      ELSE IF (MOD(I,3) .EQ. 1) THEN
+                          GEE(I) = 14.0D0  ! J=6.5
+                      ELSE
+                          GEE(I) = 12.0D0  ! J=5.5
+                      END IF
+                  END IF
+              ELSE IF (NE(I) .EQ. 5) THEN
+C                 5d/6s levels: intermediate energy
+                  SCALE = 0.15D0 + 0.05D0 * ION_STAGE
+                  ENRGY(I) = ENRGY(I) * SCALE
+C             Keep original integer weights
+              ELSE
+C                 Higher states
+                  SCALE = 0.25D0
+                  ENRGY(I) = ENRGY(I) * SCALE
+              END IF
+   10     CONTINUE
+C         Specific corrections for Er IV
+          IF (Z .EQ. 68 .AND. ION_STAGE .EQ. 4) THEN
+C             Spread out low-lying 4f states
+              DO 15 I = 2, MIN(18, NLEV)
+                  IF (NE(I) .EQ. 4) THEN
+                      ENRGY(I) = 0.5D0 + 0.3D0 * (I-1)
+                  END IF
+   15         CONTINUE
+          END IF
+      END IF
+C     TRANSITION METALS
+      IF ((Z .GE. 21 .AND. Z .LE. 30) .OR.
+     &    (Z .GE. 39 .AND. Z .LE. 48) .OR.
+     &    (Z .GE. 72 .AND. Z .LE. 80)) THEN
+          DO 20 I = 2, NLEV
+              IF (ENRGY(I) .GT. 2.0D0 .AND. 
+     &            ENRGY(I) .LT. 8.0D0) THEN
+                  SHIFT = 0.05D0 + 0.05D0 * ION_FACTOR
+                  ENRGY(I) = ENRGY(I) * (1.0D0 - SHIFT)
+              END IF
+   20     CONTINUE
+      END IF
+C     POST-TRANSITION ELEMENTS
+      IF ((Z .GE. 31 .AND. Z .LE. 36) .OR.
+     &    (Z .GE. 49 .AND. Z .LE. 54) .OR.
+     &    (Z .GE. 81 .AND. Z .LE. 86)) THEN
+          IF (ION_STAGE .LE. 3) THEN
+              DO 30 I = 2, NLEV
+                  IF (ENRGY(I) .LT. 15.0D0) THEN
+                      SHIFT = 0.03D0 * (1.0D0 + Z/100.0D0)
+                      ENRGY(I) = ENRGY(I) * (1.0D0 + SHIFT)
+                  END IF
+   30         CONTINUE
+          END IF
+      END IF
+C     GENERAL SCALING: Ensure reasonable energy range
+      MAX_E = 0.0D0
+      DO 40 I = 2, NLEV
+          IF (ENRGY(I) .GT. MAX_E) MAX_E = ENRGY(I)
+C          IF (GEE(I) .LT. 1.D0) GEE(I) = 1.D0
+   40 CONTINUE
+C     Cap at 30% of ionization energy
+      IF (MAX_E .GT. 0.3D0 * E_ION) THEN
+          SCALE = 0.3D0 * E_ION / MAX_E
+          DO 50 I = 2, NLEV
+              ENRGY(I) = ENRGY(I) * SCALE
+   50     CONTINUE
+      END IF
+      RETURN
+      END
+C
+C ********************************************************************
+C
       SUBROUTINE PFSPEC(IAT,IZI,T,ANE,U)
 C     ==================================
+
 C     Non-standard evaluation of the partition function
-C     Modernized version - reads data from atomic_data.dat
+C     user supplied procedure
 C
 C     Input:
 C      IAT   - atomic number
-C      IZI   - ionic charge (=1 for neutrals, =2 for once ionized, etc)
+C      IZI   - ionic charge (=1 for neutrals, =1 for once ionized, etc)
 C      T     - temperature
 C      ANE   - electron density
+C      XMAX  - principal quantum number of the last bound level
 C
 C     Output:
 C      U     - partition function
 C
-C     Original: M.A.Barstow - University of Leicester
-C     Modified: Matti Dorsch - added more ionised heavy elements
-C     Modernized: Data now read from external file atomic_data.dat
+*
+* Modified from the ATMOS related programme 5-April-1990
+* as an addition to TLUSTY to allow high ionisation states
+* of C, N and O
+*
+* M.A.Barstow - University of Leicester, Dept of Physics & Astronomy
+*
+* Modified by Matti Dorsch to add more ionised heavy elements
+*
+*
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      real nvii
+      PARAMETER (MH=100,MHEI=100,MHEII=100,MCI=135,
+     +     MCII=157,MCIII=156,MCIV=55,MCV=15,MCVI=100,MNI=228,MNII=122,
+     +     MNIII=133,MNIV=73,MNV=51,MNVI=8,MNVII=100,MOI=174,MOII=191,
+     +     MOIII=168,MOIV=166,MOV=115,MOVI=52,MOVII=16,MOVIII=100,
+     +     MGAIV=191,MGAV=91,MGEIV=39,MGEV=101,MASIV=33,MASV=8,
+     +     MSEIV=28,MSEV=14,
+     +     MKRIV=78,MKRV=42,
+     +     MSRIV=254,MSRV=143,
+     +     MYIV=129,MYV=113,MZRIV=34,MZRV=101,MMOIV=80,MMOV=257,
+     +     MXEIV=94,MXEV=53,MSNIV=20,MSNV=24,MSBIV=28,MSBV=8,
+     +     MTEIV=15,MTEV=44,MINIV=17,MINV=32,MSBVI=59,MTLIV=43,
+     +     MBAIV=31,MBAV=51,MBAVI=49,MBAVII=1,
+     +     MPBIV=102,MBIIV=37,MBIV=14,MPBV=44,MPBVII=1,
+     +     MTHIV=24,MASVI=43,MMOVI=112,MGAVI=157,MGEVI=104,MSEVI=6,
+     +     MZRVI=96,MSNVI=29,MXEVI=72,MPBVI=40,MBIVI=114,MTHV=9,
+     +     MKRVI=44,MSRVI=21,MTEVI=8,MTEVII=59,MZRVII=1,MZRVIII=1,
+     +     MYVI=1,MGEVII=167,MMOVII=95,MSRVII=19,MINVI=1,MXEVII=67,
+     +     MTLV=18,MTLVI=48,MTLVII=1,MTHVI=1,MGAVII=180,MASVII=49,
+     +     MBIVII=1,
+     +     MSEVII=44,MTHVII=1,MGEVIII=1,MMOVIII=76,MTEVIII=1,MSBVII=1,
+     +     MIIV=9,MIV=10,MIVI=5,MIVII=1,
+     +     MNBIV=182,MNBV=30,MNBVI=104,MNBVII=31,MNBVIII=1,
+     +     MRUIV=41,MRUV=30,MRUVI=1,MRUVII=1,
+     +     MRHIV=35,MRHV=28,MRHVI=1,MRHVII=1,
+     +     MPDIV=260,MPDV=231,MPDVI=1,MPDVII=1,
+     +     MAGIV=184,MAGV=45,MAGVI=1,MAGVII=1,
+     +     MCDIV=51,MCDV=26,MCDVI=19,MCDVII=1,
+     +     MCSIV=113,MCSV=49,MCSVI=31,MCSVII=5,
+     +     MLAIV=64,MLAV=36,MLAVI=1,MLAVII=1,
+     +     MCEIV=16,MCEV=55,MCEVI=3,MCEVII=1,
+     +     MPRIV=88,MPRV=8,MPRVI=1,MPRVII=1,
+     +     MNDIV=230,MNDV=32,MNDVI=1,MNDVII=1,
+     +     MERIV=76,MERV=14,MERVI=1,MERVII=1,
+     +     MTMIV=209,MTMV=18,MTMVI=1,MTMVII=1,
+     +     MYBIV=114,MYBV=30,MYBVI=1,MYBVII=1,
+     +     MLUIV=70,MLUV=36,MLUVI=1,MLUVII=1,
+     +     MHFIV=38,MHFV=72,MHFVI=1,MHFVII=1,
+     +     MTAIV=30,MTAV=10,MTAVI=22,MTAVII=1,
+     +     MWIV=105,MWV=59,MWVI=14,MWVII=108,MWVIII=1,
+     +     MREIV=161,MREV=79,MREVI=1,MREVII=1,
+     +     MOSIV=371,MOSV=33,MOSVI=20,MOSVII=1,
+     +     MIRIV=223,MIRV=320,MIRVI=1,MIRVII=1,
+     +     MAUIV=157,MAUV=68,MAUVI=1,MAUVII=1,
+     +     MHGIV=146,MHGV=157,MHGVI=1,MHGVII=1,
+     +     MBRIV=40,MBRV=9,MBRVI=11,MBRVII=5,
+     +     MBRVIII=1,
+     +     MRBIV=54,MRBV=20,MRBVI=19,MRBVII=20,
+     +     MPTIV=237,MPTV=258,MPTVI=250,MPTVII=1)
+      DIMENSION GHYD(MH),SHYD(MH),ENHYD(MH),
+     +     GHEL(MH),ENHEL(MH),SHEL(MH),
+     +     GCI(MCI),ENCI(MCI),SCI(MCI),
+     +     GCII(MCII),ENCII(MCII),SCII(MCII),
+     +     GCIII(MCIII),ENCIII(MCIII),SCIII(MCIII),
+     +     GCIV(MCIV),ENCIV(MCIV),SCIV(MCIV),
+     +     GCV(MCV),ENCV(MCV),SCV(MCV),
+     +     GNI(MNI),ENNI(MNI),SNI(MNI),
+     +     GNII(MNII),ENNII(MNII),SNII(MNII),
+     +     GNIII(MNIII),ENNIII(MNIII),SNIII(MNIII),
+     +     GNIV(MNIV),ENNIV(MNIV),SNIV(MNIV),
+     +     GNV(MNV),ENNV(MNV),SNV(MNV),
+     +     GNVI(MNVI),ENNVI(MNVI),SNVI(MNVI),
+     +     GOI(MOI),ENOI(MOI),SOI(MOI),
+     +     GOII(MOII),ENOII(MOII),SOII(MOII),
+     +     GOIII(MOIII),ENOIII(MOIII),SOIII(MOIII),
+     +     GOIV(MOIV),ENOIV(MOIV),SOIV(MOIV),
+     +     GOV(MOV),ENOV(MOV),SOV(MOV),
+     +     GOVI(MOVI),ENOVI(MOVI),SOVI(MOVI),
+     +     GOVII(MOVII),ENOVII(MOVII),SOVII(MOVII),
+     +     GGAIV(MGAIV),ENGAIV(MGAIV),SGAIV(MGAIV),
+     +     GGAV(MGAV),ENGAV(MGAV),SGAV(MGAV),
+     +     GGAVI(MGAVI),ENGAVI(MGAVI),SGAVI(MGAVI),
+     +     GGAVII(MGAVII),ENGAVII(MGAVII),SGAVII(MGAVII),
+     +     GGEIV(MGEIV),ENGEIV(MGEIV),SGEIV(MGEIV),
+     +     GGEV(MGEV),ENGEV(MGEV),SGEV(MGEV),
+     +     GGEVI(MGEVI),ENGEVI(MGEVI),SGEVI(MGEVI),
+     +     GGEVII(MGEVII),ENGEVII(MGEVII),SGEVII(MGEVII),
+     +     GGEVIII(MGEVIII),ENGEVIII(MGEVIII),SGEVIII(MGEVIII),
+     +     GASIV(MASIV),ENASIV(MASIV),SASIV(MASIV),
+     +     GASV(MASV),ENASV(MASV),SASV(MASV),
+     +     GASVI(MASVI),ENASVI(MASVI),SASVI(MASVI),
+     +     GASVII(MASVII),ENASVII(MASVII),SASVII(MASVII),
+     +     GSEIV(MSEIV),ENSEIV(MSEIV),SSEIV(MSEIV),
+     +     GSEV(MSEV),ENSEV(MSEV),SSEV(MSEV),
+     +     GSEVI(MSEVI),ENSEVI(MSEVI),SSEVI(MSEVI),
+     +     GSEVII(MSEVII),ENSEVII(MSEVII),SSEVII(MSEVII),
+     +     GBRIV(MBRIV),ENBRIV(MBRIV),SBRIV(MBRIV),
+     +     GBRV(MBRV),ENBRV(MBRV),SBRV(MBRV),
+     +     GBRVI(MBRVI),ENBRVI(MBRVI),SBRVI(MBRVI),
+     +     GBRVII(MBRVII),ENBRVII(MBRVII),SBRVII(MBRVII),
+     +     GBRVIII(MBRVIII),ENBRVIII(MBRVIII),SBRVIII(MBRVIII),
+     +     GKRIV(MKRIV),ENKRIV(MKRIV),SKRIV(MKRIV),
+     +     GKRV(MKRV),ENKRV(MKRV),SKRV(MKRV),
+     +     GKRVI(MKRVI),ENKRVI(MKRVI),SKRVI(MKRVI),
+     +     GRBIV(MRBIV),ENRBIV(MRBIV),SRBIV(MRBIV),
+     +     GRBV(MRBV),ENRBV(MRBV),SRBV(MRBV),
+     +     GRBVI(MRBVI),ENRBVI(MRBVI),SRBVI(MRBVI),
+     +     GRBVII(MRBVII),ENRBVII(MRBVII),SRBVII(MRBVII),
+     +     GSRIV(MSRIV),ENSRIV(MSRIV),SSRIV(MSRIV),
+     +     GSRV(MSRV),ENSRV(MSRV),SSRV(MSRV),
+     +     GSRVI(MSRVI),ENSRVI(MSRVI),SSRVI(MSRVI),
+     +     GSRVII(MSRVII),ENSRVII(MSRVII),SSRVII(MSRVII),
+     +     GYIV(MYIV),ENYIV(MYIV),SYIV(MYIV),
+     +     GYV(MYV),ENYV(MYV),SYV(MYV),
+     +     GYVI(MYVI),ENYVI(MYVI),SYVI(MYVI),
+     +     GZRIV(MZRIV),ENZRIV(MZRIV),SZRIV(MZRIV),
+     +     GZRV(MZRV),ENZRV(MZRV),SZRV(MZRV),
+     +     GZRVI(MZRVI),ENZRVI(MZRVI),SZRVI(MZRVI),
+     +     GZRVII(MZRVII),ENZRVII(MZRVII),SZRVII(MZRVII),
+     +     GZRVIII(MZRVIII),ENZRVIII(MZRVIII),SZRVIII(MZRVIII),
+     +     GNBIV(MNBIV),ENNBIV(MNBIV),SNBIV(MNBIV),
+     +     GNBV(MNBV),ENNBV(MNBV),SNBV(MNBV),
+     +     GNBVI(MNBVI),ENNBVI(MNBVI),SNBVI(MNBVI),
+     +     GNBVII(MNBVII),ENNBVII(MNBVII),SNBVII(MNBVII),
+     +     GNBVIII(MNBVIII),ENNBVIII(MNBVIII),SNBVIII(MNBVIII),
+     +     GMOIV(MMOIV),ENMOIV(MMOIV),SMOIV(MMOIV),
+     +     GMOV(MMOV),ENMOV(MMOV),SMOV(MMOV),
+     +     GMOVI(MMOVI),ENMOVI(MMOVI),SMOVI(MMOVI),
+     +     GMOVII(MMOVII),ENMOVII(MMOVII),SMOVII(MMOVII),
+     +     GMOVIII(MMOVIII),ENMOVIII(MMOVIII),SMOVIII(MMOVIII),
+     +     GRUIV(MRUIV),ENRUIV(MRUIV),SRUIV(MRUIV),
+     +     GRUV(MRUV),ENRUV(MRUV),SRUV(MRUV),
+     +     GRUVI(MRUVI),ENRUVI(MRUVI),SRUVI(MRUVI),
+     +     GRUVII(MRUVII),ENRUVII(MRUVII),SRUVII(MRUVII),
+     +     GRHIV(MRHIV),ENRHIV(MRHIV),SRHIV(MRHIV),
+     +     GRHV(MRHV),ENRHV(MRHV),SRHV(MRHV),
+     +     GRHVI(MRHVI),ENRHVI(MRHVI),SRHVI(MRHVI),
+     +     GRHVII(MRHVII),ENRHVII(MRHVII),SRHVII(MRHVII),
+     +     GPDIV(MPDIV),ENPDIV(MPDIV),SPDIV(MPDIV),
+     +     GPDV(MPDV),ENPDV(MPDV),SPDV(MPDV),
+     +     GPDVI(MPDVI),ENPDVI(MPDVI),SPDVI(MPDVI),
+     +     GPDVII(MPDVII),ENPDVII(MPDVII),SPDVII(MPDVII),
+     +     GAGIV(MAGIV),ENAGIV(MAGIV),SAGIV(MAGIV),
+     +     GAGV(MAGV),ENAGV(MAGV),SAGV(MAGV),
+     +     GAGVI(MAGVI),ENAGVI(MAGVI),SAGVI(MAGVI),
+     +     GAGVII(MAGVII),ENAGVII(MAGVII),SAGVII(MAGVII),
+     +     GCDIV(MCDIV),ENCDIV(MCDIV),SCDIV(MCDIV),
+     +     GCDV(MCDV),ENCDV(MCDV),SCDV(MCDV),
+     +     GCDVI(MCDVI),ENCDVI(MCDVI),SCDVI(MCDVI),
+     +     GCDVII(MCDVII),ENCDVII(MCDVII),SCDVII(MCDVII),
+     +     GINIV(MINIV),ENINIV(MINIV),SINIV(MINIV),
+     +     GINV(MINV),ENINV(MINV),SINV(MINV),
+     +     GINVI(MINVI),ENINVI(MINVI),SINVI(MINVI),
+     +     GSNIV(MSNIV),ENSNIV(MSNIV),SSNIV(MSNIV),
+     +     GSNV(MSNV),ENSNV(MSNV),SSNV(MSNV),
+     +     GSNVI(MSNVI),ENSNVI(MSNVI),SSNVI(MSNVI),
+     +     GSBIV(MSBIV),ENSBIV(MSBIV),SSBIV(MSBIV),
+     +     GSBV(MSBV),ENSBV(MSBV),SSBV(MSBV),
+     +     GSBVI(MSBVI),ENSBVI(MSBVI),SSBVI(MSBVI),
+     +     GSBVII(MSBVII),ENSBVII(MSBVII),SSBVII(MSBVII),
+     +     GTEIV(MTEIV),ENTEIV(MTEIV),STEIV(MTEIV),
+     +     GTEV(MTEV),ENTEV(MTEV),STEV(MTEV),
+     +     GTEVI(MTEVI),ENTEVI(MTEVI),STEVI(MTEVI),
+     +     GTEVII(MTEVII),ENTEVII(MTEVII),STEVII(MTEVII),
+     +     GTEVIII(MTEVIII),ENTEVIII(MTEVIII),STEVIII(MTEVIII),
+     +     GIIV(MIIV),ENIIV(MIIV),SIIV(MIIV),
+     +     GIV(MIV),ENIV(MIV),SIV(MIV),
+     +     GIVI(MIVI),ENIVI(MIVI),SIVI(MIVI),
+     +     GIVII(MIVII),ENIVII(MIVII),SIVII(MIVII),
+     +     GXEIV(MXEIV),ENXEIV(MXEIV),SXEIV(MXEIV),
+     +     GXEV(MXEV),ENXEV(MXEV),SXEV(MXEV),
+     +     GXEVI(MXEVI),ENXEVI(MXEVI),SXEVI(MXEVI),
+     +     GXEVII(MXEVII),ENXEVII(MXEVII),SXEVII(MXEVII),
+     +     GCSIV(MCSIV),ENCSIV(MCSIV),SCSIV(MCSIV),
+     +     GCSV(MCSV),ENCSV(MCSV),SCSV(MCSV),
+     +     GCSVI(MCSVI),ENCSVI(MCSVI),SCSVI(MCSVI),
+     +     GCSVII(MCSVII),ENCSVII(MCSVII),SCSVII(MCSVII),
+     +     GBAIV(MBAIV),ENBAIV(MBAIV),SBAIV(MBAIV),
+     +     GBAV(MBAV),ENBAV(MBAV),SBAV(MBAV),
+     +     GBAVI(MBAVI),ENBAVI(MBAVI),SBAVI(MBAVI),
+     +     GBAVII(MBAVII),ENBAVII(MBAVII),SBAVII(MBAVII),
+     +     GLAIV(MLAIV),ENLAIV(MLAIV),SLAIV(MLAIV),
+     +     GLAV(MLAV),ENLAV(MLAV),SLAV(MLAV),
+     +     GLAVI(MLAVI),ENLAVI(MLAVI),SLAVI(MLAVI),
+     +     GLAVII(MLAVII),ENLAVII(MLAVII),SLAVII(MLAVII),
+     +     GCEIV(MCEIV),ENCEIV(MCEIV),SCEIV(MCEIV),
+     +     GCEV(MCEV),ENCEV(MCEV),SCEV(MCEV),
+     +     GCEVI(MCEVI),ENCEVI(MCEVI),SCEVI(MCEVI),
+     +     GCEVII(MCEVII),ENCEVII(MCEVII),SCEVII(MCEVII),
+     +     GPRIV(MPRIV),ENPRIV(MPRIV),SPRIV(MPRIV),
+     +     GPRV(MPRV),ENPRV(MPRV),SPRV(MPRV),
+     +     GPRVI(MPRVI),ENPRVI(MPRVI),SPRVI(MPRVI),
+     +     GPRVII(MPRVII),ENPRVII(MPRVII),SPRVII(MPRVII),
+     +     GNDIV(MNDIV),ENNDIV(MNDIV),SNDIV(MNDIV),
+     +     GNDV(MNDV),ENNDV(MNDV),SNDV(MNDV),
+     +     GNDVI(MNDVI),ENNDVI(MNDVI),SNDVI(MNDVI),
+     +     GNDVII(MNDVII),ENNDVII(MNDVII),SNDVII(MNDVII),
+     +     GERIV(MERIV),ENERIV(MERIV),SERIV(MERIV),
+     +     GERV(MERV),ENERV(MERV),SERV(MERV),
+     +     GERVI(MERVI),ENERVI(MERVI),SERVI(MERVI),
+     +     GERVII(MERVII),ENERVII(MERVII),SERVII(MERVII),
+     +     GTMIV(MTMIV),ENTMIV(MTMIV),STMIV(MTMIV),
+     +     GTMV(MTMV),ENTMV(MTMV),STMV(MTMV),
+     +     GTMVI(MTMVI),ENTMVI(MTMVI),STMVI(MTMVI),
+     +     GTMVII(MTMVII),ENTMVII(MTMVII),STMVII(MTMVII),
+     +     GYBIV(MYBIV),ENYBIV(MYBIV),SYBIV(MYBIV),
+     +     GYBV(MYBV),ENYBV(MYBV),SYBV(MYBV),
+     +     GYBVI(MYBVI),ENYBVI(MYBVI),SYBVI(MYBVI),
+     +     GYBVII(MYBVII),ENYBVII(MYBVII),SYBVII(MYBVII),
+     +     GLUIV(MLUIV),ENLUIV(MLUIV),SLUIV(MLUIV),
+     +     GLUV(MLUV),ENLUV(MLUV),SLUV(MLUV),
+     +     GLUVI(MLUVI),ENLUVI(MLUVI),SLUVI(MLUVI),
+     +     GLUVII(MLUVII),ENLUVII(MLUVII),SLUVII(MLUVII),
+     +     GHFIV(MHFIV),ENHFIV(MHFIV),SHFIV(MHFIV),
+     +     GHFV(MHFV),ENHFV(MHFV),SHFV(MHFV),
+     +     GHFVI(MHFVI),ENHFVI(MHFVI),SHFVI(MHFVI),
+     +     GHFVII(MHFVII),ENHFVII(MHFVII),SHFVII(MHFVII),
+     +     GTAIV(MTAIV),ENTAIV(MTAIV),STAIV(MTAIV),
+     +     GTAV(MTAV),ENTAV(MTAV),STAV(MTAV),
+     +     GTAVI(MTAVI),ENTAVI(MTAVI),STAVI(MTAVI),
+     +     GTAVII(MTAVII),ENTAVII(MTAVII),STAVII(MTAVII),
+     +     GWIV(MWIV),ENWIV(MWIV),SWIV(MWIV),
+     +     GWV(MWV),ENWV(MWV),SWV(MWV),
+     +     GWVI(MWVI),ENWVI(MWVI),SWVI(MWVI),
+     +     GWVII(MWVII),ENWVII(MWVII),SWVII(MWVII),
+     +     GWVIII(MWVIII),ENWVIII(MWVIII),SWVIII(MWVIII),
+     +     GREIV(MREIV),ENREIV(MREIV),SREIV(MREIV),
+     +     GREV(MREV),ENREV(MREV),SREV(MREV),
+     +     GREVI(MREVI),ENREVI(MREVI),SREVI(MREVI),
+     +     GREVII(MREVII),ENREVII(MREVII),SREVII(MREVII),
+     +     GOSIV(MOSIV),ENOSIV(MOSIV),SOSIV(MOSIV),
+     +     GOSV(MOSV),ENOSV(MOSV),SOSV(MOSV),
+     +     GOSVI(MOSVI),ENOSVI(MOSVI),SOSVI(MOSVI),
+     +     GOSVII(MOSVII),ENOSVII(MOSVII),SOSVII(MOSVII),
+     +     GIRIV(MIRIV),ENIRIV(MIRIV),SIRIV(MIRIV),
+     +     GIRV(MIRV),ENIRV(MIRV),SIRV(MIRV),
+     +     GIRVI(MIRVI),ENIRVI(MIRVI),SIRVI(MIRVI),
+     +     GIRVII(MIRVII),ENIRVII(MIRVII),SIRVII(MIRVII),
+     +     GPTIV(MPTIV),ENPTIV(MPTIV),SPTIV(MPTIV),
+     +     GPTV(MPTV),ENPTV(MPTV),SPTV(MPTV),
+     +     GPTVI(MPTVI),ENPTVI(MPTVI),SPTVI(MPTVI),
+     +     GPTVII(MPTVII),ENPTVII(MPTVII),SPTVII(MPTVII),
+     +     GAUIV(MAUIV),ENAUIV(MAUIV),SAUIV(MAUIV),
+     +     GAUV(MAUV),ENAUV(MAUV),SAUV(MAUV),
+     +     GAUVI(MAUVI),ENAUVI(MAUVI),SAUVI(MAUVI),
+     +     GAUVII(MAUVII),ENAUVII(MAUVII),SAUVII(MAUVII),
+     +     GHGIV(MHGIV),ENHGIV(MHGIV),SHGIV(MHGIV),
+     +     GHGV(MHGV),ENHGV(MHGV),SHGV(MHGV),
+     +     GHGVI(MHGVI),ENHGVI(MHGVI),SHGVI(MHGVI),
+     +     GHGVII(MHGVII),ENHGVII(MHGVII),SHGVII(MHGVII),
+     +     GTLIV(MTLIV),ENTLIV(MTLIV),STLIV(MTLIV),
+     +     GTLV(MTLV),ENTLV(MTLV),STLV(MTLV),
+     +     GTLVI(MTLVI),ENTLVI(MTLVI),STLVI(MTLVI),
+     +     GTLVII(MTLVII),ENTLVII(MTLVII),STLVII(MTLVII),
+     +     GPBIV(MPBIV),ENPBIV(MPBIV),SPBIV(MPBIV),
+     +     GPBV(MPBV),ENPBV(MPBV),SPBV(MPBV),
+     +     GPBVI(MPBVI),ENPBVI(MPBVI),SPBVI(MPBVI),
+     +     GPBVII(MPBVII),ENPBVII(MPBVII),SPBVII(MPBVII),
+     +     GBIIV(MBIIV),ENBIIV(MBIIV),SBIIV(MBIIV),
+     +     GBIV(MBIV),ENBIV(MBIV),SBIV(MBIV),
+     +     GBIVI(MBIVI),ENBIVI(MBIVI),SBIVI(MBIVI),
+     +     GBIVII(MBIVII),ENBIVII(MBIVII),SBIVII(MBIVII),
+     +     GTHIV(MTHIV),ENTHIV(MTHIV),STHIV(MTHIV),
+     +     GTHV(MTHV),ENTHV(MTHV),STHV(MTHV),
+     +     GTHVI(MTHVI),ENTHVI(MTHVI),STHVI(MTHVI),
+     +     GTHVII(MTHVII),ENTHVII(MTHVII),STHVII(MTHVII)
+      INTEGER NHYD(MH),NHEL(MHEI),NCI(MCI),NCII(MCII),
+     +     NCIII(MCIII),NCIV(MCIV),NCV(MCV),NNI(MNI),NNII(MNII),
+     +     NNIII(MNIII),NNIV(MNIV),NNV(MNV),NNVI(MNVI),NOI(MOI),
+     +     NOII(MOII),NOIII(MOIII),NOIV(MOIV),NOV(MOV),NOVI(MOVI),
+     +     NOVII(MOVII),NGAIV(MGAIV),NGAV(MGAV),NGEIV(MGEIV),NGEV(MGEV),
+     +     NASIV(MASIV),NASV(MASV),NSEIV(MSEIV),NSEV(MSEV),
+     +     NKRIV(MKRIV),NKRV(MKRV),NSRIV(MSRIV),NSRV(MSRV),
+     +     NYIV(MYIV),NYV(MYV),NZRIV(MZRIV),NZRV(MZRV),
+     +     NSBIV(MSBIV),NSBV(MSBV),NTEIV(MTEIV),NTEV(MTEV),
+     +     NXEIV(MXEIV),NXEV(MXEV),NINIV(MINIV),NINV(MINV),
+     +     NBIIV(MBIIV),NBIV(MBIV),NTHIV(MTHIV),NSBVI(MSBVI),
+     +     NTLIV(MTLIV),NASVI(MASVI),NMOVI(MMOVI),NGAVI(MGAVI),
+     +     NINVI(MINVI),NXEVII(MXEVII),
+     +     NBAIV(MBAIV),NBAV(MBAV),NBAVI(MBAVI),NBAVII(MBAVII),
+     +     NPBIV(MPBIV),NPBV(MPBV),NPBVII(MPBVII),
+     +     NGEVI(MGEVI),NSEVI(MSEVI),NZRVI(MZRVI),NSNVI(MSNVI),
+     +     NXEVI(MXEVI),NPBVI(MPBVI),NBIVI(MBIVI),NTHV(MTHV),
+     +     NBIVII(MBIVII),
+     +     NKRVI(MKRVI),NSRVI(MSRVI),NTEVI(MTEVI),NTEVII(MTEVII),
+     +     NZRVII(MZRVII),NZRVIII(MZRVIII),NGAVII(MGAVII),
+     +     NGEVII(MGEVII),NASVII(MASVII),NSEVII(MSEVII),
+     +     NSRVII(MSRVII),NYVI(MYVI),NMOVII(MMOVII),
+     +     NMOIV(MMOIV),NMOV(MMOV),NSNIV(MSNIV),NSNV(MSNV),
+     +     NTLV(MTLV),NTLVI(MTLVI),NTHVI(MTHVI),NTHVII(MTHVII),
+     +     NTLVII(MTLVII),
+     +     NGEVIII(MGEVIII),NMOVIII(MMOVIII),NTEVIII(MTEVIII),
+     +     NSBVII(MSBVII),NNBIV(MNBIV),NNBV(MNBV),NNBVI(MNBVI),
+     +     NNBVII(MNBVII),NNBVIII(MNBVIII),
+     +     NRUIV(MRUIV),NRUV(MRUV),NRUVI(MRUVI),NRUVII(MRUVII),
+     +     NRHIV(MRHIV),NRHV(MRHV),NRHVI(MRHVI),NRHVII(MRHVII),
+     +     NPDIV(MPDIV),NPDV(MPDV),NPDVI(MPDVI),NPDVII(MPDVII),
+     +     NAGIV(MAGIV),NAGV(MAGV),NAGVI(MAGVI),NAGVII(MAGVII),
+     +     NCDIV(MCDIV),NCDV(MCDV),NCDVI(MCDVI),NCDVII(MCDVII),
+     +     NCSIV(MCSIV),NCSV(MCSV),NCSVI(MCSVI),NCSVII(MCSVII),
+     +     NLAIV(MLAIV),NLAV(MLAV),NLAVI(MLAVI),NLAVII(MLAVII),
+     +     NCEIV(MCEIV),NCEV(MCEV),NCEVI(MCEVI),NCEVII(MCEVII),
+     +     NPRIV(MPRIV),NPRV(MPRV),NPRVI(MPRVI),NPRVII(MPRVII),
+     +     NNDIV(MNDIV),NNDV(MNDV),NNDVI(MNDVI),NNDVII(MNDVII),
+     +     NERIV(MERIV),NERV(MERV),NERVI(MERVI),NERVII(MERVII),
+     +     NTMIV(MTMIV),NTMV(MTMV),NTMVI(MTMVI),NTMVII(MTMVII),
+     +     NYBIV(MYBIV),NYBV(MYBV),NYBVI(MYBVI),NYBVII(MYBVII),
+     +     NLUIV(MLUIV),NLUV(MLUV),NLUVI(MLUVI),NLUVII(MLUVII),
+     +     NHFIV(MHFIV),NHFV(MHFV),NHFVI(MHFVI),NHFVII(MHFVII),
+     +     NTAIV(MTAIV),NTAV(MTAV),NTAVI(MTAVI),NTAVII(MTAVII),
+     +     NWIV(MWIV),NWV(MWV),NWVI(MWVI),NWVII(MWVII),
+     +     NWVIII(MWVIII),
+     +     NREIV(MREIV),NREV(MREV),NREVI(MREVI),NREVII(MREVII),
+     +     NOSIV(MOSIV),NOSV(MOSV),NOSVI(MOSVI),NOSVII(MOSVII),
+     +     NIRIV(MIRIV),NIRV(MIRV),NIRVI(MIRVI),NIRVII(MIRVII),
+     +     NPTIV(MPTIV),NPTV(MPTV),NPTVI(MPTVI),NPTVII(MPTVII),
+     +     NHGIV(MHGIV),NHGV(MHGV),NHGVI(MHGVI),NHGVII(MHGVII),
+     +     NAUIV(MAUIV),NAUV(MAUV),NAUVI(MAUVI),NAUVII(MAUVII),
+     +     NIIV(MIIV),NIV(MIV),NIVI(MIVI),NIVII(MIVII),
+     +     NBRIV(MBRIV),NBRV(MBRV),NBRVI(MBRVI),NBRVII(MBRVII),
+     +     NBRVIII(MBRVIII),
+     +     NRBIV(MRBIV),NRBV(MRBV),NRBVI(MRBVI),NRBVII(MRBVII)
+
+      PARAMETER (HI=13.5878,HEI=24.587,HEII=54.416,CVI=489.84,
+     +     NVII=666.83,OVIII=871.12,GAIV=63.241,GAV=86.01,
+     +     GEIV=45.7155,GEV=90.500,
+     +     YIV=60.6072,YV=75.35,ZRIV=34.41836,ZRV=80.348,
+     +     XEIV=42.20,XEV=54.1,BAIV=47.0,BAV=58.0,
+     +     PBIV=42.33256,PBV=68.8)
+      PARAMETER (ZH=1.0,ZHE=2.0,ZC=6.0,ZN=7.0,ZO=8.,ZGA=31.,ZGE=32.,
+     +     ZAS=33.,ZSE=34.,ZBR=35.,ZKR=36.,ZSR=38.,ZY=39.,ZZR=40.,
+     +     ZNB=41.,ZMO=42.,ZPD=46., ZAG=47.,ZIN=49.,ZRB=37.,
+     +     ZRU=44.,ZRH=45.,ZCD=48.,
+     +     ZSN=50.,ZSB=51.,ZTE=52.,ZI=53.,ZXE=54.,
+     +     ZCS=55.,ZBA=56.,ZLA=57.,ZCE=58.,ZPR=59.,ZND=60.,
+     +     ZTM=69.,ZYB=70.,ZLU=71.,ZHF=72.,ZTA=73.,ZW=74.,
+     +     ZER=68.,
+     +     ZRE=75.,ZOS=76.,ZIR=77.,ZPT=78.,ZAU=79.,ZHG=80.,
+     +     ZTL=81.,ZPB=82.,ZBI=83.,ZTH=90.)
+C                           N***=QUANTUM NO. OF LEVEL
+C      DATA FOR IONS        G***=STATISTICAL WEIGHT OF LEVEL
+C                           EN***=ENERGY OF LEVEL
+C                           S*=SCREENING NO. OF LEVEL
+        DATA NHYD/ 1, 2, 3, 4, 5, 6,
+     +          7, 8, 9,10,11,12,
+     +          13,14,15,16,17,18,
+     +          19,20,21,22,23,24,
+     +          25,26,27,28,29,30,
+     +          31,32,33,34,35,36,
+     +          37,38,39,40,41,42,
+     +          43,44,45,46,47,48,
+     +          49,50,51,52,53,54,
+     +          55,56,57,58,59,60,
+     +          61,62,63,64,65,66,
+     +          67,68,69,70,71,72,
+     +          73,74,75,76,77,78,
+     +          79,80,81,82,83,84,
+     +          85,86,87,88,89,90,
+     +          91,92,93,94,95,96,
+     +          97,98,99, 100 /
+        DATA GHYD/ 2.000000, 8.000000, 18.00000,
+     +           32.00000, 50.00000, 72.00000,
+     +           98.00000, 128.0000, 162.0000,
+     +           200.0000, 242.0000, 288.0000,
+     +           338.0000, 392.0000, 450.0000,
+     +           512.0000, 578.0000, 648.0000,
+     +           722.0000, 800.0000, 882.0000,
+     +           968.0000, 1058.000, 1152.000,
+     +           1250.000, 1352.000, 1458.000,
+     +           1568.000, 1682.000, 1800.000,
+     +           1922.000, 2048.000, 2178.000,
+     +           2312.000, 2450.000, 2592.000,
+     +           2738.000, 2888.000, 3042.000,
+     +           3200.000, 3362.000, 3528.000,
+     +           3698.000, 3872.000, 4050.000,
+     +           4232.000, 4418.000, 4608.000,
+     +           4802.000, 5000.000, 5202.000,
+     +           5408.000, 5618.000, 5832.000,
+     +           6050.000, 6272.000, 6498.000,
+     +           6728.000, 6962.000, 7200.000,
+     +           7442.000, 7688.000, 7938.000,
+     +           8192.000, 8450.000, 8712.000,
+     +           8978.000, 9248.000, 9522.000,
+     +           9800.000, 10082.00, 10368.00,
+     +           10658.00, 10952.00, 11250.00,
+     +           11552.00, 11858.00, 12168.00,
+     +           12482.00, 12800.00, 13122.00,
+     +           13448.00, 13778.00, 14112.00,
+     +           14450.00, 14792.00, 15138.00,
+     +           15488.00, 15842.00, 16200.00,
+     +           16562.00, 16928.00, 17298.00,
+     +           17672.00, 18050.00, 18432.00,
+     +           18818.00, 19208.00, 19602.00,
+     +           20000.00/
+        DATA ENHYD /0.0000000E+00,10.19085000000000,12.07804444444444,
+     +           12.73856250000000,13.04428800000000,13.21036111111111,
+     +           13.31049795918367,13.37549062500000,13.42004938271605,
+     +           13.45192200000000,13.47550413223140,13.49344027777778,
+     +           13.50739881656805,13.51847448979592,13.52740977777778,
+     +           13.53472265625000,13.54078339100346,13.54586234567901,
+     +           13.55016066481994,13.55383050000000,13.55698866213152,
+     +           13.55972603305785,13.56211417769376,13.56421006944444,
+     +           13.56605952000000,13.56769970414201,13.56916104252401,
+     +           13.57046862244898,13.57164328180737,13.57270244444444,
+     +           13.57366077003122,13.57453066406250,13.57532268135905,
+     +           13.57604584775087,13.57670791836735,13.57731558641975,
+     +           13.57787465303141,13.57839016620499,13.57886653517423,
+     +           13.57930762500000,13.57971683521713,13.58009716553288,
+     +           13.58045127095727,13.58078150826446,13.58108997530864,
+     +           13.58137854442344,13.58164889090086,13.58190251736111,
+     +           13.58214077467722,13.58236488000000,13.58257593233372,
+     +           13.58277492603550,13.58296276254895,13.58314026063100,
+     +           13.58330816528926,13.58346715561225,13.58361785164666,
+     +           13.58376082045184,13.58389658144211,13.58402561111111,
+     +           13.58414834721849,13.58426519250780,13.58437651801461,
+     +           13.58448266601563,13.58458395266272,13.58468067033976,
+     +           13.58477308977501,13.58486146193772,13.58494601974375,
+     +           13.58502697959184,13.58510454274945,13.58517889660494,
+     +           13.58525021580034,13.58531866325785,13.58538439111111,
+     +           13.58544754155125,13.58550824759656,13.58556663379356,
+     +           13.58562281685627,13.58567690625000,13.58572900472489,
+     +           13.58577920880428,13.58582760923211,13.58587429138322,
+     +           13.58591933564014,13.58596281773932,13.58600480908971,
+     +           13.58604537706612,13.58608458527964,13.58612249382716,
+     +           13.58615915952180,13.58619463610586,13.58622897444791,
+     +           13.58626222272522,13.58629442659280,13.58632562934028,
+     +           13.58635587203741,13.58638519366930,13.58641363126212,
+     +           13.58644122000000/
+        DATA SHYD/100*0.0D0/
+      DATA NHEL/1,2,2,2,2,2,2,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,
+     +        5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,
+     +        23,24,25,26,27,
+     +          28,29,30,31,32,33,
+     +          34,35,36,37,38,39,
+     +          40,41,42,43,44,45,
+     +          46,47,48,49,50,51,
+     +          52,53,54,55,56,57,
+     +          58,59,60,61,62,63,
+     +          64,65,66,67,68,69,
+     +          70,71,72,73,74,75,
+     +          76,77,78,79,80,81/
+      DATA GHEL/1.0D0,3.0D0,1.0D0,5.0D0,3.0D0,1.0D0,3.0D0,
+     +          3.0D0,1.0D0,5.0D0,3.0D0,
+     +         1.0D0,15.0D0,5.0D0,3.0D0,3.0D0,1.0D0,9.0D0,
+     +         15.0D0,5.0D0,21.0D0,7.0D0,
+     +         3.0D0,100.0D0,144.0D0,196.0D0,256.0D0,324.0D0,
+     +         400.0D0,484.0D0,
+     +         576.0D0,676.0D0,784.0D0,900.0D0,1024.0D0,1156.0D0,
+     +         1296.0D0,1444.0D0,1600.0D0,1764.0D0,1936.0D0,
+     +         2116.0D0,2304.0D0,2500.0D0,2704.0D0,3136.0D0,
+     +          3136.000000000000,3364.000000000000,3600.000000000000,
+     +          3844.000000000000,4096.000000000000,4356.000000000000,
+     +          4624.000000000000,4900.000000000000,5184.000000000000,
+     +          5476.000000000000,5776.000000000000,6084.000000000000,
+     +          6400.000000000000,6724.000000000000,7056.000000000000,
+     +          7396.000000000000,7744.000000000000,8100.000000000000,
+     +          8464.000000000000,8836.000000000000,9216.000000000000,
+     +          9604.000000000000,10000.00000000000,10404.00000000000,
+     +          10816.00000000000,11236.00000000000,11664.00000000000,
+     +          12100.00000000000,12544.00000000000,12996.00000000000,
+     +          13456.00000000000,13924.00000000000,14400.00000000000,
+     +          14884.00000000000,15376.00000000000,15876.00000000000,
+     +          16384.00000000000,16900.00000000000,17424.00000000000,
+     +          17956.00000000000,18496.00000000000,19044.00000000000,
+     +          19600.00000000000,20164.00000000000,20736.00000000000,
+     +          21316.00000000000,21904.00000000000,22500.00000000000,
+     +          23104.00000000000,23716.00000000000,24336.00000000000,
+     +          24964.00000000000,25600.00000000000,26244.00000000000/
+      DATA ENHEL/0.0D0,19.819D0,20.615D0,20.964D0,
+     +           20.964D0,20.964D0,21.218D0,
+     +           22.718D0,22.920D0,23.007D0,23.007D0,
+     +           23.007D0,23.073D0,23.074D0,
+     +           23.087D0,23.593D0,23.673D0,23.707D0,
+     +           23.736D0,23.736D0,23.737D0,
+     +           23.737D0,23.742D0,24.028D0,24.201D0,
+     +           24.304D0,24.371D0,24.417D0,
+     +           24.449D0,24.473D0,24.491D0,24.506D0,
+     +           24.517D0,24.526D0,24.534D0,
+     +           24.540D0,24.545D0,24.549D0,24.553D0,
+     +           24.556D0,24.559D0,24.562D0,
+     +           24.564D0,24.566D0,24.568D0,24.570D0,
+     +          24.57131951530612,24.57238228299643,24.57334055555556,
+     +          24.57420759625390,24.57499462890625,24.57571120293848,
+     +          24.57636548442907,24.57696448979592,24.57751427469136,
+     +          24.57802008765522,24.57848649584488,24.57891748849441,
+     +          24.57931656250000,24.57968679357525,24.58003089569161,
+     +          24.58035127095727,24.58065005165289,24.58092913580247,
+     +          24.58119021739130,24.58143481213219,24.58166427951389,
+     +          24.58187984173261,24.58208260000000,24.58227354863514,
+     +          24.58245358727811,24.58262353150587,24.58278412208505,
+     +          24.58293603305785,24.58307987882653,24.58321622037550,
+     +          24.58334557074911,24.58346839988509,24.58358513888889,
+     +          24.58369618382155,24.58380189906348,24.58390262030738,
+     +          24.58399865722656,24.58409029585799,24.58417780073462,
+     +          24.58426141679661,24.58434137110727,24.58441787439614,
+     +          24.58449112244898,24.58456129736163,24.58462856867284,
+     +          24.58469309438919,24.58475502191381,24.58481448888889,
+     +          24.58487162396122,24.58492654747850,24.58497937212360,
+     +          24.58503020349303,24.58507914062500,24.58512627648224/
+      DATA SHEL/0.375D0,0.622D0,0.622D0,0.842D0,
+     +          0.842D0,0.842D0,0.842D0,0.747D0,
+     +          0.747D0,0.912D0,0.912D0,0.912D0,
+     +          0.993D0,0.993D0,0.912D0,0.810D0,
+     +          0.810D0,0.937D0,0.995D0,0.995D0,
+     +          1.000D0,1.000D0,0.937D0,0.949D0,
+     +          0.958D0,75*1.000D0/
+        DATA NCI/2,2,2,2,2,2,3,3,3,3,2,2,2,3,3,3,3,3,
+     +          3,3,3,3,3,2,3,4,4,4,3,3,3,3,3,3,4,3,
+     +          3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,5,4,4,4,4,4,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,6,5,5,5,5,5,6,6,6,6,6,6,6,7,
+     +          6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,8,8,
+     +          8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,10,10,
+     +          10,11,11,11,2,3,3,3,2,2/
+        DATA GCI/1.0D0,3.0D0,5.0D0,5.0D0,1.0D0,    
+     +          5.0D0,1.0D0,3.0D0,5.0D0,3.0D0,    
+     +          7.0D0,5.0D0,3.0D0,3.0D0,3.0D0,    
+     +          5.0D0,7.0D0,3.0D0,1.0D0,3.0D0,    
+     +          5.0D0,5.0D0,1.0D0,9.0D0,5.0D0,    
+     +          1.0D0,3.0D0,5.0D0,5.0D0,7.0D0,    
+     +          9.0D0,3.0D0,5.0D0,7.0D0,3.0D0,    
+     +          3.0D0,3.0D0,5.0D0,3.0D0,1.0D0,    
+     +          3.0D0,5.0D0,7.0D0,3.0D0,3.0D0,    
+     +          1.0D0,3.0D0,5.0D0,5.0D0,1.0D0,    
+     +          5.0D0,5.0D0,7.0D0,9.0D0,3.0D0,    
+     +          5.0D0,7.0D0,3.0D0,7.0D0,3.0D0,   
+     +          5.0D0,3.0D0,1.0D0,3.0D0,3.0D0,   
+     +          5.0D0,7.0D0,5.0D0,1.0D0,5.0D0,   
+     +          5.0D0,7.0D0,9.0D0,3.0D0,5.0D0,   
+     +          7.0D0,3.0D0,7.0D0,3.0D0,5.0D0,   
+     +          3.0D0,1.0D0,5.0D0,5.0D0,7.0D0,   
+     +          9.0D0,3.0D0,5.0D0,7.0D0,3.0D0,   
+     +          7.0D0,5.0D0,3.0D0,1.0D0,3.0D0,   
+     +          5.0D0,7.0D0,9.0D0,3.0D0,5.0D0,   
+     +          7.0D0,7.0D0,3.0D0,5.0D0,3.0D0,   
+     +          1.0D0,9.0D0,7.0D0,5.0D0,3.0D0,   
+     +          5.0D0,7.0D0,7.0D0,5.0D0,3.0D0,   
+     +          1.0D0,9.0D0,7.0D0,5.0D0,3.0D0,   
+     +          5.0D0,7.0D0,7.0D0,3.0D0,5.0D0,   
+     +          7.0D0,3.0D0,5.0D0,7.0D0,5.0D0,   
+     +          3.0D0,5.0D0,7.0D0,3.0D0,3.0D0/
+        DATA ENCI/0.0D0,2.0333605D-03,5.3933649D-03,1.263870,2.684086,
+     +          4.182672,7.480511,7.482891,7.487915,7.684888,
+     +          7.946046,7.946620,7.946474,8.537387,8.640516,
+     +          8.643146,8.647287,8.771255,8.846707,8.848247,
+     +          8.850785,9.002712,9.171972,9.330682,9.631248,
+     +          9.683908,9.685375,9.689256,9.695577,9.697620,
+     +          9.701885,9.708156,9.708925,9.710041,9.712769,
+     +          9.714380,9.761111,9.833419,9.834406,9.834934,
+     +          9.940317,9.942698,9.946449,9.988707,10.05592,
+     +          10.08144,10.08328,10.08553,10.13833,10.19809,
+     +          10.35278,10.38514,10.38514,10.38514,10.39370,
+     +          10.39456,10.39580,10.40021,10.40845,10.41874,
+     +          10.42750,10.42990,10.42990,10.52043,10.52041,
+     +          10.52041,10.53705,10.58840,10.61635,10.67973,
+     +          10.70230,10.70328,10.70328,10.70878,10.70878,
+     +          10.71184,10.71407,10.71854,10.72362,10.72523,
+     +          10.72684,10.72684,10.86509,10.87426,10.87513,
+     +          10.87513,10.87997,10.87997,10.88257,10.88533,
+     +          10.88679,10.88964,10.89075,10.89075,10.88980,
+     +          10.97789,10.97854,10.97854,10.98597,10.98597,
+     +          10.98597,10.98808,10.98913,10.98994,10.98994,
+     +          10.98994,11.04474,11.04474,11.04487,11.05280,
+     +          11.05280,11.05280,11.05392,11.05429,11.05429,
+     +          11.05429,11.09049,11.09049,11.09049,11.09843,
+     +          11.09843,11.09843,11.09880,11.13129,11.13129,
+     +          11.13129,11.15477,11.15477,11.15477,12.13544,
+     +          12.83767,12.84024,12.84331,13.11772,14.86312/
+        DATA NCII/2,2,2,2,2,2,2,2,2,2,3,3,3,2,3,3,2,2,4,4,4,3,3,3,
+     +          4,4,2,2,4,4,5,5,5,3,3,5,5,5,5,6,3,3,3,3,3,3,6,6,
+     +          6,6,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
+     +          3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,6,6,6,6,6,6,6/
+        DATA GCII/2.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          6.0D0,4.0D0,2.0D0,2.0D0,4.0D0,
+     +          2.0D0,2.0D0,4.0D0,4.0D0,4.0D0,
+     +          6.0D0,6.0D0,4.0D0,2.0D0,2.0D0,
+     +          4.0D0,2.0D0,4.0D0,6.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,6.0D0,8.0D0,
+     +          2.0D0,2.0D0,4.0D0,2.0D0,4.0D0,
+     +          4.0D0,6.0D0,6.0D0,8.0D0,2.0D0,
+     +          2.0D0,4.0D0,6.0D0,8.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,6.0D0,8.0D0,
+     +          4.0D0,2.0D0,4.0D0,6.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,6.0D0,8.0D0,
+     +          10.0D0,2.0D0,4.0D0,6.0D0,8.0D0,
+     +          4.0D0,6.0D0,6.0D0,4.0D0,2.0D0,
+     +          6.0D0,8.0D0,4.0D0,2.0D0,2.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0,4.0D0,2.0D0,
+     +          4.0D0,6.0D0,4.0D0,6.0D0,4.0D0,
+     +          6.0D0,8.0D0,10.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,4.0D0,6.0D0,6.0D0,
+     +          4.0D0,2.0D0,6.0D0,8.0D0,4.0D0,
+     +          6.0D0,8.0D0,10.0D0,6.0D0,8.0D0,
+     +          6.0D0,8.0D0,10.0D0,12.0D0,8.0D0,
+     +          10.0D0,8.0D0,6.0D0,4.0D0,2.0D0,
+     +          6.0D0,4.0D0,4.0D0,2.0D0,2.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0,6.0D0,4.0D0,
+     +          2.0D0,6.0D0,8.0D0,4.0D0,6.0D0,
+     +          8.0D0,10.0D0,6.0D0,8.0D0,10.0D0,
+     +          12.0D0,8.0D0,6.0D0,4.0D0,2.0D0,
+     +          2.0D0,4.0D0,6.0D0,8.0D0,6.0D0,
+     +          4.0D0,2.0D0/
+        DATA ENCII/0.0D0,7.9350658D-03,5.331397,5.334075,5.337658,
+     +          9.290338,9.290624,11.96386,13.71590,13.72101,
+     +          14.44900,16.33194,16.33332,17.60895,18.04607,
+     +          18.04625,18.65519,18.65582,19.49478,20.14995,
+     +          20.15068,20.70119,20.70413,20.70971,20.84491,
+     +          20.84496,20.92025,20.92256,20.95094,20.95094,
+     +          21.49265,21.73314,21.73405,22.09347,22.13075,
+     +          22.13075,22.13075,22.18799,22.18799,22.47211,
+     +          22.52747,22.52929,22.53239,22.53689,22.56844,
+     +          22.57086,22.82136,22.82136,22.85996,22.85996,
+     +          22.89870,23.11398,23.11600,23.11878,23.38108,
+     +          23.38522,24.12408,24.27024,24.27201,24.27444,
+     +          24.27787,24.37010,24.37079,24.37187,24.37315,
+     +          24.60198,24.60332,24.65351,24.65617,24.65793,
+     +          24.78982,24.79512,25.06741,25.07039,25.98117,
+     +          25.98415,25.98986,26.58329,26.58615,26.62689,
+     +          26.62867,26.63139,26.63554,26.75178,26.82771,
+     +          26.82771,26.83016,26.89454,26.89578,27.22147,
+     +          27.22329,27.22585,27.22930,27.29263,27.29263,
+     +          27.29378,27.29509,27.35131,27.35294,27.37703,
+     +          27.37957,27.38104,27.41188,27.41302,27.41395,
+     +          27.41395,27.41395,27.41409,27.46301,27.46301,
+     +          27.46810,27.46936,27.47200,27.47561,27.47330,
+     +          27.47864,27.48713,27.49096,27.49330,27.49330,
+     +          27.48854,27.49412,27.55688,27.56022,27.99752,
+     +          27.99752,27.99752,28.25640,28.25640,28.61124,
+     +          28.61124,28.61124,28.61124,28.64683,28.64683,
+     +          28.64683,28.66803,26.43629,28.66875,28.66875,
+     +          28.66875,28.66875,28.70253,28.70253,28.70253,
+     +          28.70253,28.70515,28.70515,28.70515,28.70515,
+     +          29.31561,29.31561,29.31561,29.31561,29.33557,
+     +          29.33557,29.33557/
+        DATA NCIII/2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,4,
+     +          3,4,4,4,4,3,4,4,4,4,4,4,4,4,3,3,3,4,3,3,3,3,3,3,
+     +          3,3,3,3,3,3,5,3,3,3,3,5,5,5,5,3,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,
+     +          7,8,8,8,8,9,9,9,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,7,7,7,7,7,7/
+        DATA GCIII/1.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          1.0D0,3.0D0,5.0D0,5.0D0,1.0D0,
+     +          3.0D0,1.0D0,3.0D0,1.0D0,3.0D0,
+     +          5.0D0,3.0D0,5.0D0,7.0D0,5.0D0,
+     +          1.0D0,3.0D0,5.0D0,3.0D0,3.0D0,
+     +          1.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          3.0D0,5.0D0,7.0D0,5.0D0,7.0D0,
+     +          9.0D0,3.0D0,7.0D0,3.0D0,5.0D0,
+     +          7.0D0,5.0D0,3.0D0,1.0D0,3.0D0,
+     +          5.0D0,5.0D0,5.0D0,5.0D0,7.0D0,
+     +          9.0D0,3.0D0,5.0D0,7.0D0,3.0D0,
+     +          5.0D0,3.0D0,1.0D0,7.0D0,3.0D0,
+     +          1.0D0,3.0D0,5.0D0,1.0D0,3.0D0,
+     +          5.0D0,7.0D0,7.0D0,9.0D0,11.0D0,
+     +          9.0D0,5.0D0,3.0D0,5.0D0,7.0D0,
+     +          9.0D0,7.0D0,3.0D0,3.0D0,3.0D0,
+     +          5.0D0,7.0D0,7.0D0,9.0D0,11.0D0,
+     +          9.0D0,5.0D0,5.0D0,7.0D0,9.0D0,
+     +          7.0D0,3.0D0,3.0D0,3.0D0,5.0D0,
+     +          7.0D0,5.0D0,3.0D0,3.0D0,5.0D0,
+     +          7.0D0,3.0D0,5.0D0,7.0D0,1.0D0,
+     +          3.0D0,5.0D0,3.0D0,3.0D0,5.0D0,
+     +          7.0D0,1.0D0,3.0D0,5.0D0,5.0D0,
+     +          5.0D0,3.0D0,5.0D0,7.0D0,5.0D0,
+     +          3.0D0,1.0D0,7.0D0,3.0D0,3.0D0,
+     +          5.0D0,7.0D0,1.0D0,3.0D0,5.0D0,
+     +          5.0D0,5.0D0,3.0D0,5.0D0,7.0D0,
+     +          5.0D0,3.0D0,1.0D0,3.0D0,5.0D0,
+     +          7.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,1.0D0,
+     +          3.0D0,5.0D0,7.0D0,1.0D0,3.0D0,5.0D0/
+        DATA ENCIII/0.0D0,6.486296,6.489148,6.496191,12.69008,
+     +          17.03237,17.03602,17.04185,18.08638,22.62984,
+     +          29.52845,30.64541,32.10371,32.19328,32.19396,
+     +          32.19555,33.47080,33.45866,33.47146,34.27982,
+     +          38.20770,38.21183,38.22034,38.36164,38.43612,
+     +          38.64882,39.39549,39.39549,39.39611,39.64054,
+     +          39.84380,39.84582,39.84874,39.91699,39.91782,
+     +          39.91892,39.97328,40.01022,40.05026,40.05341,
+     +          40.05822,40.19756,40.57121,40.86969,40.87231,
+     +          40.87686,41.24874,41.30157,41.32848,41.33158,
+     +          41.33611,41.85783,41.80309,41.86202,42.14028,
+     +          42.16117,42.16444,42.16623,42.32471,42.55869,
+     +          42.67342,42.67342,42.67342,42.78661,42.83001,
+     +          42.83001,42.83001,42.96405,42.96405,42.96416,
+     +          42.96405,42.98029,42.98736,43.03527,43.03550,
+     +          43.03579,43.25349,43.98952,44.27370,44.39248,
+     +          44.39248,44.39248,44.46592,44.46592,44.46600,
+     +          44.47219,44.47673,44.48596,44.48596,44.48596,
+     +          44.52591,45.07626,45.24178,45.32720,45.32720,
+     +          45.32720,45.38200,45.86543,45.92891,45.92891,
+     +          45.92891,46.33929,46.33929,46.33929,46.69749,
+     +          46.69749,46.69749,47.25143,47.35238,47.35238,
+     +          47.35722,47.64920,47.64920,47.65379,47.81342,
+     +          47.83558,48.06245,48.06245,48.06245,48.16114,
+     +          48.16114,48.16114,48.20208,50.51542,50.55803,
+     +          50.55803,50.55803,50.69428,50.69428,50.69428,
+     +          50.77264,50.79460,50.90022,50.90022,50.90022,
+     +          50.93829,50.93829,50.93829,52.24497,52.24497,
+     +          52.24497,52.31775,52.31775,52.31775,52.43107,
+     +          52.43107,52.43107,52.45302,52.45302,52.45302,
+     +          53.23251,53.23251,53.23251,53.27802,53.27802,
+     +          53.27802/
+        DATA NCIV/2,2,2,3,3,3,3,3,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,
+     +          6,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,8,8,
+     +          8,8,8,8,8,8,8/
+        DATA GCIV/2.0D0,2.0D0,4.0D0,2.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,2.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,6.0D0,8.0D0,
+     +          2.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          6.0D0,8.0D0,8.0D0,10.0D0,2.0D0,
+     +          2.0D0,4.0D0,4.0D0,6.0D0,6.0D0,
+     +          8.0D0,8.0D0,10.0D0,10.0D0,12.0D0,
+     +          2.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          6.0D0,8.0D0,8.0D0,10.0D0,10.0D0,
+     +          12.0D0,2.0D0,4.0D0,6.0D0,8.0D0,
+     +          8.0D0,10.0D0,12.0D0,14.0D0,16.0D0/
+        DATA ENCIV/0.0D0,7.995100,8.008378,37.54872,39.68134,
+     +          39.68525,40.28040,40.28173,49.76113,50.62434,
+     +          50.62599,50.87540,50.87595,50.88784,50.88784,
+     +          55.21889,55.65134,55.65221,55.77947,55.77947,
+     +          55.78577,55.78578,55.78703,55.78703,58.12002,
+     +          58.36774,58.36774,58.44275,58.44275,58.44709,
+     +          58.44709,58.44764,58.44764,58.44770,58.44770,
+     +          59.84267,60.00038,60.00038,60.04725,60.04725,
+     +          60.05156,60.05156,60.05191,60.05191,60.05194,
+     +          60.05194,61.05946,61.05946,61.09294,61.09294,
+     +          61.09319,61.09319,61.09319,61.09319,61.09319/
+        DATA NCV/1,2,2,2,2,2,3,3,3,3,4,5,6,7,8/
+        DATA GCV/1.0D0,3.0D0,1.0D0,3.0D0,5.0D0,
+     +          3.0D0,3.0D0,5.0D0,7.0D0,3.0D0,
+     +          3.0D0,3.0D0,3.0D0,3.0D0,3.0D0/
+        DATA ENCV/0.0D0,298.9618,304.4046,304.4030,304.4199,
+     +          307.8855,354.2645,354.2645,354.2645,354.5177,
+     +          370.9247,378.5349,382.6710,385.1917,386.6807/
+        DATA NNI/2,2,2,2,2,3,3,3,3,3,2,2,2,3,3,3,3,3,3,3,3,3,3,3,
+     +          3,3,3,3,4,4,4,4,4,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
+     +          3,3,4,4,4,4,4,4,4,4,4,5,5,5,5,5,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,3,3,3,3,6,6,6,6,6,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,7,7,7,7,7,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,8,8,8,8,8,7,7,7,7,7,7,7,7,7,7,
+     +          7,7,7,9,9,9,9,9,8,8,8,8,8,8,8,8,8,8,8,8,8,10,10,10,
+     +          10,10,9,9,9,9,9,9,9,9,9,9,9,9,9,11,11,11,11,11,10,
+     +          10,10,10,10,10,10,10,10,10,10,10,10,12,12,12,12,12,
+     +          11,11,11,11,11,11,11,11,11,11,11,11,11,13,13,12,12,
+     +          12,12,12,12,12/
+        DATA GNI/4.0D0,6.0D0,4.0D0,4.0D0,2.0D0,
+     +          2.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,2.0D0,2.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,4.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0,10.0D0,6.0D0,
+     +          8.0D0,2.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0,4.0D0,6.0D0,
+     +          2.0D0,2.0D0,4.0D0,6.0D0,8.0D0,
+     +          2.0D0,4.0D0,6.0D0,4.0D0,2.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,4.0D0,
+     +          6.0D0,8.0D0,10.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,4.0D0,2.0D0,6.0D0,
+     +          8.0D0,2.0D0,4.0D0,6.0D0,4.0D0,
+     +          6.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          4.0D0,6.0D0,8.0D0,10.0D0,4.0D0,
+     +          2.0D0,6.0D0,8.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,2.0D0,4.0D0,6.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,6.0D0,
+     +          2.0D0,4.0D0,4.0D0,6.0D0,8.0D0,
+     +          10.0D0,2.0D0,4.0D0,6.0D0,8.0D0,
+     +          4.0D0,2.0D0,6.0D0,8.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0,6.0D0,8.0D0,
+     +          4.0D0,2.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,2.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,6.0D0,
+     +          8.0D0,4.0D0,2.0D0,6.0D0,8.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,6.0D0,
+     +          2.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          2.0D0,4.0D0,6.0D0,8.0D0,4.0D0,
+     +          2.0D0,6.0D0,8.0D0,4.0D0,6.0D0,
+     +          2.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,4.0D0,2.0D0,
+     +          6.0D0,8.0D0,2.0D0,4.0D0,6.0D0,
+     +          8.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,2.0D0,6.0D0,8.0D0,
+     +          2.0D0,4.0D0,6.0D0,8.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,4.0D0,2.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,6.0D0/
+        DATA ENNI/0.0D0,2.383371,2.384363,3.575739,3.575739,
+     +          10.32619,10.33038,10.33617,10.67904,10.69042,
+     +          10.92429,10.92973,10.93217,11.60284,11.75037,
+     +          11.75317,11.75780,11.76412,11.83769,11.83997,
+     +          11.84472,11.99580,12.00032,12.00975,12.12207,
+     +          12.12649,12.35701,12.35614,12.84713,12.85333,
+     +          12.86185,12.91211,12.92268,12.97078,12.97568,
+     +          12.97693,12.97929,12.98350,12.98958,12.99502,
+     +          13.00392,13.00161,13.00483,13.00074,13.01686,
+     +          13.01822,13.01983,13.02095,13.03344,13.03636,
+     +          13.20179,13.23674,13.23917,13.24364,13.25041,
+     +          13.26429,13.26623,13.27127,13.32189,13.61527,
+     +          13.62076,13.62945,13.64202,13.65185,13.66270,
+     +          13.66493,13.66914,13.67609,13.66580,13.67249,
+     +          13.67410,13.68043,13.66588,13.66872,13.67695,
+     +          13.68464,13.67869,13.68191,13.68836,13.69398,
+     +          13.69673,13.70310,13.70607,13.92292,13.92614,
+     +          13.95653,13.96207,13.97100,13.97749,13.98841,
+     +          13.97948,13.98097,13.98543,13.99324,13.98568,
+     +          13.98754,13.98803,13.99674,13.98865,13.98865,
+     +          13.98865,13.99696,13.99237,13.99473,13.99944,
+     +          14.00155,14.00384,14.13620,14.14326,14.15244,
+     +          14.15045,14.15455,14.15417,14.15417,14.15417,
+     +          14.15417,14.15690,14.15690,14.15690,14.16508,
+     +          14.15827,14.16025,14.15864,14.16843,14.16313,
+     +          14.17035,14.16645,14.16645,14.16831,14.23464,
+     +          14.24468,14.25113,14.25212,14.25212,14.25683,
+     +          14.25683,14.25683,14.25683,14.25882,14.25882,
+     +          14.26043,14.26043,14.26545,14.27073,14.27109,
+     +          14.27109,14.27109,14.36247,14.36247,14.31821,
+     +          14.31821,14.31821,14.32329,14.32329,14.32329,
+     +          14.32329,14.32403,14.32403,14.32465,14.32465,
+     +          14.33234,14.33544,14.33494,14.33494,14.33494,
+     +          14.36272,14.36272,14.36433,14.36433,14.36433,
+     +          14.36830,14.36830,14.36830,14.36830,14.36854,
+     +          14.36854,14.37016,14.37016,14.37896,14.38119,
+     +          14.38107,14.38107,14.38107,14.39557,14.39557,
+     +          14.39768,14.39768,14.39768,14.40152,14.40152,
+     +          14.40202,14.40202,14.40264,14.40264,14.40264,
+     +          14.40264,14.41206,14.41206,14.41442,14.41442,
+     +          14.41442,14.42012,14.42012,14.42099,14.42099,
+     +          14.42099,14.42583,14.42583,14.42682,14.42682,
+     +          14.42781,14.42781,14.42781,14.42781,14.43636,
+     +          14.43636,14.43698,14.43698,14.43698,14.46253,
+     +          14.44021,14.44455,14.44455,14.45434,14.45434,
+     +          14.45434,14.45980,14.45980/
+        DATA NNII/2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,2,3,3,3,3,2,3,
+     +          3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,3,4,4,4,
+     +          4,4,4,4,4,4,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,3,3,3,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3/
+        DATA GNII/1.0D0,3.0D0,5.0D0,5.0D0,1.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          3.0D0,1.0D0,5.0D0,1.0D0,3.0D0,
+     +          5.0D0,3.0D0,3.0D0,3.0D0,3.0D0,
+     +          5.0D0,7.0D0,3.0D0,3.0D0,1.0D0,
+     +          3.0D0,5.0D0,5.0D0,1.0D0,5.0D0,
+     +          7.0D0,9.0D0,5.0D0,3.0D0,5.0D0,
+     +          7.0D0,5.0D0,3.0D0,1.0D0,7.0D0,
+     +          3.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          3.0D0,3.0D0,5.0D0,7.0D0,1.0D0,
+     +          3.0D0,5.0D0,3.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,1.0D0,5.0D0,7.0D0,
+     +          9.0D0,5.0D0,3.0D0,5.0D0,7.0D0,
+     +          5.0D0,3.0D0,1.0D0,7.0D0,5.0D0,
+     +          7.0D0,9.0D0,7.0D0,7.0D0,9.0D0,
+     +          11.0D0,3.0D0,9.0D0,7.0D0,5.0D0,
+     +          3.0D0,5.0D0,1.0D0,3.0D0,5.0D0,
+     +          1.0D0,3.0D0,5.0D0,3.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,7.0D0,9.0D0,
+     +          7.0D0,7.0D0,9.0D0,11.0D0,9.0D0,
+     +          1.0D0,3.0D0,5.0D0,7.0D0,9.0D0,
+     +          3.0D0,5.0D0,7.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,9.0D0,11.0D0,7.0D0,
+     +          5.0D0,3.0D0,1.0D0,3.0D0,5.0D0,
+     +          7.0D0,9.0D0/
+        DATA ENNII/0.0D0,6.0876831D-03,1.6279284D-02,1.898923,4.052723,
+     +          5.848106,11.43604,11.43781,11.43801,13.54146,
+     +          13.54146,13.54228,17.87734,18.46259,18.46651,
+     +          18.48341,18.49722,19.23384,20.40944,20.64636,
+     +          20.65389,20.66582,20.67651,20.94027,21.14861,
+     +          21.15298,21.16022,21.59986,22.10340,23.12481,
+     +          23.13218,23.14229,23.19670,23.23962,23.24260,
+     +          23.24636,23.41565,23.42207,23.42555,23.47490,
+     +          23.57225,24.36823,24.37465,24.38944,24.53166,
+     +          25.06612,25.13369,25.14001,25.15193,25.18946,
+     +          25.19245,25.20124,25.23510,25.46049,25.53877,
+     +          25.54572,25.55447,25.58160,25.99668,26.00464,
+     +          26.01527,26.02787,26.06667,26.06994,26.07548,
+     +          26.12440,26.13011,26.13327,26.16475,26.16510,
+     +          26.16800,26.16849,26.17391,26.19663,26.19758,
+     +          26.20937,26.20252,26.21087,26.21191,26.21252,
+     +          26.22134,26.22182,26.25393,26.25770,26.26368,
+     +          26.55921,26.56489,26.58065,26.63554,27.36569,
+     +          27.36569,27.36569,27.40948,27.40948,27.40999,
+     +          27.41783,27.42901,27.42963,27.43824,27.43947,
+     +          27.77609,27.77805,27.78169,27.78704,27.79372,
+     +          28.01910,28.02209,28.02755,28.54429,30.17253,
+     +          30.17448,30.17763,30.18179,30.18682,30.34387,
+     +          30.34864,30.35188,30.41607,30.41652,30.41750,
+     +          30.41894,30.42068/
+        DATA NNIII/2,2,2,2,2,2,2,2,2,2,2,2,2,3,2,2,3,3,3,3,3,3,3,3,
+     +          3,4,3,3,3,3,3,3,4,4,3,3,3,3,4,4,4,4,3,3,3,3,3,3,
+     +          3,3,3,3,3,5,3,3,3,3,3,3,3,5,5,3,3,5,5,5,5,6,6,6,
+     +          6,6,6,4,4,4,3,3,4,4,4,4,4,4,3,3,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,3,3,5,5,5,5/
+        DATA GNIII/2.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          6.0D0,4.0D0,2.0D0,2.0D0,4.0D0,
+     +          4.0D0,6.0D0,4.0D0,2.0D0,2.0D0,
+     +          4.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          2.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          2.0D0,2.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,2.0D0,4.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,4.0D0,6.0D0,
+     +          6.0D0,8.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0,10.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0,2.0D0,4.0D0,
+     +          6.0D0,6.0D0,4.0D0,2.0D0,6.0D0,
+     +          8.0D0,4.0D0,6.0D0,4.0D0,2.0D0,
+     +          6.0D0,8.0D0,8.0D0,10.0D0,4.0D0,
+     +          6.0D0,6.0D0,8.0D0,8.0D0,10.0D0,
+     +          2.0D0,4.0D0,6.0D0,4.0D0,6.0D0,
+     +          2.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          8.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          4.0D0,2.0D0,4.0D0,6.0D0,4.0D0,
+     +          6.0D0,8.0D0,10.0D0,4.0D0,6.0D0,
+     +          2.0D0,4.0D0,6.0D0,8.0D0,6.0D0,
+     +          4.0D0,2.0D0,6.0D0,8.0D0,4.0D0,
+     +          6.0D0,8.0D0,10.0D0,6.0D0,8.0D0,
+     +          6.0D0,8.0D0,10.0D0,12.0D0,8.0D0,
+     +          10.0D0,8.0D0,6.0D0,4.0D0,2.0D0,
+     +          6.0D0,4.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0/
+        DATA ENNIII/0.0D0,2.1635452D-02,7.180255,7.098413,7.108480,
+     +          12.52548,12.52643,16.24252,18.08651,18.10019,
+     +          23.16076,25.17799,25.18006,27.43827,28.56680,
+     +          28.56730,30.45896,30.46342,33.13367,33.13441,
+     +          35.65022,35.65797,35.67233,36.84229,36.85629,
+     +          38.44641,38.32793,38.33453,38.39367,38.39807,
+     +          38.40689,38.41771,38.64517,38.64825,38.95919,
+     +          39.34056,39.34595,39.35325,39.39646,39.40031,
+     +          39.71098,39.71098,39.79651,39.80747,40.55027,
+     +          40.94474,40.94909,40.95552,40.96437,41.26192,
+     +          41.26358,41.26631,41.26982,41.37555,41.47835,
+     +          41.48166,41.68555,41.69232,41.69667,42.12335,
+     +          42.13715,42.39634,42.39655,42.48893,42.49769,
+     +          42.49625,42.49625,42.54757,42.54757,43.95493,
+     +          43.95493,44.00932,44.00932,44.04135,44.04135,
+     +          45.69180,45.69957,45.71402,46.28896,46.29317,
+     +          46.46321,46.47039,46.71232,46.71811,46.72555,
+     +          46.73671,46.81577,46.81788,46.85206,46.86286,
+     +          46.92110,47.02857,47.03412,47.04068,47.61238,
+     +          47.61238,47.61845,47.62763,47.75000,47.75000,
+     +          47.77108,47.77108,49.01428,47.77802,47.88887,
+     +          47.88887,47.88887,47.97657,47.97913,47.98245,
+     +          47.98245,47.98363,47.98760,48.07270,48.08297,
+     +          48.11119,48.11662,48.12305,48.13089,48.12993,
+     +          48.14229,48.14024,48.14488,48.15087,48.15427,
+     +          48.15307,48.16119,49.16950,49.17073,50.71214,
+     +          50.71214,50.71214,50.71214/
+        DATA NNIV/2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
+     +          3,3,3,3,3,3,4,3,3,3,3,3,4,4,4,3,3,3,3,4,4,4,4,3,
+     +          3,3,4,4,4,4,3,4,5,5,5,5,5,5,5,6,6,6,4,4,4,4,5,5,4/
+        DATA GNIV/1.0D0,1.0D0,3.0D0,7.0D0,3.0D0,
+     +          1.0D0,3.0D0,5.0D0,5.0D0,1.0D0,
+     +          3.0D0,1.0D0,1.0D0,3.0D0,5.0D0,
+     +          3.0D0,5.0D0,7.0D0,5.0D0,1.0D0,
+     +          3.0D0,5.0D0,3.0D0,3.0D0,3.0D0,
+     +          5.0D0,7.0D0,3.0D0,1.0D0,3.0D0,
+     +          5.0D0,5.0D0,5.0D0,5.0D0,7.0D0,
+     +          9.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,7.0D0,3.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,1.0D0,
+     +          5.0D0,5.0D0,7.0D0,9.0D0,3.0D0,
+     +          7.0D0,3.0D0,3.0D0,5.0D0,7.0D0,
+     +          7.0D0,9.0D0,11.0D0,3.0D0,5.0D0,
+     +          7.0D0,5.0D0,3.0D0,5.0D0,7.0D0,
+     +          3.0D0,5.0D0,7.0D0/
+        DATA ENNIV/0.0D0,8.323934,8.331770,8.349648,16.20427,
+     +          21.75491,21.76399,21.77946,23.41898,29.18244,
+     +          46.76804,50.15470,50.32483,50.32679,50.33118,
+     +          52.06988,52.07031,52.07132,53.20933,57.68086,
+     +          57.69048,57.71067,58.64906,59.62210,60.05779,
+     +          60.05779,60.07403,60.44809,61.27855,61.27855,
+     +          61.29070,61.78379,61.95650,61.97423,61.97423,
+     +          61.97423,62.44215,62.44215,62.44215,62.67301,
+     +          62.67685,62.68218,62.77282,62.86333,63.40415,
+     +          63.40415,63.40415,63.41109,63.41767,63.41767,
+     +          63.80760,64.05482,64.05569,64.05706,64.39976,
+     +          64.70402,68.21900,68.53058,68.53058,68.53058,
+     +          68.73986,68.73986,68.73986,71.28416,71.28416,
+     +          71.28416,73.28070,73.60580,73.60580,73.61063,
+     +          78.63129,78.63129,78.63129/
+        DATA NNV/2,2,2,3,3,3,3,3,4,4,4,4,4,5,5,5,5,5,6,6,6,6,6,6,
+     +          6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,8,8,8,8/
+        DATA GNV/2.0D0,2.0D0,4.0D0,2.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,2.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,2.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,2.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,6.0D0,8.0D0,
+     +          8.0D0,10.0D0,12.0D0,2.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,6.0D0,8.0D0,
+     +          8.0D0,10.0D0,12.0D0,14.0D0,2.0D0,
+     +          2.0D0,4.0D0,4.0D0,6.0D0,6.0D0,
+     +          8.0D0,8.0D0,10.0D0,12.0D0,14.0D0,16.0D0/
+        DATA ENNV/0.0D0,9.976473,10.00851,56.55396,59.23740,
+     +          59.24660,60.05890,60.06188,75.17694,76.26962,
+     +          76.26962,76.61120,76.61120,83.55153,84.09893,
+     +          84.09893,84.27598,84.27598,88.02306,88.33514,
+     +          88.33514,88.43854,88.43742,88.44214,88.44214,
+     +          88.44313,88.44313,88.44313,90.68689,90.88043,
+     +          90.88043,90.94527,90.94527,90.94912,90.94912,
+     +          90.94974,90.94974,90.94974,90.94974,92.40136,
+     +          92.53167,92.53167,92.57358,92.57358,92.57618,
+     +          92.57618,92.57668,92.57668,92.57668,92.57668,
+     +          92.57668/
+        DATA NNVI/1,2,2,2,2,2,3,4/
+        DATA GNVI/1.0D0,3.0D0,1.0D0,3.0D0,5.0D0,3.0D0,3.0D0,3.0D0/
+        DATA ENNVI/0.0D0,419.8009,426.2953,426.2965,426.3325,
+     +          425.7398,497.9737,521.5830/
+        DATA NOI/2,2,2,2,2,3,3,3,3,3,3,3,3,4,4,3,3,3,3,3,3,3,3,3,
+     +          4,4,4,4,4,4,3,3,3,5,5,3,4,4,4,4,4,4,4,4,5,5,5,6,
+     +          6,5,5,5,5,5,5,5,5,6,6,6,7,7,6,6,6,6,6,6,6,6,8,8,
+     +          7,7,7,7,7,7,7,7,9,9,8,8,8,8,8,8,8,8,10,10,9,9,9,9,
+     +          9,9,9,9,11,11,10,10,10,10,10,10,10,10,3,3,3,3,3,3,
+     +          3,3,3,3,3,3,4,3,3,3,3,3,3,3,3,3,3,3,4,4,4,2,2,2,3,
+     +          3,3,3,3,5,4,4,4,4,4,4,4,4,4,4,4,3,6,5,5,5,5,5,5,5,
+     +          5,5,5,7,6,6,6,2/
+        DATA GOI/5.0D0,3.0D0,1.0D0,5.0D0,1.0D0,
+     +          5.0D0,3.0D0,3.0D0,5.0D0,7.0D0,
+     +          5.0D0,3.0D0,1.0D0,5.0D0,3.0D0,
+     +          9.0D0,7.0D0,5.0D0,5.0D0,3.0D0,
+     +          1.0D0,7.0D0,5.0D0,3.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,1.0D0,
+     +          7.0D0,5.0D0,3.0D0,5.0D0,3.0D0,
+     +          5.0D0,9.0D0,7.0D0,5.0D0,3.0D0,
+     +          1.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          3.0D0,1.0D0,5.0D0,3.0D0,9.0D0,
+     +          7.0D0,5.0D0,3.0D0,1.0D0,7.0D0,
+     +          5.0D0,3.0D0,5.0D0,3.0D0,1.0D0,
+     +          5.0D0,3.0D0,9.0D0,7.0D0,5.0D0,
+     +          3.0D0,1.0D0,7.0D0,5.0D0,3.0D0,
+     +          5.0D0,3.0D0,9.0D0,7.0D0,5.0D0,
+     +          3.0D0,1.0D0,7.0D0,5.0D0,3.0D0,
+     +          5.0D0,3.0D0,9.0D0,7.0D0,5.0D0,
+     +          3.0D0,1.0D0,7.0D0,5.0D0,3.0D0,
+     +          5.0D0,3.0D0,9.0D0,7.0D0,5.0D0,
+     +          3.0D0,1.0D0,7.0D0,5.0D0,3.0D0,
+     +          5.0D0,3.0D0,9.0D0,7.0D0,5.0D0,
+     +          3.0D0,1.0D0,7.0D0,5.0D0,3.0D0,
+     +          7.0D0,5.0D0,3.0D0,9.0D0,7.0D0,
+     +          5.0D0,5.0D0,3.0D0,1.0D0,7.0D0,
+     +          3.0D0,5.0D0,5.0D0,5.0D0,3.0D0,
+     +          1.0D0,9.0D0,7.0D0,5.0D0,9.0D0,
+     +          11.0D0,9.0D0,7.0D0,7.0D0,7.0D0,
+     +          5.0D0,3.0D0,5.0D0,3.0D0,1.0D0,
+     +          7.0D0,5.0D0,3.0D0,3.0D0,5.0D0,
+     +          5.0D0,9.0D0,7.0D0,5.0D0,9.0D0,
+     +          11.0D0,9.0D0,7.0D0,7.0D0,5.0D0,
+     +          3.0D0,1.0D0,1.0D0,5.0D0,9.0D0,
+     +          7.0D0,5.0D0,9.0D0,11.0D0,9.0D0,
+     +          7.0D0,5.0D0,3.0D0,1.0D0,5.0D0,
+     +          5.0D0,3.0D0,1.0D0,3.0D0/
+        DATA ENOI/0.0D0,01.9651687D-02,2.8082693D-02,1.967363,0.4206081,
+     +          9.146132,9.521420,10.74028,10.74053,10.74098,
+     +          10.98893,10.98886,10.98895,11.83768,11.93056,
+     +          12.07869,12.07870,12.07870,12.07872,12.07872,
+     +          12.07872,12.08711,12.08711,12.08711,12.28604,
+     +          12.28612,12.28627,12.35891,12.35891,12.35891,
+     +          12.53927,12.54078,12.54176,12.66092,12.69755,
+     +          12.72854,12.75377,12.75377,12.75377,12.75377,
+     +          12.75377,12.75911,12.75911,12.75911,12.87829,
+     +          12.87829,12.87829,13.02082,13.03891,13.06624,
+     +          13.06624,13.06624,13.06624,13.06624,13.06913,
+     +          13.06913,13.06913,13.13145,13.13145,13.13145,
+     +          13.21004,13.22030,13.23559,13.23559,13.23559,
+     +          13.23559,13.23559,13.23740,13.23740,13.23740,
+     +          13.32166,13.32807,13.33749,13.33749,13.33749,
+     +          13.33749,13.33749,13.33869,13.33869,13.33869,
+     +          13.39308,13.39756,13.40353,385.3597,13.40353,
+     +          13.40353,13.40353,13.40488,13.40488,13.40488,
+     +          13.44262,13.44449,13.44872,13.44872,13.44872,
+     +          13.44872,13.44872,13.44966,13.44966,13.44966,
+     +          13.47577,13.47812,13.48112,13.48112,13.48112,
+     +          13.48112,13.48112,13.48148,13.48148,13.48148,
+     +          14.04685,14.04687,14.04730,14.09888,14.09975,
+     +          14.10046,14.12320,14.12450,14.12526,14.13382,
+     +          14.37218,14.46048,15.22525,15.28698,15.29424,
+     +          15.29817,15.40062,15.40062,15.40062,15.40372,
+     +          15.40390,15.40622,15.40550,15.41465,15.59420,
+     +          15.59514,15.59577,15.65520,15.66431,15.66970,
+     +          15.78109,15.78181,15.78222,15.82895,15.94391,
+     +          16.01073,16.07676,16.07676,16.07676,16.07836,
+     +          16.07844,16.08080,16.08005,16.08545,16.11433,
+     +          16.11550,16.11614,16.23505,16.35702,16.35702,
+     +          16.35702,16.35702,16.39057,16.39063,16.39308,
+     +          16.39308,16.40451,16.40451,16.40451,16.54127,
+     +          16.56668,16.56668,16.56668,23.53702/
+        DATA NOII/2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,2,3,3,3,3,3,3,3,3,
+     +          3,3,3,3,3,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
+     +          3,3,3,3,3,3,3,3,3,4,4,4,4,4,3,4,4,4,4,4,4,4,4,3,
+     +          3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,3,4,4,4,4,4,4,
+     +          4,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,
+     +          5,5,5,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,3,3,3,4,4,4,4,
+     +          4,4,4,4,4,4,3,3,4,4,4,4,4,4,4,5,5,3,3,3,3,3,4/
+        DATA GOII/4.0D0,6.0D0,4.0D0,4.0D0,2.0D0,
+     +          6.0D0,4.0D0,2.0D0,6.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          2.0D0,2.0D0,2.0D0,4.0D0,6.0D0,
+     +          8.0D0,6.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,6.0D0,4.0D0,4.0D0,
+     +          2.0D0,2.0D0,4.0D0,2.0D0,6.0D0,
+     +          8.0D0,6.0D0,4.0D0,4.0D0,6.0D0,
+     +          8.0D0,10.0D0,6.0D0,4.0D0,2.0D0,
+     +          2.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          8.0D0,6.0D0,8.0D0,4.0D0,2.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,6.0D0,
+     +          2.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,2.0D0,4.0D0,8.0D0,6.0D0,
+     +          10.0D0,8.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,8.0D0,10.0D0,
+     +          2.0D0,4.0D0,6.0D0,8.0D0,4.0D0,
+     +          6.0D0,4.0D0,2.0D0,4.0D0,2.0D0,
+     +          6.0D0,8.0D0,2.0D0,6.0D0,4.0D0,
+     +          8.0D0,5.80D0,4.0D0,2.0D0,6.0D0,
+     +          8.0D0,10.0D0,12.0D0,8.0D0,10.0D0,
+     +          4.0D0,6.0D0,4.0D0,6.0D0,8.0D0,
+     +          10.0D0,6.0D0,8.0D0,2.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,6.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,8.0D0,2.0D0,
+     +          4.0D0,6.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0,6.0D0,4.0D0,
+     +          2.0D0,6.0D0,8.0D0,8.0D0,6.0D0,
+     +          4.0D0,2.0D0,6.0D0,8.0D0,10.0D0,
+     +          12.0D0,8.0D0,10.0D0,4.0D0,6.0D0,
+     +          4.0D0,6.0D0,8.0D0,10.0D0,6.0D0,
+     +          8.0D0,4.0D0,6.0D0,8.0D0,6.0D0,
+     +          8.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          8.0D0,10.0D0,6.0D0,8.0D0,6.0D0,
+     +          4.0D0,2.0D0,4.0D0,6.0D0,10.0D0,
+     +          12.0D0,2.0D0,4.0D0,4.0D0,6.20D0,
+     +          10.0D0,8.0D0,6.0D0,4.0D0,2.0D0,
+     +          6.0D0/
+        DATA ENOII/0.0D0,3.323850,3.326454,5.017305,5.017491,
+     +          14.85813,14.87838,14.88860,20.58005,20.57736,
+     +          22.96648,22.97954,23.001876,23.41940,23.44172,
+     +          24.26523,25.28586,25.63160,25.63849,25.64984,
+     +          25.66529,25.66142,25.66154,25.83188,25.83760,
+     +          25.84900,26.22564,26.24928,26.30498,26.35845,
+     +          26.37943,26.55392,26.56133,28.12621,28.35835,
+     +          28.36128,28.51330,28.51270,28.67733,28.68403,
+     +          28.69369,28.70637,28.82200,28.83108,28.83932,
+     +          28.82414,28.82992,28.85285,28.85711,28.85729,
+     +          28.85808,28.86334,28.88355,28.94193,28.95606,
+     +          29.06249,29.06893,29.58618,29.59923,29.61924,
+     +          29.79726,29.82051,30.42546,30.47162,30.47763,
+     +          30.48836,30.50400,30.74951,30.77135,30.80112,
+     +          30.81214,31.02747,31.02747,31.14773,31.14812,
+     +          31.31967,31.31982,31.37404,31.37430,31.46620,
+     +          31.46649,31.55199,31.55199,31.55199,31.56553,
+     +          31.61407,31.61407,31.61407,31.61407,31.61407,
+     +          31.62925,31.63375,31.63644,31.63766,31.65117,
+     +          31.65364,31.67396,31.69345,31.70178,31.71699,
+     +          31.70200,31.71709,31.72948,31.72935,31.70999,
+     +          31.71043,31.71889,31.73747,31.71911,31.73823,
+     +          31.72081,31.72752,31.75062,31.75112,31.75553,
+     +          31.75715,31.75586,31.75803,31.95026,31.96318,
+     +          31.98375,32.03889,32.06284,32.14771,32.14780,
+     +          32.35511,32.35511,32.36540,32.38251,32.39264,
+     +          32.39264,32.40412,32.44667,32.46798,32.88345,
+     +          32.88345,32.88345,32.88345,32.90963,32.91418,
+     +          32.91418,32.92780,32.92780,32.93536,32.94354,
+     +          32.95061,32.96264,32.93858,32.94181,32.95049,
+     +          32.97082,32.95073,32.97146,32.96227,32.96227,
+     +          32.97119,32.97528,32.97826,32.97999,32.97863,
+     +          32.97999,33.19875,33.19968,33.20123,34.06365,
+     +          34.06901,34.08607,34.08607,34.17174,34.17174,
+     +          34.20029,34.20029,34.20504,34.20504,34.21390,
+     +          34.21390,34.21960,34.22819,34.22819,34.23350,
+     +          34.23350,34.25269,34.25269,34.48530,34.48530,
+     +          36.19083,36.18759,36.19109,36.19123,36.19131,37.05294/
+        DATA NOIII/2,2,2,2,2,2,2,3,3,2,2,2,2,2,2,3,3,3,3,2,2,2,3,3,
+     +          3,3,3,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
+     +          2,3,3,3,4,4,4,4,3,3,3,3,3,3,4,4,4,4,4,3,3,3,4,4,
+     +          4,4,4,3,3,3,3,4,4,4,4,3,3,3,4,4,4,4,4,4,4,4,5,5,
+     +          5,5,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
+     +          5,5,5,5,5,5,5,5,5,3,3,3,6,6,6,6,7,3,3,4,4,4,3,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,3,3,3,3,3,3,3,3,3,5/
+        DATA GOIII/1.0D0,3.0D0,5.0D0,5.0D0,1.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          3.0D0,1.0D0,5.0D0,3.0D0,3.0D0,
+     +          1.0D0,3.0D0,5.0D0,3.0D0,5.0D0,
+     +          3.0D0,1.0D0,3.0D0,3.0D0,5.0D0,
+     +          7.0D0,3.0D0,5.0D0,1.0D0,3.0D0,
+     +          5.0D0,5.0D0,1.0D0,5.0D0,7.0D0,
+     +          9.0D0,5.0D0,3.0D0,5.0D0,7.0D0,
+     +          5.0D0,3.0D0,1.0D0,7.0D0,3.0D0,
+     +          3.0D0,5.0D0,7.0D0,1.0D0,1.0D0,
+     +          3.0D0,5.0D0,1.0D0,3.0D0,5.0D0,
+     +          3.0D0,3.0D0,1.0D0,3.0D0,5.0D0,
+     +          7.0D0,9.0D0,3.0D0,3.0D0,5.0D0,
+     +          7.0D0,3.0D0,3.0D0,5.0D0,7.0D0,
+     +          1.0D0,3.0D0,5.0D0,5.0D0,1.0D0,
+     +          3.0D0,5.0D0,7.0D0,5.0D0,5.0D0,
+     +          7.0D0,9.0D0,5.0D0,5.0D0,3.0D0,
+     +          1.0D0,3.0D0,5.0D0,7.0D0,5.0D0,
+     +          3.0D0,1.0D0,7.0D0,3.0D0,1.0D0,
+     +          3.0D0,5.0D0,3.0D0,3.0D0,5.0D0,
+     +          7.0D0,3.0D0,5.0D0,7.0D0,9.0D0,
+     +          11.0D0,1.0D0,3.0D0,5.0D0,7.0D0,
+     +          9.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          3.0D0,1.0D0,5.0D0,7.0D0,9.0D0,
+     +          5.0D0,7.0D0,9.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,7.0D0,3.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          7.0D0,7.0D0,7.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,3.0D0,3.0D0,1.0D0,
+     +          3.0D0,5.0D0,7.0D0,9.0D0,3.0D0,
+     +          5.0D0,7.0D0,3.0D0,5.0D0,7.0D0,
+     +          7.0D0,5.0D0,3.0D0,5.0D0,7.0D0,
+     +          9.0D0,3.0D0,5.0D0,7.0D0,1.0D0,
+     +          3.0D0,5.0D0,3.0D0/
+        DATA ENOIII/0.0D0,1.4059945D-02,3.8038719D-02,2.513308,5.354124,
+     +          7.477820,14.88140,14.88477,14.88550,17.65325,
+     +          17.65339,17.65514,23.19140,24.43587,26.09378,
+     +          33.13600,33.15068,33.18253,33.85794,35.18196,
+     +          35.20895,35.22094,36.07438,36.43500,36.45190,
+     +          36.47919,36.89279,36.98353,37.22392,37.23410,
+     +          37.25028,38.01204,38.90675,40.22861,40.25288,
+     +          40.27497,40.26230,40.57149,40.57759,40.58673,
+     +          40.84922,40.86335,40.87098,41.14086,41.25951,
+     +          41.97723,41.99266,42.14902,42.56451,43.39812,
+     +          43.41013,43.43237,44.22956,44.24270,44.27655,
+     +          44.46952,45.03978,45.31862,45.32294,45.33144,
+     +          45.34384,45.35962,45.34443,45.43903,45.45230,
+     +          45.47797,45.62070,45.69189,45.69899,45.71153,
+     +          45.91510,45.92614,45.93959,45.98626,46.25228,
+     +          46.44183,45.21283,46.46955,46.62690,46.78899,
+     +          46.78899,46.78899,46.82767,46.91713,46.91867,
+     +          46.92080,47.01923,47.02679,47.03461,47.20199,
+     +          47.20199,47.20199,47.21141,47.24910,48.62968,
+     +          48.62968,48.62968,48.69874,48.86141,48.86587,
+     +          48.87442,48.91428,48.91908,48.92621,48.93560,
+     +          48.94701,49.36293,49.36248,49.36198,49.36323,
+     +          49.37332,49.40500,49.41368,49.41845,49.63815,
+     +          49.65178,49.65844,49.76514,49.77709,49.79367,
+     +          49.78386,49.78386,49.78386,49.81572,49.78386,
+     +          49.78386,49.78386,50.01249,50.03133,50.31391,
+     +          50.31750,50.32357,51.41365,51.47638,51.47638,
+     +          51.47638,52.44297,52.69355,52.85969,53.12613,
+     +          53.14089,53.16110,53.31682,54.18348,54.33549,
+     +          54.33549,54.34320,54.35460,54.36977,54.46407,
+     +          54.47044,54.48261,54.88958,54.88958,54.88958,
+     +          55.81414,55.82281,55.82951,56.14741,56.14741,
+     +          56.14741,56.31095,56.31095,56.31095,56.73994,
+     +          56.73994,56.73994,58.73808/
+        DATA NOIV/2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,
+     +          3,3,3,3,3,3,3,3,3,3,3,4,3,3,3,3,3,3,3,3,3,3,3,3,
+     +          3,3,4,4,3,3,3,3,3,3,5,3,3,3,3,5,5,5,5,3,4,4,4,3,
+     +          3,4,4,6,6,4,4,3,3,3,3,3,3,3,4,4,7,7,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,3,8,8,4,4,3,3,3,3,3,3,3,3,3,
+     +          3,3,3,3,3,5,5,3,3,5,5,3,3,5,5,5,5,5,5,5,5,5,5,5,
+     +          3,3,3,3,3,3,3,3,3,6,6,6,6,4,4,3,4,4,7,7,7,7/
+        DATA GOIV/2.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          6.0D0,4.0D0,2.0D0,2.0D0,6.0D0,
+     +          4.0D0,6.0D0,4.0D0,2.0D0,4.0D0,
+     +          2.0D0,2.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,2.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,8.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,4.0D0,6.0D0,
+     +          2.0D0,2.0D0,4.0D0,6.0D0,8.0D0,
+     +          10.0D0,2.0D0,4.0D0,6.0D0,8.0D0,
+     +          4.0D0,6.0D0,6.0D0,4.0D0,2.0D0,
+     +          4.0D0,6.0D0,6.0D0,8.0D0,4.0D0,
+     +          2.0D0,2.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          6.0D0,8.0D0,2.0D0,2.0D0,4.0D0,
+     +          6.0D0,6.0D0,8.0D0,2.0D0,4.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,6.0D0,8.0D0,
+     +          2.0D0,2.0D0,4.0D0,6.0D0,8.0D0,
+     +          6.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          6.0D0,8.0D0,4.0D0,6.0D0,6.0D0,
+     +          8.0D0,2.0D0,6.0D0,8.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,2.0D0,4.0D0,6.0D0,
+     +          6.0D0,4.0D0,4.0D0,6.0D0,8.0D0,
+     +          2.0D0,4.0D0,6.0D0,8.0D0,4.0D0,
+     +          6.0D0,6.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,6.0D0,4.0D0,2.0D0,
+     +          6.0D0,8.0D0,4.0D0,2.0D0,6.0D0,
+     +          4.0D0,2.0D0,4.0D0,6.0D0,6.0D0,
+     +          8.0D0,4.0D0,2.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,6.0D0,8.0D0/
+        DATA ENOIV/0.0D0,4.7920357D-02,8.824909,8.841201,8.864076,
+     +          15.73825,15.73998,20.37910,22.37705,22.40721,
+     +          28.67474,31.63571,31.63934,35.83378,35.83476,
+     +          44.33902,48.37428,48.38508,54.37857,54.39532,
+     +          54.42593,56.14158,56.17444,57.92984,57.94415,
+     +          58.03452,58.04428,58.06108,58.08709,58.79609,
+     +          59.33789,59.34961,59.36561,59.84372,59.87542,
+     +          60.23497,61.10992,61.36131,61.37108,61.38501,
+     +          61.40412,61.93150,61.93509,61.94088,61.94888,
+     +          62.18008,62.18691,62.46812,62.48219,62.49133,
+     +          63.30199,63.30286,63.32506,63.35387,63.75540,
+     +          63.77412,64.30924,64.30999,66.87376,67.85857,
+     +          67.86167,68.16618,68.17400,68.44416,68.44416,
+     +          68.50069,68.50069,68.74507,70.50282,70.51955,
+     +          70.55017,70.76975,70.76975,71.12993,71.15609,
+     +          71.21387,71.21387,71.31690,71.33785,71.39315,
+     +          71.39737,71.48887,71.50672,71.53300,72.12492,
+     +          72.12764,72.47591,72.50269,72.88482,72.88482,
+     +          73.16019,73.37047,73.37047,73.37047,73.37047,
+     +          73.52322,73.52322,73.52322,73.60108,73.61112,
+     +          73.64819,73.65725,73.68911,73.71453,73.93237,
+     +          73.95444,74.05078,74.06293,74.06293,74.10930,
+     +          74.12628,74.40265,74.40438,74.76035,74.76035,
+     +          74.76035,74.76035,75.18896,75.18896,75.18896,
+     +          76.30446,76.30806,76.44791,77.47625,77.47625,
+     +          77.92433,77.92433,78.12258,78.12258,78.19797,
+     +          78.21979,78.41159,78.43242,78.59385,78.59385,
+     +          78.59385,78.59385,78.63718,78.63718,78.63718,
+     +          78.85769,78.88398,78.91572,78.91572,78.96023,
+     +          78.97250,78.98019,80.20107,80.20107,80.72665,
+     +          80.72900,81.00314,81.01343,81.37509,81.37509,
+     +          81.37509,81.37509,81.42716,81.42716,81.83012,
+     +          82.88895,82.88895,83.03365,83.03365,83.03365,83.03365/
+        DATA NOV/2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
+     +          3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,
+     +          4,4,4,4,4,4,5,5,5,5,5,5,4,4,4,4,4,4,4,4,4,4,4,6,
+     +          6,6,6,6,4,4,4,6,4,4,4,4,4,7,7,7,7,7,8,8,8,8,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6/
+        DATA GOV/1.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          1.0D0,3.0D0,5.0D0,5.0D0,1.0D0,
+     +          3.0D0,1.0D0,3.0D0,1.0D0,3.0D0,
+     +          5.0D0,3.0D0,5.0D0,7.0D0,5.0D0,
+     +          1.0D0,3.0D0,5.0D0,3.0D0,3.0D0,
+     +          3.0D0,5.0D0,7.0D0,3.0D0,1.0D0,
+     +          3.0D0,5.0D0,5.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,1.0D0,5.0D0,3.0D0,
+     +          1.0D0,7.0D0,3.0D0,3.0D0,1.0D0,
+     +          1.0D0,3.0D0,5.0D0,3.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,7.0D0,3.0D0,
+     +          3.0D0,3.0D0,5.0D0,7.0D0,5.0D0,
+     +          3.0D0,3.0D0,3.0D0,5.0D0,7.0D0,
+     +          3.0D0,1.0D0,3.0D0,5.0D0,5.0D0,
+     +          5.0D0,3.0D0,7.0D0,3.0D0,5.0D0,
+     +          7.0D0,3.0D0,5.0D0,7.0D0,5.0D0,
+     +          5.0D0,3.0D0,1.0D0,7.0D0,3.0D0,
+     +          3.0D0,3.0D0,5.0D0,7.0D0,5.0D0,
+     +          3.0D0,3.0D0,5.0D0,7.0D0,3.0D0,
+     +          3.0D0,5.0D0,7.0D0,1.0D0,3.0D0,
+     +          5.0D0,5.0D0,5.0D0,3.0D0,5.0D0,
+     +          7.0D0,7.0D0,3.0D0,3.0D0,5.0D0,
+     +          7.0D0,1.0D0,3.0D0,5.0D0,5.0D0/
+        DATA ENOV/0.0D0,10.18183,10.19878,10.23674,19.68863,
+     +          26.48845,26.50776,26.54108,28.73015,35.69651,
+     +          67.83862,69.59028,72.01395,72.28146,72.28596,
+     +          72.29554,74.50599,74.50733,74.50979,75.95557,
+     +          80.97483,80.99497,81.03748,82.38657,83.40436,
+     +          83.97941,84.00407,84.04314,84.82139,85.49855,
+     +          85.51269,85.53633,86.12596,86.43890,87.33036,
+     +          87.33829,87.35107,87.73579,87.80076,87.81837,
+     +          87.82866,88.39750,89.17985,89.60004,90.71603,
+     +          91.26665,91.26665,91.26888,91.48672,92.04689,
+     +          92.04763,92.04937,92.59937,92.97132,98.72523,
+     +          99.49233,106.7049,106.7049,106.7049,100.2237,
+     +          102.1987,102.8568,103.0377,103.0583,103.0944,
+     +          103.1870,103.5465,103.5465,103.5676,103.8792,
+     +          103.8829,104.1001,104.2509,104.2990,104.2990,
+     +          104.2990,104.3064,104.3181,104.3333,104.4087,
+     +          104.5556,104.5689,104.5754,105.0316,105.0733,
+     +          106.7358,106.9963,106.9963,106.9963,106.9274,
+     +          108.4187,108.5325,108.5325,108.5325,111.4108,
+     +          111.5461,111.5461,111.5461,111.7535,111.7535,
+     +          111.7535,111.8898,111.9082,112.1444,112.1444,
+     +          112.1444,112.3809,115.9379,116.0435,116.0435,
+     +          116.0435,116.1501,116.1501,116.1501,116.2166/
+        DATA NOVI/2,2,2,3,3,3,3,3,4,4,4,4,4,4,4,5,5,5,5,5,6,6,6,6,
+     +          6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,8,8,8,8/
+        DATA GOVI/2.0D0,2.0D0,4.0D0,2.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,2.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,6.0D0,8.0D0,
+     +          2.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          2.0D0,4.0D0,4.0D0,6.0D0,6.0D0,
+     +          8.0D0,8.0D0,10.0D0,12.0D0,2.0D0,
+     +          2.0D0,4.0D0,4.0D0,6.0D0,6.0D0,
+     +          8.0D0,8.0D0,10.0D0,12.0D0,14.0D0,
+     +          2.0D0,2.0D0,4.0D0,6.0D0,8.0D0,
+     +          8.0D0,10.0D0,12.0D0,14.0D0,16.0D0,4.0D0,6.0D0/
+        DATA ENOVI/0.0D0,11.94909,12.01505,79.35559,82.58831,
+     +          82.60773,83.64374,83.65008,105.7219,107.0408,
+     +          107.0487,107.4805,107.4831,107.5050,107.5062,
+     +          117.6237,118.2920,118.2920,118.5122,118.5122,
+     +          124.3735,124.3735,124.5034,124.5034,124.5142,
+     +          124.5142,124.5156,124.5156,124.5156,127.8017,
+     +          128.0311,128.0311,128.1171,128.1171,128.1243,
+     +          128.1243,128.1252,128.1252,128.1252,128.1252,
+     +          130.2520,130.3984,130.3984,130.4674,130.4674,
+     +          130.4680,130.4680,130.4680,130.4680,130.4680,
+     +          130.4693,130.4693/
+        DATA NOVII/1,2,2,2,2,2,3,3,3,3,3,3,3,4,5,6/
+        DATA GOVII/1.0D0,3.0D0,1.0D0,3.0D0,5.0D0,
+     +          3.0D0,1.0D0,3.0D0,5.0D0,7.0D0,
+     +          5.0D0,3.0D0,3.0D0,3.0D0,3.0D0,3.0D0/
+        DATA ENOVII/0.0D0,561.0761,568.6182,568.6255,568.6938,
+     +          573.9532,664.1129,664.1129,664.1129,665.1804,
+     +          665.1804,665.1804,665.6218,697.8022,712.7239,720.8449/
+        DATA NGAIV/3,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,5,5,5,5,4,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,5,4,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,4,4,4,4,5,6,6,4,4,
+     +          4,4,4,6,6,4,4,4,5,4,
+     +          4,4,6,6,4,4,4,6,6,6,
+     +          6,6,6,6,6,6,6,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,6,6,6,6,4,6,6,6,
+     +          6,6,6,4,4,4,4,4,7,7,
+     +          6,6,6,6,6,6,6,6,7,7,
+     +          4,4,4,4,4,8,8,4,8,8,
+     +          4/
+        DATA GGAIV/1.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          5.0D0,3.0D0,1.0D0,7.0D0,9.0D0,
+     +          5.0D0,7.0D0,5.0D0,7.0D0,3.0D0,
+     +          5.0D0,3.0D0,3.0D0,11.0D0,9.0D0,
+     +          7.0D0,5.0D0,1.0D0,3.0D0,3.0D0,
+     +          7.0D0,5.0D0,3.0D0,9.0D0,7.0D0,
+     +          9.0D0,7.0D0,5.0D0,5.0D0,7.0D0,
+     +          5.0D0,3.0D0,5.0D0,1.0D0,5.0D0,
+     +          3.0D0,1.0D0,7.0D0,9.0D0,5.0D0,
+     +          5.0D0,7.0D0,3.0D0,5.0D0,3.0D0,
+     +          7.0D0,1.0D0,3.0D0,11.0D0,5.0D0,
+     +          9.0D0,7.0D0,5.0D0,13.0D0,7.0D0,
+     +          3.0D0,9.0D0,11.0D0,5.0D0,11.0D0,
+     +          7.0D0,9.0D0,9.0D0,3.0D0,5.0D0,
+     +          7.0D0,9.0D0,7.0D0,5.0D0,3.0D0,
+     +          9.0D0,11.0D0,9.0D0,7.0D0,3.0D0,
+     +          5.0D0,1.0D0,3.0D0,7.0D0,3.0D0,
+     +          5.0D0,7.0D0,9.0D0,7.0D0,5.0D0,
+     +          5.0D0,9.0D0,7.0D0,5.0D0,3.0D0,
+     +          9.0D0,7.0D0,5.0D0,9.0D0,7.0D0,
+     +          7.0D0,5.0D0,3.0D0,3.0D0,5.0D0,
+     +          9.0D0,7.0D0,5.0D0,1.0D0,9.0D0,
+     +          5.0D0,7.0D0,5.0D0,7.0D0,5.0D0,
+     +          7.0D0,3.0D0,9.0D0,3.0D0,7.0D0,
+     +          5.0D0,1.0D0,7.0D0,3.0D0,5.0D0,
+     +          5.0D0,3.0D0,5.0D0,7.0D0,9.0D0,
+     +          3.0D0,5.0D0,7.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,9.0D0,5.0D0,3.0D0,
+     +          1.0D0,5.0D0,7.0D0,3.0D0,9.0D0,
+     +          7.0D0,5.0D0,5.0D0,3.0D0,7.0D0,
+     +          5.0D0,3.0D0,3.0D0,9.0D0,5.0D0,
+     +          7.0D0,5.0D0,11.0D0,3.0D0,7.0D0,
+     +          5.0D0,9.0D0,1.0D0,9.0D0,7.0D0,
+     +          9.0D0,7.0D0,5.0D0,7.0D0,5.0D0,
+     +          3.0D0,9.0D0,5.0D0,7.0D0,7.0D0,
+     +          3.0D0,5.0D0,1.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,3.0D0,1.0D0,5.0D0,
+     +          7.0D0,5.0D0,3.0D0,3.0D0,5.0D0,
+     +          7.0D0/
+        DATA ENGAIV/0.00000,18.53714,18.71752,18.98023,19.34460,
+     +          27.80263,28.18414,28.40978,28.22887,28.38653,
+     +          28.52132,28.91216,28.99057,29.12879,29.37266,
+     +          29.44104,29.29894,40.76150,41.23148,41.25332,
+     +          41.47668,41.25667,41.46072,41.55942,41.26526,
+     +          41.40628,41.51627,41.77447,41.47614,41.73080,
+     +          41.75664,41.96920,41.99588,41.88605,42.56624,
+     +          42.63974,43.00858,43.07246,44.04232,45.71100,
+     +          45.93090,46.20260,45.83920,45.88940,46.26730,
+     +          46.03470,46.07700,46.47960,46.51070,46.34830,
+     +          46.39080,49.33132,49.35104,49.40644,49.45128,
+     +          49.49214,49.49511,49.38535,49.40599,49.45308,
+     +          49.46073,49.49025,49.49150,49.82139,49.86533,
+     +          49.91200,49.94562,49.86595,49.88546,49.90936,
+     +          49.94636,49.97460,50.25900,50.50910,50.56650,
+     +          50.60230,50.72910,50.74400,51.18100,50.74710,
+     +          50.74910,50.96300,51.11160,50.79830,51.20700,
+     +          51.23000,50.84680,50.86100,51.30860,51.31730,
+     +          50.86630,51.10210,51.23160,51.31100,51.34170,
+     +          51.21460,51.22870,51.28740,51.37640,51.65260,
+     +          51.49010,51.65760,51.87440,51.67610,51.69920,
+     +          51.87560,51.95640,52.14430,52.04080,52.15060,
+     +          52.46400,52.49910,52.68100,52.73890,52.72470,
+     +          52.76820,52.78030,52.76170,52.79900,52.83900,
+     +          52.84000,53.14560,53.22700,53.26290,53.27410,
+     +          53.16790,53.18960,53.29660,53.37420,53.48100,
+     +          53.39780,53.46720,53.55580,53.66610,53.78160,
+     +          53.89870,53.91400,53.98510,54.27870,54.47700,
+     +          54.64270,54.56680,54.57640,54.58140,54.72250,
+     +          54.82800,54.96490,54.90480,54.96770,55.05820,
+     +          55.41060,55.62100,55.06000,55.14410,55.14610,
+     +          55.19690,55.09210,55.13650,55.14380,55.17040,
+     +          55.20200,55.20220,55.30580,55.16900,55.42270,
+     +          55.35350,55.64080,55.81300,55.38770,55.40260,
+     +          55.55220,55.61030,55.63590,55.65810,55.58790,
+     +          55.60470,55.66440,55.89150,55.83210,55.84310,
+     +          57.34160,57.43520,57.55610,57.75590,57.82110,
+     +          57.70510,57.71430,57.99710,58.14920,58.15580,
+     +          58.95620/
+        DATA NGAV/3,3,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4/
+        DATA GGAV/6.0D0,4.0D0,10.0D0,8.0D0,6.0D0,
+     +          4.0D0,8.0D0,6.0D0,6.0D0,4.0D0,
+     +          4.0D0,2.0D0,6.0D0,4.0D0,2.0D0,
+     +          10.0D0,8.0D0,8.0D0,6.0D0,4.0D0,
+     +          2.0D0,10.0D0,12.0D0,8.0D0,6.0D0,
+     +          10.0D0,8.0D0,6.0D0,4.0D0,10.0D0,
+     +          8.0D0,6.0D0,4.0D0,8.0D0,6.0D0,
+     +          4.0D0,6.0D0,2.0D0,6.0D0,8.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,6.0D0,
+     +          2.0D0,4.0D0,8.0D0,6.0D0,4.0D0,
+     +          10.0D0,12.0D0,4.0D0,2.0D0,8.0D0,
+     +          6.0D0,2.0D0,4.0D0,8.0D0,10.0D0,
+     +          4.0D0,8.0D0,6.0D0,4.0D0,6.0D0,
+     +          8.0D0,6.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,8.0D0,6.0D0,4.0D0,
+     +          6.0D0,8.0D0,6.0D0,4.0D0,8.0D0,
+     +          6.0D0,8.0D0,6.0D0,4.0D0,6.0D0,
+     +          2.0D0,6.0D0,4.0D0,8.0D0,8.0D0,
+     +          6.0D0/
+        DATA ENGAV/
+     +          0.00000,0.44420,26.04310,26.29970,26.50000,
+     +          26.68600,27.06590,27.46100,28.72850,28.88440,
+     +          29.21180,29.22950,29.26920,30.00740,30.13470,
+     +          30.51160,30.51660,36.82230,37.21310,37.50510,
+     +          37.68020,37.28600,37.47010,37.53980,37.72490,
+     +          37.84610,38.01700,38.15550,38.17030,38.05660,
+     +          38.39530,38.38750,38.68200,38.46820,38.81800,
+     +          39.62200,39.68650,39.72810,39.97100,40.22130,
+     +          40.20980,40.38330,40.27920,40.48690,40.80360,
+     +          40.80420,40.80470,40.93640,41.22140,41.40190,
+     +          41.24000,41.50560,41.25040,41.60970,41.54570,
+     +          41.77140,41.84360,41.86800,42.68000,42.73340,
+     +          64.45590,64.50760,64.51830,64.80700,64.87920,
+     +          64.87920,64.82800,64.83950,65.04600,65.13320,
+     +          65.17240,65.13660,66.98200,67.01560,66.99570,
+     +          67.49710,67.56500,67.66250,67.75090,67.68620,
+     +          67.72860,67.78050,67.79470,68.43900,68.66900,
+     +          68.45860,68.56300,68.57300,68.66530,74.03990,
+     +          74.06300/
+        DATA NGAVI/3,3,3,3,3,3,3,3,3,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4/
+        DATA GGAVI/9.0D0,7.0D0,5.0D0,5.0D0,5.0D0,
+     +          3.0D0,1.0D0,9.0D0,1.0D0,11.0D0,
+     +          9.0D0,7.0D0,5.0D0,3.0D0,9.0D0,
+     +          7.0D0,5.0D0,7.0D0,5.0D0,3.0D0,
+     +          11.0D0,9.0D0,7.0D0,5.0D0,3.0D0,
+     +          1.0D0,9.0D0,5.0D0,3.0D0,13.0D0,
+     +          1.0D0,7.0D0,11.0D0,3.0D0,5.0D0,
+     +          9.0D0,11.0D0,3.0D0,5.0D0,5.0D0,
+     +          7.0D0,9.0D0,7.0D0,3.0D0,5.0D0,
+     +          7.0D0,9.0D0,11.0D0,7.0D0,5.0D0,
+     +          9.0D0,5.0D0,3.0D0,13.0D0,7.0D0,
+     +          11.0D0,9.0D0,5.0D0,7.0D0,5.0D0,
+     +          3.0D0,1.0D0,11.0D0,9.0D0,7.0D0,
+     +          9.0D0,7.0D0,5.0D0,7.0D0,5.0D0,
+     +          5.0D0,3.0D0,3.0D0,5.0D0,7.0D0,
+     +          1.0D0,11.0D0,9.0D0,3.0D0,9.0D0,
+     +          9.0D0,1.0D0,5.0D0,13.0D0,7.0D0,
+     +          3.0D0,5.0D0,9.0D0,7.0D0,11.0D0,
+     +          7.0D0,5.0D0,3.0D0,7.0D0,5.0D0,
+     +          3.0D0,11.0D0,9.0D0,11.0D0,7.0D0,
+     +          1.0D0,13.0D0,5.0D0,7.0D0,3.0D0,
+     +          9.0D0,11.0D0,5.0D0,7.0D0,15.0D0,
+     +          5.0D0,3.0D0,7.0D0,3.0D0,5.0D0,
+     +          1.0D0,9.0D0,13.0D0,7.0D0,5.0D0,
+     +          3.0D0,3.0D0,5.0D0,13.0D0,11.0D0,
+     +          9.0D0,5.0D0,9.0D0,7.0D0,3.0D0,
+     +          3.0D0,1.0D0,11.0D0,5.0D0,7.0D0,
+     +          9.0D0,7.0D0,5.0D0,7.0D0,5.0D0,
+     +          3.0D0,9.0D0,11.0D0,9.0D0,7.0D0,
+     +          5.0D0,3.0D0,1.0D0,5.0D0,7.0D0,
+     +          9.0D0,3.0D0,7.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0/
+        DATA ENGAVI/0.00000,0.39592,0.64025,2.54559,3.18431,
+     +          3.23893,3.29890,4.24638,9.68393,36.03206,
+     +          36.29839,36.50986,36.66110,36.75792,37.37099,
+     +          37.73033,37.96441,39.16446,39.21549,39.36359,
+     +          39.78638,39.91804,40.10787,40.34546,40.36110,
+     +          40.46035,40.56261,40.59725,40.74240,40.95884,
+     +          41.00459,41.07392,41.09682,41.13928,41.30183,
+     +          41.30484,41.74821,41.75017,41.97851,43.78106,
+     +          43.82647,43.90533,44.53071,47.89222,47.94925,
+     +          48.06009,48.29502,48.35169,48.57282,48.67205,
+     +          48.78788,48.79146,48.94905,49.03188,49.05807,
+     +          49.07943,49.22811,49.24484,49.32052,49.36267,
+     +          49.38274,49.38579,49.65975,49.73252,50.01496,
+     +          50.04385,50.22828,50.24872,50.31134,50.42310,
+     +          50.44219,50.59227,51.82627,51.97021,52.02237,
+     +          52.02930,52.06452,52.07717,52.13875,52.24061,
+     +          52.27412,52.39530,52.43123,52.43473,52.51795,
+     +          52.53258,52.62425,52.64297,52.70499,52.76210,
+     +          52.76839,52.80237,52.84321,52.89622,52.92954,
+     +          52.93795,52.95444,52.96171,52.99080,53.00593,
+     +          53.07880,53.12864,53.17687,53.30574,53.31742,
+     +          53.31882,53.35188,53.38753,53.40785,53.44348,
+     +          53.49211,53.49581,53.61083,53.61191,53.67086,
+     +          53.88230,53.90699,53.91299,54.01601,54.10994,
+     +          54.15362,54.25694,54.26574,54.34085,54.42898,
+     +          54.55778,54.65780,54.69503,54.82761,54.96821,
+     +          55.09397,55.09454,55.28774,56.22894,56.39249,
+     +          56.48193,56.60919,56.75533,56.80521,56.87537,
+     +          56.89749,56.91077,56.92195,56.97507,57.86535,
+     +          59.95508,60.04070,60.14730,60.26810,60.48343,
+     +          60.80812,61.08186,61.18185,61.66107,61.73094,
+     +          61.85829,61.97566/
+        DATA NGAVII/3,3,3,3,3,3,3,3,3,3,
+     +          3,3,3,3,3,3,3,3,3,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4/
+        DATA GGAVII/10.0D0,8.0D0,6.0D0,4.0D0,6.0D0,
+     +          4.0D0,2.0D0,10.0D0,8.0D0,4.0D0,
+     +          2.0D0,12.0D0,6.0D0,10.0D0,4.0D0,
+     +          6.0D0,8.0D0,4.0D0,6.0D0,8.0D0,
+     +          6.0D0,2.0D0,4.0D0,10.0D0,8.0D0,
+     +          6.0D0,8.0D0,10.0D0,6.0D0,4.0D0,
+     +          4.0D0,2.0D0,8.0D0,6.0D0,4.0D0,
+     +          6.0D0,4.0D0,2.0D0,4.0D0,12.0D0,
+     +          10.0D0,6.0D0,8.0D0,10.0D0,14.0D0,
+     +          8.0D0,6.0D0,10.0D0,6.0D0,8.0D0,
+     +          6.0D0,4.0D0,4.0D0,10.0D0,8.0D0,
+     +          14.0D0,8.0D0,10.0D0,8.0D0,2.0D0,
+     +          6.0D0,14.0D0,4.0D0,12.0D0,2.0D0,
+     +          10.0D0,6.0D0,4.0D0,8.0D0,6.0D0,
+     +          10.0D0,12.0D0,12.0D0,8.0D0,6.0D0,
+     +          2.0D0,10.0D0,8.0D0,12.0D0,6.0D0,
+     +          4.0D0,10.0D0,10.0D0,8.0D0,4.0D0,
+     +          8.0D0,6.0D0,2.0D0,8.0D0,12.0D0,
+     +          10.0D0,6.0D0,4.0D0,6.0D0,8.0D0,
+     +          14.0D0,12.0D0,10.0D0,6.0D0,4.0D0,
+     +          10.0D0,8.0D0,12.0D0,2.0D0,10.0D0,
+     +          4.0D0,2.0D0,4.0D0,6.0D0,8.0D0,
+     +          8.0D0,6.0D0,4.0D0,8.0D0,2.0D0,
+     +          10.0D0,8.0D0,10.0D0,6.0D0,10.0D0,
+     +          12.0D0,4.0D0,14.0D0,12.0D0,6.0D0,
+     +          4.0D0,8.0D0,6.0D0,2.0D0,6.0D0,
+     +          4.0D0,6.0D0,2.0D0,8.0D0,4.0D0,
+     +          8.0D0,6.0D0,10.0D0,2.0D0,4.0D0,
+     +          8.0D0,6.0D0,4.0D0,6.0D0,8.0D0,
+     +          6.0D0,8.0D0,10.0D0,4.0D0,4.0D0,
+     +          4.0D0,6.0D0,10.0D0,2.0D0,6.0D0,
+     +          8.0D0,4.0D0,4.0D0,6.0D0,8.0D0,
+     +          6.0D0,10.0D0,4.0D0,8.0D0,8.0D0,
+     +          2.0D0,6.0D0,10.0D0,6.0D0,4.0D0,
+     +          8.0D0,12.0D0,6.0D0,10.0D0,8.0D0,
+     +          4.0D0,6.0D0,4.0D0,2.0D0,8.0D0/
+        DATA ENGAVII/0.00000,0.34130,0.57540,0.72960,3.23250,
+     +          3.24120,3.45300,3.46420,3.78920,4.19050,
+     +          4.47240,4.67500,4.78300,4.98780,5.29640,
+     +          7.57960,7.71050,11.76280,11.93700,61.28860,
+     +          61.30300,61.30800,61.30830,61.33400,61.66340,
+     +          62.04860,62.09900,62.20960,62.27280,62.31060,
+     +          62.39280,62.43100,62.52260,62.72680,62.86400,
+     +          63.01970,63.22410,63.31900,64.88370,65.11760,
+     +          65.19010,65.20550,65.21230,65.25190,65.26430,
+     +          65.30350,65.34920,65.57240,65.62100,65.63900,
+     +          65.71630,65.71790,65.76560,65.79980,65.83450,
+     +          65.88900,65.89740,65.90280,66.02770,66.10190,
+     +          66.13060,66.16400,66.22130,66.29760,66.31770,
+     +          66.35100,66.36900,66.38960,66.40580,66.42180,
+     +          66.42240,66.49780,66.54780,66.61200,66.65590,
+     +          66.70400,66.70800,66.71000,66.85700,66.87290,
+     +          66.91740,66.93180,67.01100,67.01150,67.02300,
+     +          67.03640,67.08300,67.10870,67.11310,67.12800,
+     +          67.13380,67.43920,67.62310,67.64970,67.73770,
+     +          67.74880,67.81400,67.92700,67.94280,68.04550,
+     +          68.16070,68.16290,68.18250,68.21820,68.30500,
+     +          68.36930,68.41410,68.45250,68.46330,68.47100,
+     +          68.54160,68.62720,68.66510,68.68430,68.69500,
+     +          68.70930,68.71610,68.78840,68.82250,68.86160,
+     +          68.86930,68.98540,69.03420,69.05320,69.14200,
+     +          69.16150,69.25340,69.30440,69.41920,69.67800,
+     +          69.69300,69.94640,69.96580,70.12620,70.30000,
+     +          70.51820,70.92780,70.97500,71.04370,71.07900,
+     +          71.22450,71.23430,71.41180,71.76140,71.77230,
+     +          72.24220,72.36100,72.45100,72.54640,72.90380,
+     +          73.05300,73.11170,73.14650,73.25040,73.32380,
+     +          73.35800,73.38530,73.49700,73.51840,73.54950,
+     +          73.69420,73.75600,73.84300,73.85880,74.09310,
+     +          74.09630,74.09640,74.18430,74.32420,74.35230,
+     +          74.55780,74.68000,74.83740,75.01690,75.15400,
+     +          78.00380,78.13420,79.35700,79.48180,79.51390/
+        DATA NGEIV/4,4,4,4,4,5,5,5,4,4,
+     +          4,4,5,5,6,4,4,6,6,4,
+     +          4,4,4,4,5,5,5,5,6,6,
+     +          7,7,7,4,4,6,6,8,9/
+        DATA GGEIV/2.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          2.0D0,2.0D0,4.0D0,8.0D0,6.0D0,
+     +          6.0D0,4.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,2.0D0,2.0D0,4.0D0,4.0D0,
+     +          2.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          8.0D0,8.0D0,10.0D0,4.0D0,6.0D0,
+     +          2.0D0,2.0D0,4.0D0,4.0D0,2.0D0,
+     +          8.0D0,6.0D0,2.0D0,2.0D0/
+        DATA ENGEIV/0.0D0,10.08133,10.42736,23.63157,23.66269,
+     +          24.70555,28.07705,28.19325,31.9249,31.9254,
+     +          32.2282,32.7869,33.16026,33.17515,33.55055,
+     +          34.9282,35.2126,35.09097,35.14473,36.1602,
+     +          36.4360,36.2970,36.3653,36.6070,36.89318,
+     +          36.89326,36.9935,36.9935,37.58033,37.58810,
+     +          37.77397,38.6015,38.6188,39.4423,39.9401,
+     +          39.58531,39.58541,40.12197,41.5630/
+        DATA NGEV/3,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,5,5,4,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,5,5,5,5,5,5,5,5,5,
+     +          5,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,7,7,7,
+     +          7/
+        DATA GGEV/1.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          5.0D0,3.0D0,1.0D0,7.0D0,9.0D0,
+     +          5.0D0,7.0D0,5.0D0,7.0D0,3.0D0,
+     +          5.0D0,3.0D0,3.0D0,11.0D0,9.0D0,
+     +          7.0D0,3.0D0,5.0D0,1.0D0,3.0D0,
+     +          7.0D0,5.0D0,3.0D0,9.0D0,7.0D0,
+     +          9.0D0,7.0D0,5.0D0,5.0D0,7.0D0,
+     +          5.0D0,1.0D0,3.0D0,5.0D0,5.0D0,
+     +          3.0D0,1.0D0,7.0D0,9.0D0,5.0D0,
+     +          5.0D0,7.0D0,3.0D0,5.0D0,3.0D0,
+     +          7.0D0,1.0D0,3.0D0,11.0D0,5.0D0,
+     +          9.0D0,7.0D0,5.0D0,13.0D0,7.0D0,
+     +          3.0D0,9.0D0,11.0D0,5.0D0,11.0D0,
+     +          7.0D0,9.0D0,9.0D0,5.0D0,3.0D0,
+     +          7.0D0,3.0D0,11.0D0,9.0D0,7.0D0,
+     +          7.0D0,7.0D0,9.0D0,7.0D0,5.0D0,
+     +          9.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,9.0D0,3.0D0,5.0D0,
+     +          7.0D0,1.0D0,7.0D0,3.0D0,5.0D0,
+     +          5.0D0,3.0D0,7.0D0,5.0D0,3.0D0,
+     +          5.0D0/
+        DATA ENGEV/0.00000,29.03949,29.25618,29.60307,29.99614,
+     +          40.13975,40.63619,40.95601,40.65330,40.89591,
+     +          41.01281,41.55470,41.60417,41.80352,42.09762,
+     +          42.19129,41.94057,56.54322,57.20848,57.23639,
+     +          57.53821,57.25775,57.25944,57.52345,57.63439,
+     +          57.44952,57.60953,57.90423,57.61616,57.87337,
+     +          57.94856,58.23369,58.25888,58.11087,60.84422,
+     +          60.93120,61.21912,61.40793,61.48472,64.83870,
+     +          65.13420,65.48300,64.99650,65.08600,65.54110,
+     +          65.26190,65.32750,65.82670,65.87540,65.64670,
+     +          65.72560,68.64500,68.67620,68.77282,68.84828,
+     +          68.91786,68.92439,68.73323,68.76883,68.85302,
+     +          68.90176,68.91022,68.91690,69.29193,69.36514,
+     +          69.44313,69.49899,69.36458,69.43544,69.44966,
+     +          69.50402,71.21520,71.42320,71.44290,71.99700,
+     +          71.53430,71.59580,71.60740,72.18670,72.19700,
+     +          72.04900,72.91440,72.95270,73.47850,73.50680,
+     +          74.81060,74.87670,74.91820,74.96780,75.00610,
+     +          75.03230,75.40370,75.51000,75.55400,75.57840,
+     +          75.41490,75.44800,78.85060,78.87170,79.41300,
+     +          79.4274/
+        DATA NGEVI/3,3,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,3,4,3/
+        DATA GGEVI/6.0D0,4.0D0,10.0D0,8.0D0,6.0D0,
+     +          4.0D0,8.0D0,6.0D0,6.0D0,4.0D0,
+     +          4.0D0,2.0D0,6.0D0,4.0D0,2.0D0,
+     +          10.0D0,8.0D0,2.0D0,8.0D0,6.0D0,
+     +          10.0D0,12.0D0,8.0D0,4.0D0,6.0D0,
+     +          2.0D0,10.0D0,8.0D0,10.0D0,4.0D0,
+     +          6.0D0,6.0D0,8.0D0,8.0D0,4.0D0,
+     +          6.0D0,4.0D0,6.0D0,2.0D0,6.0D0,
+     +          4.0D0,8.0D0,2.0D0,6.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,8.0D0,10.0D0,
+     +          4.0D0,6.0D0,4.0D0,8.0D0,12.0D0,
+     +          2.0D0,6.0D0,2.0D0,4.0D0,8.0D0,
+     +          10.0D0,2.0D0,4.0D0,2.0D0,8.0D0,
+     +          4.0D0,8.0D0,6.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,8.0D0,6.0D0,2.0D0,
+     +          8.0D0,4.0D0,6.0D0,6.0D0,4.0D0,
+     +          8.0D0,2.0D0,6.0D0,4.0D0,6.0D0,
+     +          4.0D0,8.0D0,8.0D0,6.0D0,4.0D0,
+     +          8.0D0,6.0D0,8.0D0,4.0D0,6.0D0,
+     +          4.0D0,2.0D0,6.0D0,4.0D0,8.0D0,
+     +          6.0D0,4.0D0,8.0D0,2.0D0/
+        DATA ENGEVI/0.00000,0.56500,37.65353,37.96934,38.26862,
+     +          38.45979,38.81010,39.29515,40.60952,40.79993,
+     +          41.20945,41.22437,41.29103,42.07221,42.21976,
+     +          42.60400,42.61015,48.50054,50.20025,50.70719,
+     +          50.73290,51.03085,51.06734,51.08616,51.29573,
+     +          51.31366,51.47113,51.66542,51.75363,51.79963,
+     +          51.81819,52.08797,52.14056,52.23578,52.44904,
+     +          52.63209,53.31287,53.40446,53.44238,53.74802,
+     +          54.06004,54.07860,54.14725,54.28041,54.41312,
+     +          54.70443,54.71150,54.72489,54.89901,55.10381,
+     +          55.22740,55.25604,55.46718,55.51764,55.57702,
+     +          55.68044,55.81186,55.96176,55.97899,56.83163,
+     +          56.91054,61.51842,62.06343,84.64600,84.67900,
+     +          84.73800,84.87100,84.89600,85.15400,85.21700,
+     +          85.26300,85.27000,85.34200,85.35800,85.49800,
+     +          85.63300,85.67600,85.72500,87.46100,87.57000,
+     +          87.58400,87.59400,87.61300,87.63800,88.13200,
+     +          88.14500,88.26700,88.39300,88.42900,88.43200,
+     +          88.46500,88.48100,88.52800,88.54000,88.55100,
+     +          88.72900,88.97040,89.31400,89.33700,89.44000,
+     +          89.45100,93.47500,95.34300,97.15000/
+        DATA NGEVII/3,3,3,3,3,3,3,3,3,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,3,3,3,3,3,
+     +          3,3,3,3,3,3,3/
+        DATA GGEVII/9.0D0,7.0D0,5.0D0,5.0D0,5.0D0,
+     +          3.0D0,1.0D0,9.0D0,1.0D0,11.0D0,
+     +          9.0D0,7.0D0,5.0D0,3.0D0,9.0D0,
+     +          7.0D0,5.0D0,7.0D0,5.0D0,3.0D0,
+     +          11.0D0,9.0D0,7.0D0,5.0D0,3.0D0,
+     +          1.0D0,9.0D0,5.0D0,3.0D0,13.0D0,
+     +          1.0D0,7.0D0,11.0D0,3.0D0,5.0D0,
+     +          9.0D0,11.0D0,3.0D0,5.0D0,5.0D0,
+     +          7.0D0,9.0D0,7.0D0,3.0D0,5.0D0,
+     +          7.0D0,5.0D0,9.0D0,11.0D0,7.0D0,
+     +          9.0D0,5.0D0,3.0D0,13.0D0,7.0D0,
+     +          11.0D0,9.0D0,5.0D0,7.0D0,5.0D0,
+     +          3.0D0,1.0D0,11.0D0,9.0D0,7.0D0,
+     +          9.0D0,7.0D0,5.0D0,5.0D0,7.0D0,
+     +          5.0D0,3.0D0,3.0D0,5.0D0,11.0D0,
+     +          9.0D0,7.0D0,1.0D0,3.0D0,9.0D0,
+     +          9.0D0,1.0D0,5.0D0,13.0D0,7.0D0,
+     +          3.0D0,5.0D0,9.0D0,7.0D0,11.0D0,
+     +          5.0D0,3.0D0,11.0D0,7.0D0,3.0D0,
+     +          5.0D0,9.0D0,1.0D0,13.0D0,11.0D0,
+     +          7.0D0,5.0D0,7.0D0,9.0D0,11.0D0,
+     +          3.0D0,7.0D0,5.0D0,15.0D0,5.0D0,
+     +          3.0D0,7.0D0,3.0D0,5.0D0,9.0D0,
+     +          13.0D0,1.0D0,7.0D0,5.0D0,3.0D0,
+     +          5.0D0,3.0D0,13.0D0,11.0D0,9.0D0,
+     +          5.0D0,9.0D0,7.0D0,3.0D0,3.0D0,
+     +          1.0D0,11.0D0,5.0D0,7.0D0,9.0D0,
+     +          7.0D0,5.0D0,7.0D0,5.0D0,3.0D0,
+     +          9.0D0,11.0D0,9.0D0,7.0D0,5.0D0,
+     +          3.0D0,1.0D0,5.0D0,7.0D0,9.0D0,
+     +          3.0D0,7.0D0,3.0D0,5.0D0,7.0D0,
+     +          9.0D0,5.0D0,7.0D0,5.0D0,3.0D0,
+     +          1.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          7.0D0,3.0D0/
+        DATA ENGEVII/0.00000,0.50280,0.80190,2.80920,3.57410,
+     +          3.62180,3.69090,4.70190,10.68780,48.84530,
+     +          49.17940,49.44650,49.63560,49.75600,50.31690,
+     +          50.76920,51.05890,52.30060,52.34720,52.54300,
+     +          52.94560,53.11870,53.36960,53.56920,53.57320,
+     +          53.71930,53.84150,53.88910,54.05430,54.23540,
+     +          54.38530,54.39160,54.42050,54.49740,54.66700,
+     +          54.69770,55.15050,55.24550,55.45010,57.33230,
+     +          57.39030,57.49510,58.16510,61.82300,61.89370,
+     +          62.03720,62.69240,62.82810,62.92460,63.19280,
+     +          63.46040,63.47400,63.67530,63.76270,63.78710,
+     +          63.80550,63.99840,64.01020,64.11510,64.16500,
+     +          64.20920,64.26050,64.50120,64.54830,64.88640,
+     +          64.97500,65.10700,65.12000,65.18920,65.30200,
+     +          65.36160,65.54460,66.69000,66.91240,66.97300,
+     +          66.97840,66.99060,67.02040,67.14250,67.24610,
+     +          67.30630,67.37700,67.43660,67.47830,67.53000,
+     +          67.56530,67.64480,67.71740,67.77420,67.86210,
+     +          67.90960,67.96750,67.97120,68.04350,68.08230,
+     +          68.08430,68.12010,68.12970,68.14070,68.15100,
+     +          68.15930,68.33860,68.41830,68.42550,68.46110,
+     +          68.50060,68.54130,68.56700,68.58620,68.65400,
+     +          68.65510,68.80960,68.82050,68.87930,69.13010,
+     +          69.16810,69.20640,69.27960,69.41170,69.42530,
+     +          69.49140,69.54200,69.58970,69.70840,69.87740,
+     +          69.98240,69.99860,70.20770,70.34750,70.49430,
+     +          70.52990,70.70120,71.54160,71.74920,71.85470,
+     +          72.00540,72.22600,72.27990,72.36300,72.38050,
+     +          72.42200,72.44900,72.49500,73.47540,75.61770,
+     +          75.73590,75.88890,75.96280,76.23840,76.68450,
+     +          76.93930,77.04650,77.59380,77.67560,77.99020,
+     +          90.31410,90.94130,92.05420,94.12570,95.34660,
+     +          95.44970,95.80400,96.13800,97.26200,98.49800,
+     +          104.83450,105.18150/
+        DATA NGEVIII/3/
+        DATA GGEVIII/10.0D0/
+        DATA ENGEVIII/0.00000/
+        DATA NASIV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,5,5,5,5,5,5,
+     +          4,4,4,4,5,5,5,5,5,5,
+     +          5,6,6/
+        DATA GASIV/1.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          5.0D0,1.0D0,3.0D0,5.0D0,5.0D0,
+     +          3.0D0,5.0D0,7.0D0,1.0D0,3.0D0,
+     +          1.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,9.0D0,7.0D0,5.0D0,
+     +          5.0D0,3.0D0,5.0D0,7.0D0,1.0D0,
+     +          5.0D0,3.0D0,1.0D0/
+        DATA ENASIV/0.00000,9.39950,9.54210,9.85580,13.88900,
+     +          22.26300,22.30900,22.49920,22.86190,25.37440,
+     +          26.11070,26.12717,26.15231,26.24530,27.29234,
+     +          28.44452,31.14632,31.17792,31.27935,31.49693,
+     +          35.26800,35.30200,35.35320,35.42600,36.43082,
+     +          36.52729,36.64735,36.65456,36.66587,36.94060,
+     +          36.96180,37.05579,37.28191/
+        DATA NASV/4,4,4,4,4,5,4,4/
+        DATA GASV/2.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          2.0D0,6.0D0,8.0D0/
+        DATA ENASV/0.00000,12.04320,12.55280,29.37150,29.42670,
+     +          32.68170,41.16110,41.17210/
+        DATA NASVI/3,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,5,5,4,4,4,
+     +          5,5,5/
+        DATA GASVI/1.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,3.0D0,9.0D0,5.0D0,
+     +          1.0D0,5.0D0,7.0D0,7.0D0,3.0D0,
+     +          3.0D0,5.0D0,3.0D0,11.0D0,9.0D0,
+     +          3.0D0,5.0D0,7.0D0,1.0D0,7.0D0,
+     +          5.0D0,9.0D0,3.0D0,7.0D0,3.0D0,
+     +          9.0D0,5.0D0,7.0D0,5.0D0,1.0D0,
+     +          3.0D0,3.0D0,3.0D0,3.0D0,3.0D0,
+     +          3.0D0,3.0D0,3.0D0/
+        DATA ENASVI/0.00000,41.06002,41.31466,41.76493,42.18250,
+     +          53.98577,54.54295,54.65802,54.93517,55.02453,
+     +          55.05534,55.72619,55.72683,56.01612,56.09029,
+     +          56.35890,56.48181,73.80025,74.66770,74.69624,
+     +          74.72906,74.73790,74.96687,75.07407,75.07724,
+     +          75.17798,75.19744,75.20522,75.49776,75.53057,
+     +          75.60932,75.81623,75.96703,75.99661,79.93260,
+     +          86.58310,87.19930,89.71740,90.10180,90.84070,
+     +          100.85250,101.26660,101.97950/
+        DATA NASVII/3,3,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,3,3/
+        DATA GASVII/6.0D0,4.0D0,8.0D0,10.0D0,6.0D0,
+     +          12.0D0,8.0D0,4.0D0,6.0D0,2.0D0,
+     +          10.0D0,8.0D0,4.0D0,10.0D0,6.0D0,
+     +          6.0D0,8.0D0,8.0D0,4.0D0,6.0D0,
+     +          4.0D0,6.0D0,2.0D0,6.0D0,4.0D0,
+     +          8.0D0,2.0D0,6.0D0,4.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0,10.0D0,4.0D0,
+     +          6.0D0,8.0D0,4.0D0,12.0D0,2.0D0,
+     +          6.0D0,2.0D0,4.0D0,8.0D0,10.0D0,
+     +          2.0D0,4.0D0,4.0D0,2.0D0/
+        DATA ENASVII/0.00000,0.70730,65.07190,65.63600,65.69050,
+     +          66.02650,66.03650,66.15300,66.29810,66.43320,
+     +          66.55600,66.78055,66.87858,66.92790,66.94379,
+     +          67.26928,67.35821,67.49989,67.70114,67.93104,
+     +          68.46425,68.57628,68.61910,68.99040,69.38116,
+     +          69.40670,69.48644,69.64698,69.81460,70.05773,
+     +          70.07442,70.08856,70.31777,70.41810,70.66176,
+     +          70.76527,70.96992,71.00736,71.02680,71.21871,
+     +          71.33008,71.54963,71.55380,72.44988,72.55180,
+     +          77.42115,78.14180,99.17740,104.21800/
+        DATA NSEIV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,5,4,4,4,5,5,4,4,
+     +          4,4,5,5,6,5,5,7/
+        DATA GSEIV/2.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          4.0D0,6.0D0,2.0D0,2.0D0,4.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,4.0D0,2.0D0,
+     +          8.0D0,6.0D0,4.0D0,6.0D0,2.0D0,
+     +          8.0D0,10.0D0,2.0D0/
+        DATA ENSEIV/0.00000,0.54260,9.84377,10.04028,10.36374,
+     +          12.92050,12.98190,15.96760,16.87850,17.15370,
+     +          18.99650,19.04470,19.49540,19.76917,23.52146,
+     +          24.41949,23.54620,23.69470,27.19376,28.08708,
+     +          28.47720,28.48090,29.47690,29.49570,29.84860,
+     +          34.20150,34.20150,34.94290/
+        DATA NSEV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,5,4/
+        DATA GSEV/1.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          1.0D0,3.0D0,5.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,3.0D0,7.0D0/
+        DATA ENSEV/0.00000,11.12830,11.32610,11.77370,16.33280,
+     +          26.25850,26.54340,27.10480,26.43270,31.93010,
+     +          31.95670,31.99820,35.63630,44.81380/
+        DATA NSEVI/4,4,4,4,4,5/
+        DATA GSEVI/2.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          2.0D0/
+        DATA ENSEVI/0.00000,13.98070,14.68740,35.06650,35.15060,
+     +          41.36040/
+        DATA NSEVII/3,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,5,5,5,
+     +          5,4,4,4,4,4,4,4,5,5,
+     +          5,5,6,6,6,6,7,7,7,7,
+     +          8,8,8,8/
+        DATA GSEVII/1.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,3.0D0,9.0D0,5.0D0,
+     +          1.0D0,5.0D0,7.0D0,3.0D0,7.0D0,
+     +          3.0D0,5.0D0,3.0D0,5.0D0,3.0D0,
+     +          7.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          5.0D0,3.0D0,7.0D0,3.0D0,5.0D0,
+     +          3.0D0,7.0D0,3.0D0,7.0D0,5.0D0,
+     +          3.0D0,3.0D0,5.0D0,3.0D0,7.0D0,
+     +          3.0D0,3.0D0,5.0D0,7.0D0/
+        DATA ENSEVII/0.00000,54.52199,54.81546,55.39180,55.83046,
+     +          69.27022,69.87942,70.13042,70.43765,70.48954,
+     +          70.64334,71.30455,71.35941,71.69634,71.70874,
+     +          72.09495,72.25216,110.24670,110.85430,110.85430,
+     +          110.85430,112.14370,112.14370,112.14370,112.71400,
+     +          113.73070,113.73070,113.73070,128.13770,129.05520,
+     +          129.05520,129.05520,136.50660,137.37450,137.37450,
+     +          137.37450,141.55280,142.38350,142.38350,142.38350,
+     +          144.78870,145.64420,145.64420,145.64420/
+
+
+        DATA NBRIV/4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,5,5,5,4,4,5,
+     +          5,5,5,5,5,5,5,5,6,6/
+        DATA GBRIV/1.,3.,5.,5.,5.,3.,5.,7.,1.,3.,
+     +          5.,5.,7.,9.,5.,3.,3.,3.,5.,7.,
+     +          5.,1.,3.,7.,1.,3.,5.,3.,5.,3.,
+     +          3.,5.,7.,1.,3.,5.,3.,5.,5.,3./
+        DATA ENBRIV/0.00000,0.32509,0.69579,2.00735,10.42133,
+     +          15.80100,15.82064,15.93368,17.32088,17.61463,
+     +          17.65654,17.84552,19.77705,20.04051,20.21978,
+     +          20.00101,20.14619,20.74957,21.00336,21.35689,
+     +          21.82803,22.10725,22.31092,22.07431,22.31636,
+     +          22.54529,23.05619,22.47452,22.62753,23.19764,
+     +          26.78648,26.83447,27.31893,26.79988,27.13196,
+     +          27.45008,27.63660,27.99923,32.78365,32.91012/
+
+        DATA NBRV/4,4,4,4,4,4,4,4,5/
+        DATA GBRV/2.,4.,4.,6.,2.,4.,4.,6.,2./
+        DATA ENBRV/0.00000,0.75506,15.24274,15.32792,19.60909,
+     +          19.96282,23.30531,23.38243,26.47187/
+
+        DATA NBRVI/4,4,4,4,4,4,4,4,4,4,4/
+        DATA GBRVI/1.,1.,3.,5.,3.,1.,3.,5.,3.,5.,7./
+        DATA ENBRVI/0.00000,12.93354,13.19576,13.80390,18.75559,
+     +          30.26901,30.67443,31.47860,37.77154,37.81109,
+     +          37.87110/
+
+        DATA NBRVII/4,4,4,4,4/
+        DATA GBRVII/2.,2.,4.,4.,6./
+        DATA ENBRVII/0.00000,15.90395,16.84375,40.56825,40.675/
+
+        DATA NBRVIII/3/
+        DATA GBRVIII/1./
+        DATA ENBRVIII/0.00000/
+
+        DATA NKRIV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,5,5,5,4,
+     +          4,5,5,4,4,4,4,4,4,5,
+     +          5,4,4,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,6,6,
+     +          6,5,5,5,6,6,6,6/
+        DATA GKRIV/4.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          4.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          8.0D0,10.0D0,2.0D0,6.0D0,8.0D0,
+     +          2.0D0,8.0D0,4.0D0,6.0D0,6.0D0,
+     +          2.0D0,2.0D0,4.0D0,6.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,6.0D0,8.0D0,4.0D0,
+     +          6.0D0,6.0D0,4.0D0,2.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0,4.0D0,2.0D0,
+     +          6.0D0,4.0D0,6.0D0,4.0D0,4.0D0,
+     +          2.0D0,6.0D0,8.0D0,4.0D0,6.0D0,
+     +          2.0D0,4.0D0,4.0D0,4.0D0,8.0D0,
+     +          4.0D0,2.0D0,8.0D0,2.0D0,4.0D0,
+     +          6.0D0,6.0D0,8.0D0,4.0D0,2.0D0,
+     +          4.0D0,6.0D0,4.0D0/
+        DATA ENKRIV/0.00000,2.11239,2.31854,3.85050,4.14177,
+     +          14.72455,15.17895,15.38764,18.07352,18.18163,
+     +          20.26461,20.60133,25.46630,21.41505,21.58636,
+     +          21.84986,22.17792,21.56731,22.22148,23.13119,
+     +          22.40230,22.41193,22.44120,22.64799,24.97342,
+     +          25.38395,25.09109,25.44336,25.79666,25.73855,
+     +          26.26733,25.90280,26.24566,26.07979,27.93141,
+     +          26.95622,26.97383,27.27510,27.42338,27.65264,
+     +          27.68728,28.75690,28.86444,29.11495,29.43944,
+     +          29.54164,29.91015,30.30714,29.97970,30.19848,
+     +          30.30991,30.23960,30.89763,30.57610,31.01760,
+     +          31.10723,31.88163,32.05111,32.03199,32.08255,
+     +          32.62769,32.91128,34.58754,36.03060,36.49688,
+     +          36.52975,36.60859,36.95379,36.78776,37.18933,
+     +          37.59589,36.81765,37.41800,37.10299,37.30677,
+     +          37.75861,39.15447,39.16573/
+        DATA NKRV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,4,4,4,
+     +          4,4/
+        DATA GKRV/1.0D0,3.0D0,5.0D0,5.0D0,1.0D0,
+     +          3.0D0,5.0D0,7.0D0,1.0D0,3.0D0,
+     +          5.0D0,5.0D0,3.0D0,5.0D0,7.0D0,
+     +          3.0D0,5.0D0,3.0D0,1.0D0,5.0D0,
+     +          3.0D0,7.0D0,5.0D0,7.0D0,3.0D0,
+     +          3.0D0,5.0D0,3.0D0,3.0D0,5.0D0,
+     +          7.0D0,3.0D0,3.0D0,5.0D0,3.0D0,
+     +          5.0D0,1.0D0,5.0D0,3.0D0,1.0D0,
+     +          5.0D0,1.0D0/
+        DATA ENKRV/0.00000,0.46405,0.94170,2.44533,4.86067,
+     +          16.07556,16.09058,16.24397,18.34040,18.38522,
+     +          18.43253,20.25743,22.94495,23.59160,23.92260,
+     +          24.05803,26.20239,26.52429,26.83270,26.88902,
+     +          27.12115,27.19985,27.25461,29.02729,29.47359,
+     +          29.87100,30.59910,31.11920,34.58270,35.17150,
+     +          35.95520,35.15680,35.79210,36.09650,36.41480,
+     +          36.77370,38.14580,38.86645,39.48161,39.62131,
+     +          41.07034,44.20927/
+        DATA NKRVI/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,5,4,4,4,4,4,5,5,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,5,4,4,5,
+     +          5,5,5,5/
+        DATA GKRVI/2.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          4.0D0,6.0D0,2.0D0,2.0D0,4.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,6.0D0,
+     +          4.0D0,2.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,2.0D0,2.0D0,8.0D0,
+     +          4.0D0,6.0D0,4.0D0,6.0D0,6.0D0,
+     +          8.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          4.0D0,4.0D0,8.0D0,6.0D0,6.0D0,
+     +          2.0D0,4.0D0,2.0D0,4.0D0/
+        DATA ENKRVI/0.00000,1.00550,13.37000,13.78620,14.31760,
+     +          17.56510,17.69590,21.08770,22.35920,22.79040,
+     +          27.53960,27.65340,34.14280,34.22100,34.47530,
+     +          34.56520,37.65360,37.86290,40.18580,40.50030,
+     +          41.15730,41.30320,41.40280,41.91060,41.92140,
+     +          41.95180,41.96210,42.55010,42.58920,43.71030,
+     +          44.51470,46.40470,46.77370,48.42760,48.58670,
+     +          48.72800,48.95110,49.42980,49.54400,49.54780,
+     +          50.01970,50.65000,54.81420,54.94680/
+
+        DATA NRBIV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,5,4,4,5,4,
+     +          4,4,4,4,4,4,4,5,5,4,
+     +          5,4,4,5,4,4,4,4,4,4,
+     +          5,4,5,5/
+        DATA GRBIV/5.,3.,1.,5.,1.,5.,3.,1.,3.,1.,
+     +          3.,5.,7.,9.,5.,7.,3.,5.,1.,7.,
+     +          9.,7.,9.,11.,9.,5.,5.,3.,3.,1.,
+     +          5.,3.,7.,5.,9.,7.,5.,3.,5.,3.,
+     +          7.,7.,5.,5.,7.,3.,5.,1.,3.,3.,
+     +          1.,5.,3.,5./
+        DATA ENRBIV/0.00000,0.77619,0.86141,2.15208,4.76144,
+     +          16.73520,17.31042,17.68125,20.83119,21.17346,
+     +          21.18336,21.18745,21.19355,21.23174,22.50076,
+     +          22.68604,22.76121,23.24759,23.37712,23.43076,
+     +          23.66637,24.25153,24.33572,24.42201,24.72811,
+     +          25.20367,25.45056,25.68187,26.02948,26.09986,
+     +          26.12599,26.26668,26.37074,26.46566,26.52898,
+     +          26.59476,26.91870,27.74622,27.77792,27.89087,
+     +          27.91793,28.08142,28.17239,28.39808,28.41224,
+     +          28.57247,28.90413,28.90693,29.04962,29.26705,
+     +          29.85763,29.86287,29.91822,30.21499/
+
+        DATA NRBV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,5,5,5,5,5,5,5/
+        DATA GRBV/4.,4.,6.,2.,4.,6.,4.,2.,4.,6.,
+     +          4.,2.,2.,4.,2.,6.,4.,6.,4.,2./
+        DATA ENRBV/0.00000,2.31095,2.61364,4.31394,4.75080,
+     +          16.85263,17.46461,17.73100,20.71315,20.86317,
+     +          23.55672,23.81951,24.83727,33.03187,33.31207,
+     +          33.56376,33.69767,35.44956,35.55743,38.11150/
+
+        DATA NRBVI/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,5,5,5,5/
+        DATA GRBVI/1.,3.,5.,5.,1.,5.,3.,5.,7.,1.,
+     +          3.,5.,5.,3.,3.,1.,3.,5.,3./
+        DATA ENRBVI/0.00000,0.63728,1.22732,2.94413,5.60421,
+     +          14.77396,18.41550,18.43236,18.65144,20.94465,
+     +          21.01247,21.09281,23.31709,25.89224,27.35203,
+     +          37.62672,37.77055,38.88516,39.31167/
+
+        DATA NRBVII/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,5,4,4,4/
+        DATA GRBVII/2.,4.,2.,4.,6.,4.,6.,2.,2.,4.,
+     +          4.,6.,4.,4.,6.,2.,2.,4.,8.,6./
+        DATA ENRBVII/0.00000,1.29774,15.15719,15.70619,16.37558,
+     +          19.92414,20.10974,23.64379,25.15131,25.65754,
+     +          31.72309,31.88080,38.62058,39.02613,39.05639,
+     +          42.46372,42.49980,42.80207,57.59550,57.69617/
+
+        DATA NSRIV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,5,5,5,5,5,4,
+     +          4,5,5,4,4,4,4,4,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,6,6,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          5,5,5,5,5,5,5,5,4,4,
+     +          6,6,6,5,5,6,6,6,6,4,
+     +          4,4,4,5,5,5,5,5,4,4,
+     +          5,5,6,6,4,4,4,4,4,6,
+     +          6,4,4,6,6,6,6,6,4,4,
+     +          4,4,4,4,4,4,4,6,6,6,
+     +          6,5,5,6,6,6,6,5,5,5,
+     +          5,6,6,6,6,5,5,6,6,5,
+     +          7,7,4,4,5,5,5,5,5,5,
+     +          5,5,5,5,6,6,6,6,6,6,
+     +          6,6,7,7,7,5,5,5,5,5,
+     +          5,5,5,6,6,6,6,6,6,6,
+     +          6,6,7,7,5,5,5,5,5,5,
+     +          5,5,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6/
+        DATA GSRIV/4.0D0,2.0D0,2.0D0,8.0D0,6.0D0,
+     +          4.0D0,2.0D0,10.0D0,8.0D0,6.0D0,
+     +          4.0D0,2.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,6.0D0,8.0D0,6.0D0,
+     +          10.0D0,8.0D0,6.0D0,8.0D0,6.0D0,
+     +          4.0D0,2.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,6.0D0,4.0D0,4.0D0,2.0D0,
+     +          6.0D0,4.0D0,2.0D0,4.0D0,2.0D0,
+     +          6.0D0,4.0D0,8.0D0,6.0D0,2.0D0,
+     +          2.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          4.0D0,2.0D0,6.0D0,8.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          8.0D0,6.0D0,6.0D0,4.0D0,10.0D0,
+     +          8.0D0,6.0D0,4.0D0,2.0D0,4.0D0,
+     +          10.0D0,8.0D0,2.0D0,6.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,12.0D0,10.0D0,
+     +          8.0D0,6.0D0,2.0D0,4.0D0,6.0D0,
+     +          8.0D0,6.0D0,8.0D0,10.0D0,8.0D0,
+     +          2.0D0,4.0D0,8.0D0,6.0D0,4.0D0,
+     +          6.0D0,6.0D0,4.0D0,4.0D0,6.0D0,
+     +          2.0D0,4.0D0,2.0D0,8.0D0,10.0D0,
+     +          6.0D0,4.0D0,4.0D0,2.0D0,10.0D0,
+     +          8.0D0,6.0D0,4.0D0,6.0D0,4.0D0,
+     +          2.0D0,4.0D0,2.0D0,6.0D0,4.0D0,
+     +          8.0D0,6.0D0,6.0D0,8.0D0,4.0D0,
+     +          10.0D0,12.0D0,8.0D0,6.0D0,6.0D0,
+     +          4.0D0,8.0D0,10.0D0,2.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,2.0D0,8.0D0,
+     +          4.0D0,6.0D0,4.0D0,2.0D0,6.0D0,
+     +          4.0D0,6.0D0,6.0D0,8.0D0,4.0D0,
+     +          6.0D0,6.0D0,4.0D0,8.0D0,6.0D0,
+     +          6.0D0,4.0D0,6.0D0,8.0D0,8.0D0,
+     +          10.0D0,10.0D0,8.0D0,2.0D0,4.0D0,
+     +          12.0D0,10.0D0,2.0D0,2.0D0,6.0D0,
+     +          6.0D0,4.0D0,8.0D0,6.0D0,12.0D0,
+     +          10.0D0,10.0D0,8.0D0,6.0D0,8.0D0,
+     +          14.0D0,12.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,8.0D0,6.0D0,4.0D0,6.0D0,
+     +          6.0D0,4.0D0,4.0D0,2.0D0,2.0D0,
+     +          6.0D0,8.0D0,12.0D0,10.0D0,10.0D0,
+     +          8.0D0,10.0D0,8.0D0,8.0D0,10.0D0,
+     +          4.0D0,2.0D0,2.0D0,6.0D0,4.0D0,
+     +          6.0D0,8.0D0,6.0D0,4.0D0,14.0D0,
+     +          12.0D0,8.0D0,6.0D0,10.0D0,8.0D0,
+     +          10.0D0,12.0D0,12.0D0,10.0D0,10.0D0,
+     +          8.0D0,8.0D0,14.0D0,12.0D0,4.0D0,
+     +          6.0D0,10.0D0,12.0D0,12.0D0,14.0D0,
+     +          8.0D0,10.0D0,16.0D0,14.0D0,8.0D0,
+     +          6.0D0,12.0D0,14.0D0,10.0D0,12.0D0,
+     +          10.0D0,16.0D0,14.0D0,8.0D0,10.0D0,
+     +          12.0D0,14.0D0,12.0D0,10.0D0/
+        DATA ENSRIV/0.00000,1.20611,18.66013,23.20492,23.20993,
+     +          23.31202,23.44785,24.43233,24.83900,25.21150,
+     +          25.31506,24.86246,25.93887,25.38496,25.39307,
+     +          25.90498,25.60573,26.28131,25.72402,26.64991,
+     +          26.67987,26.67995,28.00446,28.28051,28.34950,
+     +          28.79042,29.37491,29.53527,30.01569,30.02545,
+     +          30.46725,31.00185,31.05849,31.29187,31.39674,
+     +          31.59377,32.75434,31.90671,33.16940,33.51917,
+     +          33.17040,34.23937,33.63065,33.64045,34.05697,
+     +          34.22642,34.45692,34.90699,34.47728,34.61214,
+     +          35.00638,35.01816,35.78867,35.99409,36.25976,
+     +          36.91073,36.55893,36.59006,39.01371,39.15318,
+     +          40.56349,41.31104,40.57957,40.65019,40.73518,
+     +          40.77948,40.87524,41.01539,40.75781,41.29053,
+     +          40.79930,40.91155,41.11004,41.42856,41.58887,
+     +          41.44390,41.58295,41.93075,41.58171,42.29817,
+     +          42.55964,42.59111,41.58816,41.74842,42.27527,
+     +          42.33076,41.62234,41.63146,41.63141,42.70233,
+     +          41.70007,41.90217,41.77006,42.28424,41.78856,
+     +          41.80144,41.97872,42.30551,42.19652,42.80385,
+     +          42.48148,42.48939,42.67485,43.15938,43.18477,
+     +          43.38856,43.87790,43.42064,43.60962,43.45023,
+     +          43.48312,43.69613,43.94438,43.45775,43.79924,
+     +          43.47760,43.49768,43.78485,43.53913,43.71982,
+     +          43.56624,43.60858,43.57343,43.57574,43.65181,
+     +          43.78578,43.79026,43.88264,44.06052,43.99478,
+     +          44.00659,44.32817,44.37082,44.40513,44.53482,
+     +          44.72979,44.53868,44.56249,44.67705,44.70118,
+     +          44.80867,44.81760,44.68428,44.78239,45.09843,
+     +          45.53832,45.67727,45.94486,46.02876,46.22190,
+     +          46.25059,46.28663,46.33420,46.64419,46.97669,
+     +          46.65492,46.68043,46.71693,46.86960,46.72951,
+     +          46.80672,46.74233,46.78527,46.74580,46.97947,
+     +          46.81054,46.83713,46.89354,46.92483,46.93109,
+     +          46.99831,47.07441,47.10930,47.21753,47.47251,
+     +          47.47757,47.47328,47.47539,47.50258,47.50473,
+     +          47.52029,47.52141,47.54187,47.54265,47.69614,
+     +          47.75352,47.73381,47.75765,47.79464,47.82628,
+     +          47.94786,48.02172,48.04050,48.05102,48.14108,
+     +          48.50793,48.50975,48.51792,48.51954,48.56578,
+     +          48.56599,48.58373,48.58401,49.18350,49.19763,
+     +          49.24702,49.34137,49.26066,49.30005,49.38290,
+     +          49.35484,49.35708,49.53444,49.53919,49.97047,
+     +          49.97059,50.01373,50.01474,50.06558,50.06680,
+     +          50.07275,50.07284,50.17054,50.17519,50.17117,
+     +          50.17415,50.18929,50.19633,50.19720,50.20995,
+     +          50.21133,50.21642,50.21658,50.21682,50.21689,
+     +          50.22427,50.22442,50.23087,50.23105,50.23599,
+     +          50.23625,51.24991,51.25003,51.26499,51.26502,
+     +          51.30554,52.72708,52.72719,52.74281,52.74287,
+     +          52.75770,52.75779,52.75911,52.75930/
+        DATA NSRV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,5,4,4,
+     +          4,4,4,4,5,4,4,5,5,5,
+     +          4,5,4,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,4,4,4,4,4,
+     +          5,5,5,5,5,5,5,5,6,6,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,6,6,
+     +          6,5,5,5,5,5,5,6,5,5,
+     +          5,5,5,5,6,6,6,6,5,5,
+     +          5,5,5/
+        DATA GSRV/5.0D0,3.0D0,1.0D0,5.0D0,1.0D0,
+     +          5.0D0,3.0D0,1.0D0,3.0D0,1.0D0,
+     +          3.0D0,5.0D0,7.0D0,9.0D0,5.0D0,
+     +          7.0D0,3.0D0,5.0D0,7.0D0,9.0D0,
+     +          1.0D0,7.0D0,9.0D0,11.0D0,9.0D0,
+     +          5.0D0,3.0D0,5.0D0,7.0D0,1.0D0,
+     +          3.0D0,5.0D0,7.0D0,5.0D0,9.0D0,
+     +          3.0D0,7.0D0,5.0D0,5.0D0,3.0D0,
+     +          1.0D0,7.0D0,5.0D0,3.0D0,3.0D0,
+     +          3.0D0,5.0D0,3.0D0,5.0D0,7.0D0,
+     +          7.0D0,5.0D0,3.0D0,1.0D0,3.0D0,
+     +          5.0D0,3.0D0,5.0D0,7.0D0,3.0D0,
+     +          3.0D0,5.0D0,1.0D0,3.0D0,5.0D0,
+     +          7.0D0,5.0D0,7.0D0,9.0D0,3.0D0,
+     +          7.0D0,5.0D0,1.0D0,3.0D0,5.0D0,
+     +          3.0D0,5.0D0,7.0D0,3.0D0,3.0D0,
+     +          1.0D0,5.0D0,5.0D0,3.0D0,1.0D0,
+     +          9.0D0,7.0D0,5.0D0,11.0D0,3.0D0,
+     +          1.0D0,3.0D0,5.0D0,7.0D0,9.0D0,
+     +          5.0D0,3.0D0,7.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,9.0D0,7.0D0,9.0D0,
+     +          11.0D0,3.0D0,5.0D0,7.0D0,1.0D0,
+     +          9.0D0,3.0D0,5.0D0,3.0D0,1.0D0,
+     +          3.0D0,5.0D0,7.0D0,3.0D0,5.0D0,
+     +          7.0D0,5.0D0,7.0D0,9.0D0,5.0D0,
+     +          3.0D0,7.0D0,5.0D0,1.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,1.0D0,
+     +          3.0D0,5.0D0,3.0D0,9.0D0,7.0D0,
+     +          5.0D0,3.0D0,11.0D0/
+        DATA ENSRV/0.00000,1.03005,1.08095,2.51818,5.46156,
+     +          19.09757,19.83964,20.33535,23.96849,25.06076,
+     +          25.07769,25.08466,25.09421,25.15800,26.50582,
+     +          26.79350,26.90075,27.34468,27.57016,27.87715,
+     +          27.49702,28.51011,28.63715,28.83698,29.10933,
+     +          29.93964,30.19964,30.79560,31.41021,30.59948,
+     +          30.74955,31.63067,30.95553,31.07745,31.14902,
+     +          32.87798,33.00948,33.02013,33.14730,33.42798,
+     +          34.14840,33.66173,34.32149,34.72389,34.08967,
+     +          34.15617,35.39129,35.81056,35.84590,36.18300,
+     +          36.16351,36.55279,37.94851,38.01447,38.16314,
+     +          38.64584,38.89718,38.94879,39.19387,39.02228,
+     +          39.65445,39.82857,39.87838,41.06335,41.74486,
+     +          42.14597,41.45596,41.73597,42.20663,41.83900,
+     +          41.99244,42.59889,42.78166,42.81723,43.56029,
+     +          43.87116,44.20865,44.59054,44.29309,44.33109,
+     +          44.39572,45.24017,44.94263,45.04746,46.51294,
+     +          47.85238,47.88267,47.91242,47.93745,47.93980,
+     +          47.92295,47.92838,47.93005,47.93566,47.96294,
+     +          48.57364,48.68956,48.70800,49.88586,50.19851,
+     +          50.35359,50.58303,50.87882,50.49658,50.61503,
+     +          50.98142,50.65822,50.89760,51.05671,50.66000,
+     +          50.97646,51.14179,51.20643,51.26080,51.30744,
+     +          51.42556,51.52068,51.78297,52.45865,52.48447,
+     +          52.85661,52.83000,52.95000,53.38000,52.96695,
+     +          53.12176,53.71030,52.96816,53.31342,53.44022,
+     +          53.52404,53.76703,53.80396,54.39343,54.70000,
+     +          54.75220,55.32955,55.42629,56.78463,56.82373,
+     +          56.85877,56.89119,56.90222/
+        DATA NSRVI/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,5,5,5,5,5,5,5,
+     +          5/
+        DATA GSRVI/4.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          4.0D0,2.0D0,2.0D0,2.0D0,4.0D0,
+     +          2.0D0,6.0D0,4.0D0,6.0D0,4.0D0,
+     +          2.0D0/
+        DATA ENSRVI/0.00000,2.49638,2.91698,4.77725,5.40161,
+     +          18.99076,19.78754,20.11497,23.34863,23.55432,
+     +          26.74302,26.86047,28.18055,40.58300,41.31900,
+     +          41.93600,41.98700,42.63400,44.11600,44.24000,
+     +          46.98900/
+        DATA NSRVII/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,5,5,5,5/
+        DATA GSRVII/1.0D0,3.0D0,5.0D0,5.0D0,1.0D0,
+     +          5.0D0,3.0D0,5.0D0,7.0D0,1.0D0,
+     +          3.0D0,5.0D0,5.0D0,3.0D0,3.0D0,
+     +          1.0D0,3.0D0,5.0D0,3.0D0/
+        DATA ENSRVII/0.00000,0.84870,1.55540,3.53230,6.42410,
+     +          16.71700,20.80530,20.82650,21.13030,23.60970,
+     +          23.70760,23.82890,26.42040,28.87220,30.71760,
+     +          46.29600,46.45300,47.89100,48.32000/
+        DATA NYIV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,5,5,5,5,4,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,4,4,6,6,4,
+     +          4,4,4,4,4,5,5,5,5,6,
+     +          6,4,4,6,6,4,4,6,6,6,
+     +          6,4,4,4,6,6,6,4,6,6,
+     +          6,6,6,6,6,6,5,5,5,5,
+     +          7,7,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,6,6,6,6,5,5,
+     +          5,7,7,5,5,5,5,7,7,8,
+     +          6,6,6,6,6,6,6,6,7,8,
+     +          8,6,6,6,6,9,8,10,9/
+        DATA GYIV/1.0D0,1.0D0,3.0D0,5.0D0,9.0D0,
+     +          7.0D0,5.0D0,7.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,1.0D0,
+     +          3.0D0,3.0D0,3.0D0,1.0D0,5.0D0,
+     +          7.0D0,3.0D0,5.0D0,3.0D0,5.0D0,
+     +          3.0D0,1.0D0,1.0D0,3.0D0,9.0D0,
+     +          7.0D0,5.0D0,3.0D0,5.0D0,7.0D0,
+     +          3.0D0,5.0D0,5.0D0,3.0D0,7.0D0,
+     +          5.0D0,11.0D0,9.0D0,7.0D0,9.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,1.0D0,
+     +          3.0D0,7.0D0,5.0D0,3.0D0,1.0D0,
+     +          7.0D0,9.0D0,5.0D0,7.0D0,3.0D0,
+     +          5.0D0,3.0D0,5.0D0,7.0D0,3.0D0,
+     +          5.0D0,3.0D0,5.0D0,1.0D0,3.0D0,
+     +          9.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          7.0D0,11.0D0,9.0D0,3.0D0,5.0D0,
+     +          5.0D0,3.0D0,7.0D0,9.0D0,7.0D0,
+     +          5.0D0,5.0D0,7.0D0,13.0D0,11.0D0,
+     +          9.0D0,7.0D0,9.0D0,11.0D0,5.0D0,
+     +          7.0D0,5.0D0,3.0D0,9.0D0,7.0D0,
+     +          5.0D0,1.0D0,3.0D0,9.0D0,11.0D0,
+     +          9.0D0,7.0D0,3.0D0,3.0D0,3.0D0,
+     +          5.0D0,7.0D0,13.0D0,11.0D0,9.0D0,
+     +          7.0D0,9.0D0,11.0D0,3.0D0,3.0D0,
+     +          3.0D0,9.0D0,7.0D0,9.0D0,11.0D0,
+     +          3.0D0,3.0D0,3.0D0,3.0D0/
+        DATA ENYIV/0.00000,25.99342,26.20655,26.63664,27.02336,
+     +          27.30462,27.68020,28.57015,29.17093,29.43472,
+     +          29.03383,29.66743,31.76593,32.05193,33.27738,
+     +          33.47118,34.84086,36.48891,38.19144,37.02801,
+     +          37.16402,37.40256,37.59728,38.52458,38.87970,
+     +          38.91383,39.58862,44.40756,44.50262,44.64327,
+     +          44.70970,44.66484,45.41036,44.86274,44.95280,
+     +          45.24827,45.36758,45.41300,45.51363,45.60062,
+     +          46.09886,45.72067,45.77997,46.03227,46.07414,
+     +          46.28982,46.34184,46.30934,46.84880,46.94618,
+     +          47.01075,47.18055,47.42309,47.34320,48.00004,
+     +          47.38692,47.43702,47.53401,47.57953,47.66973,
+     +          47.74181,48.42644,48.57086,48.79310,49.03004,
+     +          49.14833,49.15796,49.30644,50.73777,50.78490,
+     +          50.84372,50.86852,50.86322,51.16883,50.94007,
+     +          50.97386,51.03391,51.06445,51.14038,51.17919,
+     +          51.15584,51.20877,51.19154,51.21251,51.21552,
+     +          51.38272,51.78873,51.79072,51.80862,51.80943,
+     +          51.84864,51.85004,51.87040,51.87078,52.39580,
+     +          52.44645,52.41481,52.58610,52.65099,52.69244,
+     +          52.79042,52.69417,52.72046,53.37591,53.37647,
+     +          53.37720,53.37867,53.95710,54.15580,54.17990,
+     +          54.48894,54.49098,54.50028,54.50106,54.52128,
+     +          54.52581,54.53657,54.53692,55.60360,55.80380,
+     +          55.92160,56.05341,56.05758,56.05526,56.05588,
+     +          57.03310,57.40700,57.79910,58.53690/
+        DATA NYV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,5,5,4,4,
+     +          4,4,4,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,6,6,5,
+     +          5,5,5,5,5,5,6,5,5,6,
+     +          6,6,6,5,5,6,6,6,7,7,
+     +          6,6,6,7,7,6,6,6,6,7,
+     +          7,6,7/
+        DATA GYV/4.0D0,2.0D0,2.0D0,6.0D0,8.0D0,
+     +          4.0D0,2.0D0,10.0D0,8.0D0,6.0D0,
+     +          4.0D0,2.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,6.0D0,8.0D0,6.0D0,
+     +          8.0D0,10.0D0,6.0D0,8.0D0,4.0D0,
+     +          6.0D0,6.0D0,4.0D0,2.0D0,4.0D0,
+     +          2.0D0,6.0D0,4.0D0,2.0D0,4.0D0,
+     +          2.0D0,6.0D0,4.0D0,4.0D0,2.0D0,
+     +          6.0D0,4.0D0,2.0D0,6.0D0,8.0D0,
+     +          2.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          2.0D0,4.0D0,6.0D0,8.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          8.0D0,6.0D0,6.0D0,4.0D0,2.0D0,
+     +          4.0D0,10.0D0,8.0D0,2.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,8.0D0,6.0D0,
+     +          6.0D0,4.0D0,6.0D0,4.0D0,8.0D0,
+     +          10.0D0,2.0D0,4.0D0,2.0D0,6.0D0,
+     +          4.0D0,2.0D0,8.0D0,6.0D0,4.0D0,
+     +          2.0D0,6.0D0,4.0D0,6.0D0,4.0D0,
+     +          2.0D0,6.0D0,4.0D0,6.0D0,4.0D0,
+     +          4.0D0,6.0D0,4.0D0,4.0D0,2.0D0,
+     +          2.0D0,4.0D0,6.0D0,2.0D0,6.0D0,
+     +          4.0D0,4.0D0,2.0D0/
+        DATA ENYV/0.00000,1.54486,21.19455,27.08027,27.09759,
+     +          27.19888,27.37505,28.48991,28.97558,29.46828,
+     +          29.53491,28.97664,30.32817,29.61961,29.64869,
+     +          30.29078,29.87391,30.73087,30.04587,31.17011,
+     +          31.10549,31.12653,32.63066,33.00420,34.86987,
+     +          35.45969,36.46405,36.99426,36.57108,36.83213,
+     +          37.52560,37.22306,38.68853,37.76124,37.96587,
+     +          38.54145,39.56740,39.62582,42.38485,42.82944,
+     +          42.42660,43.76395,42.87402,42.98011,43.00282,
+     +          43.71746,43.98364,44.55078,44.02345,44.26766,
+     +          44.71306,44.74008,45.43906,45.73990,46.05905,
+     +          46.92659,46.40446,46.44964,49.09691,49.30077,
+     +          51.85829,52.70292,51.86385,51.93876,52.07054,
+     +          52.67227,52.12342,52.25024,52.48883,53.25762,
+     +          53.49120,53.35584,53.37941,53.40746,53.88936,
+     +          53.64463,53.94196,54.01628,54.20230,54.84638,
+     +          54.88837,55.06495,55.17097,55.45534,55.21013,
+     +          55.58925,55.32289,55.37139,55.38486,55.38601,
+     +          55.64098,56.98767,57.00314,58.39529,58.45658,
+     +          60.26471,61.13900,61.14230,61.77800,61.87060,
+     +          62.15900,62.38100,62.46180,63.11430,63.20930,
+     +          63.75920,63.85320,63.94630,63.96120,64.71980,
+     +          64.73570,67.32990,67.54700/ 
+        DATA NYVI/4/
+        DATA GYVI/5.0D0/
+        DATA ENYVI/0.00000/
+        DATA NZRIV/4,4,5,5,5,5,5,6,4,4,
+     +          6,6,6,6,7,5,5,5,5,7,
+     +          7,6,6,8,6,6,6,6,7,7,
+     +          8,8,9,9/
+        DATA GZRIV/4.0D0,6.0D0,2.0D0,2.0D0,4.0D0,
+     +          4.0D0,6.0D0,2.0D0,6.0D0,8.0D0,
+     +          2.0D0,4.0D0,4.0D0,6.0D0,2.0D0,
+     +          6.0D0,8.0D0,8.0D0,10.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0,2.0D0,8.0D0,
+     +          10.0D0,10.0D0,12.0D0,8.0D0,10.0D0,
+     +          8.0D0,10.0D0,8.0D0,10.0D0/
+        DATA ENZRIV/0.0D0,1.5507D-1,4.743431,10.163791,10.471873,
+     +          18.182580,18.225982,18.909202,19.721763,19.724263,
+     +          21.053721,21.178374,24.519747,24.540246,24.812175,
+     +          24.934975,24.940990,25.647919,25.647951,25.885837,
+     +          25.949602,27.824521,27.832978,27.873319,28.327892,
+     +          28.327919,28.360625,28.360625,29.945452,29.945472,
+     +          30.995470,30.995484,31.71518,31.71534/
+        DATA NZRV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,5,5,4,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,4,4,4,
+     +          4,5,5,4,4,5,5,5,5,4,
+     +          4,5,5,4,4,4,4,4,4,5,
+     +          5,5,5,6,6,4,4,6,6,6,
+     +          6,6,6,6,6,6,5,5,7,7,
+     +          5,5,5,5,5,5,6,7,7,5,
+     +          5,5,5,7,6,6,6,6,6,6,
+     +          8,6,6,5,7,6,6,6,8,9,
+     +          10/
+        DATA GZRV/1.0D0,1.0D0,3.0D0,5.0D0,9.0D0,
+     +          7.0D0,5.0D0,7.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,3.0D0,
+     +          1.0D0,3.0D0,3.0D0,1.0D0,5.0D0,
+     +          7.0D0,3.0D0,5.0D0,3.0D0,5.0D0,
+     +          3.0D0,1.0D0,3.0D0,5.0D0,7.0D0,
+     +          5.0D0,1.0D0,3.0D0,11.0D0,9.0D0,
+     +          9.0D0,7.0D0,5.0D0,3.0D0,7.0D0,
+     +          9.0D0,5.0D0,7.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,7.0D0,9.0D0,5.0D0,
+     +          7.0D0,5.0D0,3.0D0,5.0D0,3.0D0,
+     +          7.0D0,5.0D0,1.0D0,3.0D0,3.0D0,
+     +          9.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          7.0D0,5.0D0,7.0D0,5.0D0,3.0D0,
+     +          13.0D0,11.0D0,9.0D0,7.0D0,9.0D0,
+     +          11.0D0,3.0D0,1.0D0,3.0D0,9.0D0,
+     +          11.0D0,9.0D0,7.0D0,3.0D0,5.0D0,
+     +          7.0D0,13.0D0,11.0D0,9.0D0,7.0D0,
+     +          3.0D0,9.0D0,11.0D0,3.0D0,3.0D0,
+     +          9.0D0,11.0D0,9.0D0,3.0D0,3.0D0,
+     +          3.0D0/
+        DATA ENZRV/0.00000,29.92747,30.19769,30.74341,31.15516,
+     +          31.46141,31.90873,32.96064,33.67431,34.05283,
+     +          33.54526,34.36166,40.29671,40.61933,40.78345,
+     +          42.19374,42.43305,46.10912,48.21162,46.72936,
+     +          46.95943,47.22007,47.48410,48.60161,49.09712,
+     +          49.13498,49.92700,53.89774,54.02724,54.26517,
+     +          55.80947,56.15727,56.27712,56.24925,56.35563,
+     +          56.46791,56.52753,56.49102,57.31881,56.72856,
+     +          56.83835,56.73679,56.84969,57.09186,57.53058,
+     +          57.11879,57.12789,58.36847,58.49108,58.43453,
+     +          58.58501,58.52244,59.07567,58.56245,58.66594,
+     +          58.73322,59.03262,60.47287,60.54058,65.51608,
+     +          65.60768,65.62479,65.62277,65.93963,65.72647,
+     +          65.76934,66.54011,66.54622,66.55024,66.60597,
+     +          66.57473,66.57752,66.64174,66.64637,66.67953,
+     +          66.68075,67.73540,68.47129,68.50389,68.54816,
+     +          68.55021,68.55018,68.55502,70.42800,70.76761,
+     +          70.77368,70.78834,70.79096,70.82866,70.83295,
+     +          70.84160,70.84998,70.85104,71.13920,72.33490,
+     +          72.74214,72.74581,72.74379,72.76410,73.38820,
+     +          75.02510/
+        DATA NZRVI/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,6,5,5,5,6,5,5,6,6,
+     +          6,6,6,5,5,6/
+        DATA GZRVI/4.0D0,2.0D0,2.0D0,6.0D0,8.0D0,
+     +          4.0D0,2.0D0,10.0D0,8.0D0,2.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,4.0D0,
+     +          8.0D0,6.0D0,4.0D0,6.0D0,8.0D0,
+     +          10.0D0,6.0D0,6.0D0,8.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,4.0D0,2.0D0,4.0D0,
+     +          2.0D0,6.0D0,4.0D0,4.0D0,6.0D0,
+     +          2.0D0,2.0D0,6.0D0,8.0D0,2.0D0,
+     +          4.0D0,2.0D0,4.0D0,6.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,8.0D0,4.0D0,
+     +          4.0D0,6.0D0,2.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,4.0D0,2.0D0,10.0D0,
+     +          8.0D0,2.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0,4.0D0,6.0D0,
+     +          6.0D0,4.0D0,8.0D0,10.0D0,2.0D0,
+     +          4.0D0,6.0D0,6.0D0,8.0D0,6.0D0,
+     +          4.0D0,2.0D0,4.0D0,2.0D0,4.0D0,
+     +          2.0D0,6.0D0,4.0D0,6.0D0,4.0D0,
+     +          2.0D0/
+        DATA ENZRVI/0.00000,1.93450,23.75174,30.86464,30.91210,
+     +          30.99823,31.22154,32.43958,32.99782,33.01433,
+     +          33.63643,33.64614,33.73502,33.82715,34.05419,
+     +          34.28055,34.55963,34.64828,35.10141,35.45540,
+     +          35.51050,35.60112,37.14674,37.63134,39.59264,
+     +          40.36638,41.49688,42.11530,42.61455,42.94138,
+     +          44.40718,45.23280,45.83840,46.79809,47.08630,
+     +          47.70682,48.79464,48.87401,52.22933,52.32024,
+     +          52.47303,52.77737,52.95596,53.02173,53.90805,
+     +          53.98615,54.16363,54.24024,54.62184,54.85726,
+     +          55.09115,55.15801,55.75950,56.16483,56.52169,
+     +          56.91837,56.98075,57.61844,59.84709,60.11960,
+     +          63.78557,63.78826,63.87303,64.03083,64.14450,
+     +          64.23145,64.51867,64.68753,64.72421,65.50798,
+     +          65.58468,65.63125,65.70483,65.77844,66.00955,
+     +          66.17495,66.27610,67.22752,67.27918,67.36009,
+     +          67.49980,67.62266,67.65397,67.84143,67.84588,
+     +          67.87786,67.91740,68.04321,69.20906,69.35137,
+     +          69.56137,71.05557,71.08028,71.22829,71.27716,
+     +          74.72040/
+        DATA NZRVII/4/
+        DATA GZRVII/5.0D0/
+        DATA ENZRVII/0.00000/
+        DATA NZRVIII/4/
+        DATA GZRVIII/4.0D0/
+        DATA ENZRVIII/0.00000/
+        DATA NNBIV/4,4,4,4,4,4,4,4,4,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,6,6,6,6,
+     +          5,5,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          6,6,4,6,6,6,6,6,6,6,
+     +          6,6,6,6,5,5,5,5,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          7,6,7,6,6,5,6,5,6,5,
+     +          5,6,7,7,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,7,5,
+     +          5,7,7,5,5,5,5,6,5,6,
+     +          6,6,6,6,4,4,4,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,4,
+     +          6,6/
+        DATA GNBIV/5.0D0,7.0D0,9.0D0,5.0D0,1.0D0,
+     +          3.0D0,5.0D0,9.0D0,1.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,7.0D0,9.0D0,
+     +          3.0D0,1.0D0,5.0D0,7.0D0,3.0D0,
+     +          1.0D0,1.0D0,3.0D0,5.0D0,7.0D0,
+     +          3.0D0,5.0D0,7.0D0,7.0D0,9.0D0,
+     +          3.0D0,11.0D0,5.0D0,3.0D0,7.0D0,
+     +          9.0D0,5.0D0,1.0D0,3.0D0,5.0D0,
+     +          9.0D0,3.0D0,5.0D0,7.0D0,5.0D0,
+     +          3.0D0,1.0D0,9.0D0,5.0D0,9.0D0,
+     +          7.0D0,11.0D0,9.0D0,13.0D0,5.0D0,
+     +          7.0D0,9.0D0,11.0D0,3.0D0,5.0D0,
+     +          7.0D0,7.0D0,5.0D0,3.0D0,1.0D0,
+     +          3.0D0,5.0D0,11.0D0,3.0D0,5.0D0,
+     +          7.0D0,5.0D0,7.0D0,1.0D0,3.0D0,
+     +          9.0D0,7.0D0,5.0D0,3.0D0,1.0D0,
+     +          3.0D0,5.0D0,5.0D0,7.0D0,3.0D0,
+     +          7.0D0,5.0D0,9.0D0,5.0D0,3.0D0,
+     +          7.0D0,11.0D0,7.0D0,3.0D0,9.0D0,
+     +          3.0D0,1.0D0,5.0D0,5.0D0,9.0D0,
+     +          9.0D0,3.0D0,5.0D0,1.0D0,7.0D0,
+     +          9.0D0,5.0D0,7.0D0,5.0D0,11.0D0,
+     +          7.0D0,5.0D0,9.0D0,13.0D0,9.0D0,
+     +          3.0D0,11.0D0,5.0D0,7.0D0,5.0D0,
+     +          7.0D0,3.0D0,1.0D0,3.0D0,11.0D0,
+     +          11.0D0,9.0D0,7.0D0,9.0D0,11.0D0,
+     +          13.0D0,7.0D0,5.0D0,11.0D0,9.0D0,
+     +          11.0D0,13.0D0,7.0D0,9.0D0,7.0D0,
+     +          5.0D0,3.0D0,15.0D0,7.0D0,13.0D0,
+     +          5.0D0,9.0D0,7.0D0,3.0D0,5.0D0,
+     +          7.0D0,1.0D0,3.0D0,5.0D0,9.0D0,
+     +          5.0D0,7.0D0,9.0D0,7.0D0,5.0D0,
+     +          9.0D0,7.0D0,11.0D0,5.0D0,3.0D0,
+     +          9.0D0,11.0D0,9.0D0,7.0D0,5.0D0,
+     +          13.0D0,1.0D0,7.0D0,3.0D0,7.0D0,
+     +          11.0D0,3.0D0/
+        DATA ENNBIV/0.00000,0.13476,0.29079,1.03764,1.20186,
+     +          1.25534,1.37873,1.71142,3.93436,6.45520,
+     +          6.52528,6.67165,7.26134,12.03408,12.27353,
+     +          12.36433,12.44632,12.44685,12.61893,12.76981,
+     +          13.01425,13.05236,13.12106,13.37450,13.52890,
+     +          14.49642,19.48615,19.60776,19.88598,20.42854,
+     +          20.49134,20.58026,20.61732,20.70106,20.70872,
+     +          20.75713,20.85763,20.97800,21.04950,21.09154,
+     +          21.18444,21.35200,21.38677,21.45745,21.54012,
+     +          21.58085,21.63334,21.67046,21.86116,21.95034,
+     +          22.00985,22.16422,22.29714,22.46239,22.47395,
+     +          22.50759,22.54150,22.58624,22.65773,22.71907,
+     +          22.85883,22.96383,23.03123,23.10701,23.11186,
+     +          23.12458,23.27576,23.32436,23.37372,23.40388,
+     +          23.78304,23.81563,23.85110,23.91758,23.95665,
+     +          24.03849,24.05196,24.10122,24.19666,24.22929,
+     +          24.23481,24.34889,24.34904,24.78026,26.55691,
+     +          26.73223,26.76315,27.09631,27.36385,27.37475,
+     +          27.43672,27.44635,27.49757,27.55090,27.55223,
+     +          27.58880,27.66198,27.68611,27.71138,27.74284,
+     +          27.79412,27.80059,27.80512,27.82967,27.88911,
+     +          27.89754,27.92368,27.94206,27.97301,27.97821,
+     +          27.98148,27.99527,28.02239,28.05056,28.05316,
+     +          28.07098,28.10971,28.11732,28.19552,28.20440,
+     +          28.24349,28.25422,28.26813,28.30253,28.42415,
+     +          28.43578,28.45935,28.48245,28.72030,28.75552,
+     +          28.81284,28.81641,28.83727,28.83946,28.87845,
+     +          28.88584,28.89054,28.89590,29.04854,29.05223,
+     +          29.05650,29.06154,29.07559,29.07765,29.10116,
+     +          29.10153,29.10290,29.12674,29.13167,29.13781,
+     +          29.13796,29.20709,29.22269,29.42359,29.43214,
+     +          29.45111,30.07533,30.28667,30.39303,30.92589,
+     +          30.94762,30.95057,30.98734,31.00100,31.02099,
+     +          31.02650,31.02938,31.04436,31.04932,31.08838,
+     +          31.14460,31.18055,31.18652,31.19794,31.20323,
+     +          31.22906,31.25501,31.28698,31.29330,31.44620,
+     +          31.48580,31.51585/
+        DATA NNBV/4,4,5,5,5,5,5,4,4,6,
+     +          6,6,5,5,6,6,7,5,7,7,
+     +          6,6,7,7,8,6,6,7,7,7/
+        DATA GNBV/4.0D0,6.0D0,2.0D0,2.0D0,4.0D0,
+     +          4.0D0,6.0D0,6.0D0,8.0D0,2.0D0,
+     +          2.0D0,4.0D0,8.0D0,6.0D0,4.0D0,
+     +          6.0D0,2.0D0,8.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,4.0D0,6.0D0,2.0D0,
+     +          8.0D0,10.0D0,8.0D0,10.0D0,12.0D0/
+        DATA ENNBV/0.00000,0.23153,9.41407,16.01816,16.46510,
+     +          26.24671,26.31421,26.68873,26.70589,28.32993,
+     +          31.05885,31.24691,34.36466,34.43516,35.60375,
+     +          35.63623,36.54261,36.83499,37.93749,38.03688,
+     +          39.83171,39.93480,40.38236,40.40085,40.90043,
+     +          41.02854,41.10165,43.56250,43.61419,43.62416/
+        DATA NNBVI/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,4,5,4,4,
+     +          4,4,4,4,4,4,4,4,4,5,
+     +          5,4,5,5,5,4,4,5,5,4,
+     +          5,5,5,5,5,6,6,6,6,6,
+     +          6,5,5,5,5,5,5,5,5,7,
+     +          6,5,5,5,5,5,7,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,8,6,6,6,6,6,6,
+     +          6,6,8,9/
+        DATA GNBVI/1.0D0,1.0D0,3.0D0,5.0D0,9.0D0,
+     +          7.0D0,5.0D0,7.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,3.0D0,5.0D0,3.0D0,
+     +          1.0D0,3.0D0,3.0D0,5.0D0,7.0D0,
+     +          3.0D0,5.0D0,1.0D0,3.0D0,5.0D0,
+     +          3.0D0,3.0D0,1.0D0,5.0D0,7.0D0,
+     +          5.0D0,11.0D0,9.0D0,3.0D0,5.0D0,
+     +          7.0D0,7.0D0,9.0D0,5.0D0,1.0D0,
+     +          3.0D0,7.0D0,9.0D0,5.0D0,7.0D0,
+     +          9.0D0,7.0D0,5.0D0,7.0D0,5.0D0,
+     +          3.0D0,5.0D0,5.0D0,7.0D0,3.0D0,
+     +          5.0D0,3.0D0,1.0D0,3.0D0,3.0D0,
+     +          3.0D0,5.0D0,7.0D0,13.0D0,11.0D0,
+     +          9.0D0,7.0D0,9.0D0,11.0D0,3.0D0,
+     +          3.0D0,3.0D0,9.0D0,9.0D0,11.0D0,
+     +          7.0D0,3.0D0,5.0D0,7.0D0,13.0D0,
+     +          11.0D0,9.0D0,7.0D0,9.0D0,11.0D0,
+     +          7.0D0,9.0D0,15.0D0,13.0D0,11.0D0,
+     +          9.0D0,11.0D0,13.0D0,3.0D0,9.0D0,
+     +          9.0D0,11.0D0,7.0D0,13.0D0,9.0D0,
+     +          11.0D0,11.0D0,3.0D0,3.0D0/
+        DATA ENNBVI/0.00000,33.74687,34.07882,34.74911,35.17324,
+     +          35.49407,36.01426,37.20872,37.96402,38.05650,
+     +          38.58227,38.96610,46.37262,49.45678,49.84783,
+     +          51.79244,52.05509,56.35816,57.04010,57.38981,
+     +          57.66357,57.99924,58.86358,59.34297,59.99339,
+     +          60.03893,60.87412,60.90608,61.00862,61.24824,
+     +          62.95078,66.24916,66.36712,66.64666,66.80076,
+     +          66.84168,66.97166,67.00297,67.78805,68.53207,
+     +          68.67860,68.79550,68.92482,68.94854,68.97033,
+     +          68.98270,69.12498,69.23957,69.37810,69.82490,
+     +          69.82940,71.32730,71.45436,71.51338,71.95088,
+     +          72.71766,72.85457,75.07508,75.15303,81.25600,
+     +          81.75200,82.10871,82.12357,82.16440,82.17108,
+     +          82.26441,82.27610,82.32404,82.32714,83.26100,
+     +          83.95800,84.30500,84.60421,84.60704,84.60900,
+     +          84.61610,85.63500,88.20290,88.21760,88.23782,
+     +          88.24448,88.29589,88.30828,88.33310,88.33568,
+     +          88.40040,88.40084,88.41353,88.41370,88.44927,
+     +          88.44931,88.46311,88.46333,88.95900,90.64948,
+     +          90.65150,90.65500,90.66320,90.81240,90.81283,
+     +          90.81293,90.81300,91.31700,92.39400/
+        DATA NNBVII/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,5,5,5,5,5,5,5,
+     +          5/
+        DATA GNBVII/4.0D0,2.0D0,2.0D0,6.0D0,4.0D0,
+     +          2.0D0,4.0D0,2.0D0,6.0D0,4.0D0,
+     +          4.0D0,6.0D0,4.0D0,6.0D0,6.0D0,
+     +          6.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,6.0D0,4.0D0,
+     +          2.0D0,4.0D0,2.0D0,6.0D0,4.0D0,
+     +          2.0D0/
+        DATA ENNBVII/0.00000,2.37940,26.34677,34.58998,34.73591,
+     +          37.01780,37.65620,37.77790,37.78280,37.96760,
+     +          38.19610,38.76280,38.94470,39.44260,39.98920,
+     +          41.60540,44.26120,45.26440,46.28880,47.23860,
+     +          47.82290,48.22290,49.99770,54.63120,55.30510,
+     +          56.48250,56.88660,57.54580,58.70110,58.80240,
+     +          62.80530/
+        DATA NNBVIII/4/
+        DATA GNBVIII/4.0D0/
+        DATA ENNBVIII/0.00000/
+        DATA NMOIV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5/
+        DATA GMOIV/4.0D0,6.0D0,8.0D0,10.0D0,4.0D0,
+     +          2.0D0,6.0D0,8.0D0,10.0D0,4.0D0,
+     +          2.0D0,10.0D0,12.0D0,6.0D0,4.0D0,
+     +          8.0D0,6.0D0,6.0D0,4.0D0,4.0D0,
+     +          6.0D0,8.0D0,10.0D0,6.0D0,8.0D0,
+     +          2.0D0,4.0D0,6.0D0,4.0D0,6.0D0,
+     +          10.0D0,8.0D0,2.0D0,4.0D0,2.0D0,
+     +          6.0D0,8.0D0,10.0D0,12.0D0,4.0D0,
+     +          6.0D0,8.0D0,10.0D0,6.0D0,8.0D0,
+     +          4.0D0,6.0D0,2.0D0,6.0D0,4.0D0,
+     +          8.0D0,2.0D0,8.0D0,10.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,8.0D0,4.0D0,
+     +          6.0D0,8.0D0,2.0D0,4.0D0,6.0D0,
+     +          2.0D0,4.0D0,6.0D0,10.0D0,8.0D0,
+     +          10.0D0,12.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,8.0D0,6.0D0,2.0D0,4.0D0/
+        DATA ENMOIV/0.00000,0.09646,0.21818,0.35516,1.28083,
+     +          1.28172,1.43970,1.43580,1.52635,1.75755,
+     +          1.77889,1.98314,2.02807,2.08409,2.12104,
+     +          3.07320,3.11205,4.82575,4.86397,7.55018,
+     +          7.64067,7.77486,7.94075,8.57699,8.84730,
+     +          8.89591,8.94705,8.95615,9.17592,9.29647,
+     +          9.80793,9.81875,9.90619,10.04919,12.37161,
+     +          13.56576,13.80434,14.06514,14.36743,13.85648,
+     +          14.00094,14.21162,14.37744,14.13234,14.35268,
+     +          14.22201,14.58105,14.35605,14.45455,14.45482,
+     +          14.64007,14.62054,14.75441,14.95808,14.98020,
+     +          15.17805,15.30372,15.47196,15.67363,15.22635,
+     +          15.31629,15.49152,15.46599,15.65216,15.71086,
+     +          15.71629,15.76846,15.98129,15.74588,15.83635,
+     +          16.13646,16.36745,16.32870,16.39307,16.53478,
+     +          16.64395,16.73180,16.90208,18.60621,18.93949/
+        DATA NMOV/4,4,4,4,4,4,4,4,4,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,4,5,5,5,5,4,
+     +          4,4,4,4,4,4,5,5,5,5,
+     +          4,4,4,5,5,5,5,4,4,4,
+     +          4,4,4,4,5,6,6,4,6,6,
+     +          4,5,6,6,6,6,6,6,6,4,
+     +          6,6,6,6,6,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          5,5,5,4,5,5,5,5,5,5,
+     +          5,4,4,5,5,5,5,5,5,4,
+     +          5,5,5,5,4,4,5,4,5,4,
+     +          4,4,4,4,4,4,4,4,5,5,
+     +          4,5,5,5,5,5,5,4,4,5,
+     +          5,4,5,5,4,5,5,5,5,5,
+     +          5,4,5,5,4,4,4,4,4,4,
+     +          4,4,4,4,5,5,5,4,4,4,
+     +          4,6,6,6,5,4,4,6,6,6,
+     +          4,6,6,6,6,6,4,6,6,6,
+     +          6,6,4,5,4,4,4,4,6,4,
+     +          7,7,7,7,7,7,7,7,7,7,
+     +          7,7,7,4,4,8,8,4,4,4,
+     +          4,8,8,8,8,8,8,8,8,8,
+     +          4,4,9,9,9,9,9/
+        DATA GMOV/5.0D0,7.0D0,9.0D0,5.0D0,1.0D0,
+     +          3.0D0,5.0D0,9.0D0,1.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,7.0D0,5.0D0,9.0D0,
+     +          3.0D0,1.0D0,5.0D0,7.0D0,3.0D0,
+     +          1.0D0,7.0D0,3.0D0,5.0D0,7.0D0,
+     +          7.0D0,9.0D0,11.0D0,3.0D0,9.0D0,
+     +          5.0D0,7.0D0,9.0D0,3.0D0,5.0D0,
+     +          7.0D0,9.0D0,9.0D0,11.0D0,13.0D0,
+     +          5.0D0,5.0D0,1.0D0,3.0D0,5.0D0,
+     +          7.0D0,9.0D0,11.0D0,9.0D0,1.0D0,
+     +          3.0D0,5.0D0,3.0D0,5.0D0,7.0D0,
+     +          5.0D0,1.0D0,3.0D0,7.0D0,1.0D0,
+     +          3.0D0,5.0D0,3.0D0,7.0D0,5.0D0,
+     +          11.0D0,3.0D0,5.0D0,7.0D0,9.0D0,
+     +          3.0D0,5.0D0,7.0D0,5.0D0,9.0D0,
+     +          1.0D0,3.0D0,5.0D0,7.0D0,3.0D0,
+     +          9.0D0,7.0D0,3.0D0,5.0D0,5.0D0,
+     +          11.0D0,9.0D0,7.0D0,7.0D0,5.0D0,
+     +          9.0D0,3.0D0,7.0D0,11.0D0,9.0D0,
+     +          1.0D0,5.0D0,3.0D0,7.0D0,7.0D0,
+     +          13.0D0,5.0D0,9.0D0,11.0D0,9.0D0,
+     +          5.0D0,3.0D0,7.0D0,7.0D0,7.0D0,
+     +          11.0D0,9.0D0,9.0D0,11.0D0,13.0D0,
+     +          5.0D0,7.0D0,5.0D0,5.0D0,7.0D0,
+     +          9.0D0,1.0D0,3.0D0,5.0D0,11.0D0,
+     +          7.0D0,9.0D0,3.0D0,5.0D0,7.0D0,
+     +          1.0D0,11.0D0,5.0D0,5.0D0,7.0D0,
+     +          9.0D0,3.0D0,9.0D0,7.0D0,5.0D0,
+     +          9.0D0,11.0D0,5.0D0,11.0D0,9.0D0,
+     +          1.0D0,7.0D0,9.0D0,11.0D0,13.0D0,
+     +          7.0D0,5.0D0,5.0D0,9.0D0,11.0D0,
+     +          9.0D0,11.0D0,11.0D0,13.0D0,7.0D0,
+     +          7.0D0,9.0D0,15.0D0,13.0D0,7.0D0,
+     +          5.0D0,11.0D0,3.0D0,5.0D0,3.0D0,
+     +          9.0D0,7.0D0,1.0D0,5.0D0,7.0D0,
+     +          11.0D0,5.0D0,9.0D0,7.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,7.0D0,9.0D0,
+     +          9.0D0,11.0D0,7.0D0,9.0D0,1.0D0,
+     +          7.0D0,9.0D0,5.0D0,5.0D0,7.0D0,
+     +          7.0D0,3.0D0,7.0D0,5.0D0,9.0D0,
+     +          11.0D0,5.0D0,9.0D0,1.0D0,7.0D0,
+     +          11.0D0,3.0D0,7.0D0,5.0D0,5.0D0,
+     +          11.0D0,5.0D0,7.0D0,3.0D0,3.0D0,
+     +          5.0D0,7.0D0,3.0D0,11.0D0,5.0D0,
+     +          7.0D0,3.0D0,9.0D0,11.0D0,9.0D0,
+     +          7.0D0,9.0D0,11.0D0,7.0D0,5.0D0,
+     +          11.0D0,5.0D0,3.0D0,5.0D0,5.0D0,
+     +          7.0D0,9.0D0,7.0D0,5.0D0,9.0D0,
+     +          7.0D0,11.0D0,3.0D0,7.0D0,5.0D0,
+     +          7.0D0,5.0D0,3.0D0,5.0D0,9.0D0,
+     +          7.0D0,3.0D0/
+        DATA ENMOV/0.00000,0.19554,0.41622,1.26341,1.38383,
+     +          1.46387,1.66242,2.02756,4.67889,11.45373,
+     +          11.54434,11.75810,12.32160,18.22279,18.46728,
+     +          18.64050,18.97450,18.74581,18.74805,19.22156,
+     +          19.41797,19.47286,19.57109,19.81970,20.11732,
+     +          24.67916,28.83390,28.91191,29.04360,29.21501,
+     +          29.07311,29.19778,29.40961,29.26052,29.44406,
+     +          29.47842,29.64077,29.76980,29.65563,29.68093,
+     +          29.75679,29.86507,29.74997,29.84610,30.00078,
+     +          29.97347,29.99980,30.02425,30.12462,30.24648,
+     +          30.17882,30.32986,30.45055,30.27324,30.57691,
+     +          30.73972,31.51800,30.59925,30.63534,30.70935,
+     +          30.84046,31.30148,31.32441,31.11891,31.12226,
+     +          31.50760,31.54964,31.73269,31.82383,31.91884,
+     +          32.14346,34.09866,34.27795,34.59150,34.87281,
+     +          34.36692,34.46821,34.65087,34.59904,34.74990,
+     +          34.75018,34.77825,34.97061,34.96310,35.41227,
+     +          35.63650,35.64190,35.68500,35.70720,36.47993,
+     +          36.56610,36.71806,36.72308,36.86915,36.87640,
+     +          37.06238,37.10975,37.18496,37.38623,37.41537,
+     +          37.43520,37.55109,37.66805,37.68568,37.78138,
+     +          37.79397,37.79430,37.94379,38.06220,38.13608,
+     +          38.17025,38.49410,40.04823,38.30365,38.51795,
+     +          38.67807,38.56778,38.99632,39.23653,39.25881,
+     +          38.60269,38.72010,38.72871,38.83274,38.90287,
+     +          38.92105,38.97378,39.78867,40.14329,39.13158,
+     +          39.14071,39.21486,39.24594,39.26459,39.55900,
+     +          39.61100,39.63130,39.64755,39.71766,39.77355,
+     +          39.80772,40.05640,40.06572,40.29750,40.35080,
+     +          40.35470,40.37376,40.55010,40.55159,40.56040,
+     +          40.56110,40.59073,40.59694,40.64935,40.66624,
+     +          40.69583,40.69968,40.84490,40.85050,40.87931,
+     +          40.88949,40.88922,40.89125,40.90208,40.92010,
+     +          40.92130,40.92725,40.99613,41.02367,40.99753,
+     +          41.00154,41.04360,41.06775,41.07143,41.06870,
+     +          41.37150,41.55780,41.59900,42.04000,42.06980,
+     +          42.11410,42.29200,42.53450,42.81670,42.99326,
+     +          43.02336,43.07319,43.04403,43.06014,43.10600,
+     +          43.08570,43.33470,45.09560,45.34930,43.35026,
+     +          43.35860,43.38240,43.45220,43.55970,43.91147,
+     +          43.63408,43.76670,43.79980,43.84972,43.92100,
+     +          43.95767,43.96260,44.00941,44.02620,44.15693,
+     +          44.18642,44.42083,44.57220,45.14112,45.47140,
+     +          45.48890,45.56630,45.68720,45.72641,46.00780,
+     +          46.09880,46.30230,47.59700,46.17730,46.49840,
+     +          46.53810,46.51460,46.81260,46.88590,46.86590,
+     +          47.25100,47.43790,47.52060,47.71980,47.78740,
+     +          47.80820,47.86050,47.97190,47.99370,48.03410,
+     +          48.15670,48.27730,48.28710,48.29740,48.66930,
+     +          48.84730,49.15060,48.92800,48.98550,48.98940,
+     +          49.30640,49.36840,49.72460,49.84130,49.81080,
+     +          51.18390,51.41110/
+        DATA NMOVI/4,4,5,5,5,4,4,5,5,4,
+     +          4,4,4,4,4,4,4,4,4,6,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,6,6,4,4,4,4,4,5,5,
+     +          6,6,4,5,5,4,7,4,4,4,
+     +          4,7,7,5,5,5,5,5,5,5,
+     +          6,6,5,5,7,7,5,6,6,6,
+     +          6,8,5,5,5,5,8,8,5,5,
+     +          5,5,5,7,7,5,8,8,7,7,
+     +          7,7,7,7,9,9,8,8,8,8,
+     +          8,8,8,8,8,8,10,10,9,9,
+     +          11,11/
+        DATA GMOVI/4.0D0,6.0D0,2.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,6.0D0,6.0D0,4.0D0,
+     +          4.0D0,2.0D0,6.0D0,8.0D0,2.0D0,
+     +          4.0D0,6.0D0,2.0D0,8.0D0,6.0D0,
+     +          8.0D0,6.0D0,8.0D0,4.0D0,2.0D0,
+     +          6.0D0,2.0D0,4.0D0,4.0D0,4.0D0,
+     +          8.0D0,6.0D0,4.0D0,6.0D0,8.0D0,
+     +          4.0D0,6.0D0,6.0D0,8.0D0,10.0D0,
+     +          8.0D0,2.0D0,2.0D0,4.0D0,6.0D0,
+     +          4.0D0,2.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,2.0D0,8.0D0,4.0D0,6.0D0,
+     +          6.0D0,8.0D0,4.0D0,8.0D0,4.0D0,
+     +          6.0D0,6.0D0,8.0D0,10.0D0,10.0D0,
+     +          12.0D0,2.0D0,8.0D0,6.0D0,2.0D0,
+     +          4.0D0,2.0D0,4.0D0,6.0D0,4.0D0,
+     +          6.0D0,4.0D0,8.0D0,6.0D0,8.0D0,
+     +          6.0D0,4.0D0,6.0D0,8.0D0,10.0D0,
+     +          10.0D0,12.0D0,12.0D0,14.0D0,2.0D0,
+     +          4.0D0,6.0D0,8.0D0,8.0D0,10.0D0,
+     +          10.0D0,12.0D0,12.0D0,14.0D0,14.0D0,
+     +          16.0D0,2.0D0,4.0D0,6.0D0,8.0D0,
+     +          2.0D0,4.0D0/
+        DATA ENMOVI/0.00000,0.32031,14.84408,22.61527,23.22611,
+     +          33.10963,33.16042,35.06590,35.16327,35.48870,
+     +          35.61450,35.82370,37.28080,37.59030,37.70040,
+     +          38.03910,38.11100,38.29550,38.69427,38.90709,
+     +          39.04920,39.07430,39.15360,39.23809,39.49240,
+     +          39.68585,40.89900,41.06460,41.12470,41.78500,
+     +          41.79148,42.22539,42.47233,42.54078,43.00873,
+     +          43.23357,43.30569,44.06920,45.26705,45.65137,
+     +          47.87843,47.92636,48.85540,48.99624,48.99661,
+     +          49.46122,49.68810,49.98050,50.57390,51.18060,
+     +          51.24040,51.43532,51.58593,51.78760,52.15580,
+     +          52.87910,52.94240,53.50660,53.70800,53.82460,
+     +          54.07961,54.12509,54.29140,54.30240,54.48674,
+     +          54.51477,54.74670,55.04124,55.04167,55.18568,
+     +          55.18613,55.51147,55.55140,56.02050,56.39570,
+     +          56.51290,56.59815,56.62586,56.81130,56.90160,
+     +          57.35240,57.82660,57.82700,58.00350,58.01771,
+     +          58.20390,58.37340,58.39180,58.69830,58.69871,
+     +          58.80521,58.80531,58.82205,58.82250,59.67900,
+     +          59.73160,60.59270,60.59750,61.07422,61.07475,
+     +          61.15459,61.15500,61.16728,61.16738,61.17103,
+     +          61.17148,61.74880,61.78130,62.36110,62.36580,
+     +          63.18190,63.20540/
+        DATA NMOVII/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,5,5,5,5,5,4,4,
+     +          5,4,5,5,5,4,5,5,5,5,
+     +          5,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,6,6,
+     +          6,6,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,6,5,5,
+     +          5,5,5,5,5,7,5,5,5,5,
+     +          7,8,8,9,10/
+        DATA GMOVII/1.0D0,1.0D0,3.0D0,5.0D0,9.0D0,
+     +          7.0D0,5.0D0,7.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,3.0D0,5.0D0,3.0D0,
+     +          1.0D0,3.0D0,3.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,7.0D0,3.0D0,5.0D0,
+     +          5.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          1.0D0,5.0D0,11.0D0,9.0D0,9.0D0,
+     +          3.0D0,5.0D0,7.0D0,7.0D0,9.0D0,
+     +          5.0D0,7.0D0,9.0D0,7.0D0,5.0D0,
+     +          9.0D0,1.0D0,3.0D0,9.0D0,5.0D0,
+     +          7.0D0,5.0D0,7.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,3.0D0,5.0D0,3.0D0,
+     +          1.0D0,3.0D0,3.0D0,5.0D0,11.0D0,
+     +          9.0D0,7.0D0,5.0D0,7.0D0,9.0D0,
+     +          3.0D0,3.0D0,5.0D0,7.0D0,13.0D0,
+     +          11.0D0,5.0D0,3.0D0,9.0D0,7.0D0,
+     +          9.0D0,11.0D0,7.0D0,7.0D0,9.0D0,
+     +          3.0D0,9.0D0,9.0D0,7.0D0,11.0D0,
+     +          3.0D0,3.0D0,3.0D0,3.0D0,3.0D0/
+        DATA ENMOVII/0.00000,37.48584,37.88447,38.68907,39.11600,
+     +          39.43986,40.03400,41.36347,42.34107,42.36701,
+     +          43.07625,43.53415,51.76695,59.23567,59.67310,
+     +          62.06881,62.35578,67.23233,67.52962,67.68382,
+     +          67.95296,67.95827,68.48019,68.73696,69.11344,
+     +          69.87349,70.15074,70.75267,71.61874,71.63384,
+     +          72.53399,75.61783,75.70041,75.74297,75.80342,
+     +          75.84451,76.07585,76.27556,76.34021,76.39265,
+     +          77.44101,78.57981,78.76250,78.84285,80.07046,
+     +          80.37680,81.53237,81.70752,82.01412,82.03767,
+     +          82.03826,82.37047,82.53799,82.95325,84.90504,
+     +          85.06723,85.13189,85.52240,87.88540,88.03732,
+     +          90.73968,90.82865,95.67962,95.84391,95.97741,
+     +          96.13809,96.18458,96.29228,96.35570,96.63001,
+     +          96.75600,97.90980,98.40632,98.43218,98.51167,
+     +          98.52650,98.53659,98.63340,98.64991,98.68133,
+     +          98.73971,98.74630,98.91465,98.93882,99.21212,
+     +          101.22230,101.45355,101.48157,101.49141,101.49319,
+     +          104.06510,108.48590,111.34930,112.92900,115.86770/
+        DATA NMOVIII/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,6,6,5,5,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,7,7,6,6,6,6,6,7,
+     +          7,7,7,7,6,7/
+        DATA GMOVIII/4.0D0,2.0D0,2.0D0,6.0D0,4.0D0,
+     +          2.0D0,4.0D0,2.0D0,6.0D0,4.0D0,
+     +          4.0D0,6.0D0,4.0D0,6.0D0,6.0D0,
+     +          6.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,6.0D0,4.0D0,
+     +          2.0D0,4.0D0,2.0D0,6.0D0,4.0D0,
+     +          2.0D0,2.0D0,4.0D0,6.0D0,4.0D0,
+     +          6.0D0,4.0D0,6.0D0,6.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,6.0D0,4.0D0,
+     +          2.0D0,6.0D0,4.0D0,6.0D0,4.0D0,
+     +          2.0D0,4.0D0,2.0D0,6.0D0,4.0D0,
+     +          2.0D0,6.0D0,4.0D0,4.0D0,6.0D0,
+     +          6.0D0,4.0D0,6.0D0,4.0D0,2.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0,2.0D0,
+     +          4.0D0,2.0D0,6.0D0,4.0D0,4.0D0,
+     +          2.0D0/
+        DATA ENMOVIII/0.00000,2.88560,28.99100,38.27380,38.42740,
+     +          41.01000,41.61690,41.77470,41.89930,42.09570,
+     +          42.32350,42.92520,43.24970,43.78480,44.36290,
+     +          46.04040,48.91730,50.20160,51.02100,52.26670,
+     +          52.91370,53.43330,55.52950,64.65290,65.38790,
+     +          66.79430,67.36510,68.05780,69.28390,69.40800,
+     +          73.87340,90.56700,90.64150,90.92650,91.94070,
+     +          92.27620,92.38870,92.76010,92.93000,93.10430,
+     +          94.11790,94.46860,94.60180,94.81900,95.11660,
+     +          95.51400,97.91700,98.17350,99.03620,99.23090,
+     +          100.00740,100.47220,100.70910,102.40000,102.42280,
+     +          106.97390,110.44930,110.59380,112.40510,112.51990,
+     +          112.81190,112.85300,113.64810,113.96060,114.11850,
+     +          114.19790,114.53000,114.57440,115.01500,115.17150,
+     +          115.65390,115.84640,117.55300,118.34860,119.56700,
+     +          121.75790/
+        DATA NSNIV/5,5,5,5,5,5,5,6,6,6,
+     +          4,4,6,6,7,5,5,5,5,5/
+        DATA GSNIV/2.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          6.0D0,4.0D0,2.0D0,2.0D0,4.0D0,
+     +          8.0D0,6.0D0,4.0D0,6.0D0,2.0D0,
+     +          10.0D0,8.0D0,8.0D0,6.0D0,4.0D0/
+        DATA ENSNIV/0.00000,8.62482,9.43176,20.49517,20.50833,
+     +          20.98229,22.05542,21.59046,24.53039,24.80066,
+     +          26.06863,26.07613,29.11096,29.15212,29.46059,
+     +          32.02292,32.02297,32.22055,32.28530,32.69693/
+        DATA NSNV/4,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,6,6,
+     +          6,5,5,6/
+        DATA GSNV/1.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          5.0D0,3.0D0,7.0D0,9.0D0,5.0D0,
+     +          5.0D0,7.0D0,3.0D0,3.0D0,7.0D0,
+     +          5.0D0,7.0D0,5.0D0,7.0D0,5.0D0,
+     +          3.0D0,9.0D0,9.0D0,5.0D0/
+        DATA ENSNV/0.00000,22.63689,22.94427,23.70603,23.95744,
+     +          32.15804,33.22727,32.52309,33.31841,33.88922,
+     +          33.36365,34.01839,34.86053,34.29271,34.62193,
+     +          35.04025,46.47072,46.99621,47.14704,47.28799,
+     +          48.26519,47.26604,47.93039,48.38277/
+        DATA NSNVI/4,4,4,4,4,4,4,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5/
+        DATA GSNVI/6.0D0,4.0D0,6.0D0,4.0D0,8.0D0,
+     +          6.0D0,6.0D0,8.0D0,6.0D0,8.0D0,
+     +          2.0D0,6.0D0,4.0D0,6.0D0,8.0D0,
+     +          2.0D0,4.0D0,6.0D0,4.0D0,8.0D0,
+     +          4.0D0,6.0D0,4.0D0,6.0D0,4.0D0,
+     +          2.0D0,8.0D0,6.0D0,2.0D0/
+        DATA ENSNVI/0.00000,1.08050,39.06200,39.37500,39.65720,
+     +          39.76400,40.28560,40.32920,40.50710,40.58280,
+     +          40.76690,40.80700,40.92690,41.08290,41.39440,
+     +          41.43340,41.45390,41.61380,41.72400,41.74280,
+     +          42.08560,42.13710,42.36900,42.50930,42.70000,
+     +          42.76000,42.87000,43.02510,43.42480/
+        DATA NINIV/4,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5/
+        DATA GINIV/1.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,3.0D0,9.0D0,5.0D0,
+     +          1.0D0,5.0D0,7.0D0,3.0D0,7.0D0,
+     +          3.0D0,5.0D0/
+        DATA ENINIV/0.00000,15.96730,16.23960,16.84860,17.20450,
+     +          24.05340,24.38840,24.87890,24.94040,25.06080,
+     +          25.42380,25.46100,25.53490,25.87570,26.02250,
+     +          26.24100,26.38200/
+        DATA NINV/4,4,4,4,4,4,4,4,5,5,
+     +          4,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5/
+        DATA GINV/6.0D0,4.0D0,8.0D0,6.0D0,6.0D0,
+     +          4.0D0,4.0D0,8.0D0,6.0D0,4.0D0,
+     +          6.0D0,8.0D0,8.0D0,6.0D0,4.0D0,
+     +          6.0D0,2.0D0,8.0D0,4.0D0,6.0D0,
+     +          4.0D0,8.0D0,4.0D0,6.0D0,4.0D0,
+     +          6.0D0,4.0D0,2.0D0,8.0D0,6.0D0,
+     +          4.0D0,2.0D0/
+        DATA ENINV/0.00000,0.88830,29.29960,29.88650,30.39200,
+     +          30.51770,30.58850,30.81190,30.95190,31.32440,
+     +          31.32970,31.47690,31.59150,31.87990,31.90040,
+     +          32.06210,32.38800,32.39200,32.49400,32.60420,
+     +          32.67680,32.74720,32.96840,32.98860,33.25580,
+     +          33.33300,33.50020,33.58100,33.63010,33.79380,
+     +          33.95520,34.13350/
+        DATA NINVI/4/
+        DATA GINVI/9.0D0/
+        DATA ENINVI/0.00000/
+        DATA NSBIV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,6,6,6,6,6,4,4,
+     +          4,4,6,6,6,6,7,7/
+        DATA GSBIV/1.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          1.0D0,5.0D0,3.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,1.0D0,
+     +          3.0D0,5.0D0,3.0D0,5.0D0,7.0D0,
+     +          9.0D0,7.0D0,3.0D0,5.0D0,7.0D0,
+     +          5.0D0,3.0D0,1.0D0/
+        DATA ENSBIV/0.00000,7.98892,8.26975,8.99629,11.89653,
+     +          18.85502,19.33608,19.38964,20.27439,22.18251,
+     +          22.22590,22.29484,22.66444,23.38615,26.70446,
+     +          26.74785,27.00401,27.15601,28.15173,28.16227,
+     +          28.18210,28.46578,31.57667,31.59440,31.62577,
+     +          31.68515,31.95953,32.59693/
+        DATA NSBV/5,5,5,5,5,6,6,6/
+        DATA GSBV/2.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          2.0D0,2.0D0,4.0D0/
+        DATA ENSBV/0.00000,10.11290,11.22714,25.03576,25.17412,
+     +          27.85342,31.53910,31.93573/
+        DATA NSBVI/4,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,6,6,6,6,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5/
+        DATA GSBVI/1.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,3.0D0,5.0D0,9.0D0,
+     +          5.0D0,1.0D0,7.0D0,3.0D0,7.0D0,
+     +          3.0D0,5.0D0,3.0D0,9.0D0,5.0D0,
+     +          11.0D0,3.0D0,7.0D0,7.0D0,5.0D0,
+     +          9.0D0,1.0D0,3.0D0,7.0D0,3.0D0,
+     +          9.0D0,5.0D0,5.0D0,7.0D0,1.0D0,
+     +          7.0D0,5.0D0,3.0D0,5.0D0,1.0D0,
+     +          3.0D0,5.0D0,13.0D0,11.0D0,5.0D0,
+     +          7.0D0,9.0D0,9.0D0,11.0D0,7.0D0,
+     +          3.0D0,5.0D0,9.0D0,11.0D0,5.0D0,
+     +          7.0D0,9.0D0,7.0D0,3.0D0/
+        DATA ENSBVI/0.00000,30.11784,30.45843,31.39659,31.78734,
+     +          41.05399,41.44327,42.39895,42.47389,42.52373,
+     +          43.13659,43.28308,43.32153,43.51961,44.06645,
+     +          44.31766,44.53910,58.07963,58.71329,58.81327,
+     +          58.81773,58.84788,59.02702,59.20629,59.24034,
+     +          59.29936,59.45556,59.85677,60.01342,60.16432,
+     +          60.24476,60.39893,60.48524,60.60079,62.94793,
+     +          63.80995,63.91467,65.09458,65.17378,74.88120,
+     +          74.98800,75.18850,75.27650,75.38450,75.52910,
+     +          75.55040,75.62090,75.69470,75.73390,75.88340,
+     +          76.08330,76.51490,76.61450,76.74210,76.80020,
+     +          76.92380,77.03940,77.15900,79.23690/
+        DATA NSBVII/4/
+        DATA GSBVII/6.0D0/
+        DATA ENSBVII/0.00000/
+        DATA NTEIV/5,5,5,5,5,5,5,5,5,6,
+     +          6,6,6,6,7/
+        DATA GTEIV/2.0D0,4.0D0,4.0D0,6.0D0,2.0D0,
+     +          2.0D0,4.0D0,4.0D0,6.0D0,2.0D0,
+     +          2.0D0,4.0D0,4.0D0,6.0D0,2.0D0/
+        DATA ENTEIV/0.00000,1.14350,11.50230,11.75510,13.58070,
+     +          14.75520,14.87260,15.80117,15.89682,16.54644,
+     +          20.00354,20.32833,25.16153,25.21253,25.45936/
+        DATA NTEV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,6,6,6,6,6,6,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          6,6,6,6,5,7,6,7,7,7,
+     +          6,6,7,6/
+        DATA GTEV/1.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          1.0D0,3.0D0,5.0D0,5.0D0,1.0D0,
+     +          3.0D0,5.0D0,7.0D0,5.0D0,3.0D0,
+     +          1.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,9.0D0,
+     +          5.0D0,7.0D0,1.0D0,5.0D0,3.0D0,
+     +          3.0D0,5.0D0,7.0D0,5.0D0,3.0D0,
+     +          3.0D0,1.0D0,1.0D0,5.0D0,7.0D0,
+     +          3.0D0,5.0D0,3.0D0,3.0D0/
+        DATA ENTEV/0.00000,9.31260,9.67390,10.66310,13.84990,
+     +          21.85280,22.61730,22.66480,23.87900,26.66420,
+     +          26.73240,26.79760,26.90360,28.77100,29.86020,
+     +          30.59320,33.97130,34.02240,34.40660,34.55480,
+     +          37.33830,37.95080,38.18860,38.76960,38.77920,
+     +          39.18110,39.72010,39.86000,39.86980,39.89030,
+     +          40.28000,40.30500,40.35760,40.48870,41.30190,
+     +          41.46710,41.57790,41.68490,41.73080,41.80290,
+     +          41.86020,42.93730,42.99090,43.37000/
+        DATA NTEVI/5,5,5,5,5,6,6,6/
+        DATA GTEVI/2.0D0,2.0D0,4.0D0,4.0D0,6.0D0,
+     +          2.0D0,2.0D0,4.0D0/
+        DATA ENTEVI/0.00000,11.57220,13.03700,29.51830,29.72210,
+     +          34.52200,38.95500,39.50000/
+        DATA NTEVII/4,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,6,6,6,6,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5/
+        DATA GTEVII/1.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,3.0D0,5.0D0,9.0D0,
+     +          5.0D0,7.0D0,1.0D0,3.0D0,7.0D0,
+     +          3.0D0,5.0D0,3.0D0,9.0D0,5.0D0,
+     +          11.0D0,3.0D0,7.0D0,7.0D0,5.0D0,
+     +          9.0D0,1.0D0,3.0D0,7.0D0,3.0D0,
+     +          9.0D0,5.0D0,5.0D0,7.0D0,1.0D0,
+     +          7.0D0,5.0D0,3.0D0,5.0D0,1.0D0,
+     +          3.0D0,5.0D0,13.0D0,11.0D0,5.0D0,
+     +          7.0D0,9.0D0,9.0D0,11.0D0,7.0D0,
+     +          3.0D0,5.0D0,9.0D0,11.0D0,5.0D0,
+     +          7.0D0,9.0D0,7.0D0,3.0D0/
+        DATA ENTEVII/0.00000,38.20191,38.57437,39.71358,40.11772,
+     +          50.54006,50.94943,52.19297,52.19493,52.36000,
+     +          53.00814,53.24968,53.29464,53.36393,54.16215,
+     +          54.42051,54.68566,70.36036,71.11448,71.23922,
+     +          71.25958,71.28821,71.48363,71.71111,71.76655,
+     +          71.84951,72.01969,72.47933,72.64275,72.83608,
+     +          72.95655,73.13111,73.21954,73.37749,76.21470,
+     +          78.79719,78.91385,80.31637,80.40326,90.17640,
+     +          90.32470,90.54700,90.64560,90.74750,90.91600,
+     +          90.94390,91.01520,91.10930,91.17700,91.31230,
+     +          91.58580,92.08750,92.18600,92.33500,92.43160,
+     +          92.57610,92.68180,92.79130,95.76850/
+        DATA NTEVIII/4/
+        DATA GTEVIII/6.0D0/
+        DATA ENTEVIII/0.00000/
+
+        DATA NIIV/5,5,5,5,5,5,5,5,5/
+        DATA GIIV/1.0D0,3.0D0,5.0D0,5.0D0,1.0D0,5.,3.,5.,7./
+        DATA ENIIV/0.00000,0.84656,1.36159,2.79361,4.60936,
+     +          9.68118,12.28026,12.34164,12.69437/
+
+        DATA NIV/5,5,5,5,5,5,5,5,5,5/
+        DATA GIV/2.0D0,4.0D0,2.0D0,4.0D0,6.0D0,4.,6.,2.,4.,2./
+        DATA ENIV/0.00000,1.51535,10.0450,10.6076,11.4757,
+     +          13.48705,13.86530,15.58525,17.28316,17.15052/
+
+        DATA NIVI/5,5,5,5,5/
+        DATA GIVI/1.0D0,1.0D0,3.0D0,5.0D0,3.0D0/
+        DATA ENIVI/0.00000,10.62118,11.06704,12.35941,15.79854/
+
+        DATA NIVII/5/
+        DATA GIVII/2.0D0/
+        DATA ENIVII/0.00000/
+
+        DATA NXEIV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,6,6,6,5,5,5,5,
+     +          5,5,5,5,5,6,6,5,5,5,
+     +          5,5,5,4,4,4,6,6,6,6,
+     +          6,6,4,4,4,4,5,4,4,4,
+     +          4,5,5,4,4,4,6,6,6,6,
+     +          6,6,6,6,4,4,6,6,4,4,
+     +          4,4,4,4,6,6,6,6,6,6,
+     +          4,4,6,6/
+        DATA GXEIV/4.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          4.0D0,2.0D0,4.0D0,6.0D0,8.0D0,
+     +          10.0D0,6.0D0,8.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,2.0D0,2.0D0,4.0D0,
+     +          6.0D0,6.0D0,4.0D0,2.0D0,8.0D0,
+     +          10.0D0,4.0D0,6.0D0,4.0D0,2.0D0,
+     +          2.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          8.0D0,4.0D0,6.0D0,6.0D0,8.0D0,
+     +          10.0D0,6.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,8.0D0,6.0D0,4.0D0,
+     +          2.0D0,2.0D0,6.0D0,4.0D0,8.0D0,
+     +          10.0D0,6.0D0,4.0D0,4.0D0,8.0D0,
+     +          6.0D0,2.0D0,4.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,4.0D0,2.0D0,6.0D0,
+     +          8.0D0,4.0D0,2.0D0,10.0D0,8.0D0,
+     +          6.0D0,8.0D0,4.0D0,6.0D0,6.0D0,
+     +          8.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          2.0D0,8.0D0,2.0D0,4.0D0/
+        DATA ENXEIV/0.00000,1.64490,2.17105,3.47607,4.41999,
+     +          12.35674,13.25679,13.54582,15.11726,15.55688,
+     +          16.49330,16.96058,16.73546,16.92333,17.55924,
+     +          18.10059,17.58398,17.97910,17.99081,18.12730,
+     +          18.43459,19.32466,18.68904,19.49094,20.49211,
+     +          21.13810,19.79318,20.01535,20.19287,19.91993,
+     +          20.26684,20.28341,20.95352,20.58079,22.06312,
+     +          20.73095,21.47677,21.43590,22.63592,21.82641,
+     +          22.05968,21.83637,22.19323,22.33594,22.59229,
+     +          23.34025,23.06709,23.25285,23.07459,23.65525,
+     +          24.66580,25.16273,23.25112,23.80225,24.27420,
+     +          24.38208,23.34283,23.39837,24.72208,23.53742,
+     +          25.05424,23.56078,23.60278,23.78738,24.34122,
+     +          24.36365,24.03565,24.39078,24.85712,24.90835,
+     +          25.31013,25.67175,24.92425,25.05158,25.44218,
+     +          25.44363,25.54833,25.95531,25.56755,25.62916,
+     +          25.86572,27.24147,26.49984,27.15275,26.73415,
+     +          26.93429,26.79807,26.89350,27.28664,27.83423,
+     +          27.37445,28.38933,28.86493,29.20580/
+        DATA NXEV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,4,4,4,4,4,
+     +          4,6,6,6,5,5,4,4,4,4,
+     +          6,4,4,6,6,6,6,6,6,6,
+     +          6,6,6/
+        DATA GXEV/1.0D0,3.0D0,5.0D0,5.0D0,1.0D0,
+     +          5.0D0,3.0D0,5.0D0,7.0D0,1.0D0,
+     +          3.0D0,5.0D0,5.0D0,3.0D0,5.0D0,
+     +          7.0D0,9.0D0,3.0D0,5.0D0,1.0D0,
+     +          3.0D0,3.0D0,5.0D0,7.0D0,5.0D0,
+     +          7.0D0,9.0D0,11.0D0,7.0D0,9.0D0,
+     +          5.0D0,1.0D0,3.0D0,5.0D0,7.0D0,
+     +          3.0D0,7.0D0,7.0D0,5.0D0,3.0D0,
+     +          3.0D0,9.0D0,5.0D0,3.0D0,5.0D0,
+     +          7.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          3.0D0,5.0D0,1.0D0/
+        DATA ENXEV/0.00000,1.15204,1.75149,3.52254,5.51363,
+     +          11.42921,14.29368,14.39419,14.86806,16.54050,
+     +          16.68520,16.70101,18.07776,19.28179,19.40437,
+     +          19.91563,21.05244,21.03672,21.19976,22.69223,
+     +          22.83139,21.45816,22.44167,22.58585,23.03564,
+     +          23.15364,24.98842,25.07975,23.51531,23.63693,
+     +          23.75581,24.05704,24.08181,25.92124,24.07004,
+     +          24.79176,24.79810,25.51084,25.71019,25.95122,
+     +          26.41362,26.57201,26.87303,28.27644,29.15847,
+     +          30.52590,29.01222,29.06879,30.35397,30.15500,
+     +          30.72457,31.06513,32.19154/
+        DATA NXEVI/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,4,4,6,5,5,5,5,5,
+     +          6,5,5,6,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,6,6,7,7,7,5,
+     +          5,7,7,8,8,8,6,6,6,6,
+     +          8,8,7,7,7,7,8,8,8,8,
+     +          8,8/
+        DATA GXEVI/2.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          4.0D0,6.0D0,2.0D0,2.0D0,4.0D0,
+     +          4.0D0,6.0D0,6.0D0,8.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,2.0D0,6.0D0,
+     +          2.0D0,4.0D0,8.0D0,4.0D0,6.0D0,
+     +          4.0D0,2.0D0,6.0D0,8.0D0,4.0D0,
+     +          6.0D0,2.0D0,6.0D0,8.0D0,4.0D0,
+     +          2.0D0,8.0D0,6.0D0,4.0D0,2.0D0,
+     +          6.0D0,4.0D0,8.0D0,6.0D0,4.0D0,
+     +          6.0D0,2.0D0,2.0D0,4.0D0,8.0D0,
+     +          10.0D0,4.0D0,6.0D0,2.0D0,2.0D0,
+     +          4.0D0,8.0D0,10.0D0,12.0D0,10.0D0,
+     +          4.0D0,6.0D0,12.0D0,10.0D0,12.0D0,
+     +          14.0D0,12.0D0,10.0D0,14.0D0,12.0D0,
+     +          14.0D0,16.0D0/
+        DATA ENXEVI/0.00000,1.93403,11.47920,12.44530,13.29170,
+     +          15.48189,16.02247,17.58557,19.58896,19.72737,
+     +          22.34810,22.60331,22.93630,22.97500,27.70772,
+     +          28.83693,29.77357,29.81438,32.37685,32.55154,
+     +          32.84230,33.07133,33.13341,33.51364,33.92381,
+     +          34.12889,34.21877,35.25689,35.36455,35.45664,
+     +          35.50139,35.59188,36.20817,37.22513,38.11713,
+     +          38.96326,39.08460,39.26064,40.08943,40.16027,
+     +          40.17646,40.45319,41.07101,41.13771,41.96200,
+     +          42.12600,43.67300,46.39200,46.56000,46.73370,
+     +          46.73370,50.10000,50.20500,51.29400,52.47900,
+     +          52.59800,52.84030,52.84030,53.01080,53.01080,
+     +          54.89600,54.94400,56.64300,56.64300,56.69350,
+     +          56.69350,58.99630,58.99630,59.04030,59.04030,
+     +          59.06050,59.06050/
+        DATA NXEVII/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,6,6,
+     +          5,5,5,5,5,5,5,6,6,5,
+     +          5,5,5,5,6,6,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,6,6,6,6,6,6,6,7,
+     +          7,7,7,5,5,4,4/
+        DATA GXEVII/1.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          1.0D0,3.0D0,5.0D0,5.0D0,5.0D0,
+     +          7.0D0,1.0D0,9.0D0,7.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,1.0D0,
+     +          7.0D0,7.0D0,9.0D0,5.0D0,5.0D0,
+     +          7.0D0,9.0D0,1.0D0,3.0D0,7.0D0,
+     +          11.0D0,5.0D0,7.0D0,5.0D0,3.0D0,
+     +          5.0D0,3.0D0,3.0D0,9.0D0,9.0D0,
+     +          5.0D0,5.0D0,7.0D0,1.0D0,3.0D0,
+     +          5.0D0,7.0D0,3.0D0,5.0D0,7.0D0,
+     +          9.0D0,7.0D0,1.0D0,3.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,3.0D0,
+     +          1.0D0,3.0D0,5.0D0,3.0D0,3.0D0,
+     +          3.0D0,3.0D0/
+        DATA ENXEVII/0.00000,11.92000,12.45430,14.09400,17.76190,
+     +          27.73190,29.09720,29.27270,31.22580,33.79570,
+     +          33.82440,33.87350,33.87810,34.62660,35.67920,
+     +          35.79570,35.99760,38.13030,43.99370,44.84150,
+     +          47.40610,47.78620,47.87920,47.95850,48.82400,
+     +          49.34910,49.59210,49.67630,49.70440,49.76890,
+     +          49.79140,50.15760,50.21100,50.38000,50.56100,
+     +          50.62860,50.68060,50.96020,51.02580,51.15180,
+     +          51.62170,51.73120,52.44880,52.59260,52.63960,
+     +          52.72230,54.35810,54.72360,57.36770,57.37880,
+     +          57.42440,57.98740,58.12090,58.37240,59.01500,
+     +          59.04400,59.12000,60.18630,60.74690,62.76500,
+     +          65.34800,65.40000,65.63000,66.86020,68.17000,
+     +          80.60000,84.70000/
+
+        DATA NCSIV/5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,6,5,
+     +          6,5,5,5,5,5,5,5,5,5,5,5,6,6,6,
+     +          5,5,5,6,5,5,6,6,6,5,6,5,6,6,6,
+     +          6,6,6,6,6,7,7,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,7,6,6,6,6,7,6,6,6,
+     +          6,6,6,7,7,7,7,7,7,7,7,6,6,6,7,
+     +          7,6,8,6,8,6,7/
+        DATA GCSIV/5.,1.,3.,5.,1.,5.,3.,1.,7.,5.,
+     +          1.,9.,3.,3.,5.,7.,3.,5.,7.,9.,
+     +          1.,9.,7.,11.,9.,3.,7.,5.,5.,5.,
+     +          3.,1.,3.,5.,5.,3.,7.,5.,7.,9.,
+     +          3.,7.,5.,3.,7.,3.,5.,1.,5.,3.,
+     +          5.,1.,3.,5.,7.,3.,3.,5.,7.,1.,
+     +          3.,9.,5.,7.,3.,5.,3.,5.,7.,9.,
+     +          3.,7.,5.,9.,7.,11.,1.,5.,3.,1.,
+     +          9.,5.,3.,3.,5.,7.,5.,5.,7.,9.,
+     +          5.,3.,7.,1.,3.,5.,5.,1.,7.,3.,
+     +          9.,1.,3.,5.,5.,7.,3.,7.,5.,5.,
+     +          3.,3.,3./
+        DATA ENCSIV/0.00000,1.20877,1.59964,2.57317,5.36596,
+     +          14.17235,15.03215,15.88068,16.85936,16.87959,
+     +          16.93943,16.96823,16.96954,17.53173,17.62646,
+     +          18.31191,18.42901,18.71947,18.94190,19.55962,
+     +          18.94877,19.19139,19.22319,19.87814,19.95960,
+     +          20.13824,21.56611,22.21298,20.40898,20.63991,
+     +          20.77402,21.05795,21.25703,22.62848,21.12714,
+     +          23.48158,23.59541,21.66236,21.67112,22.30129,
+     +          22.25241,22.38388,22.55828,22.63620,23.02620,
+     +          23.05039,23.21810,23.92300,23.46002,24.13798,
+     +          24.47210,24.56565,24.61261,25.78098,24.72147,
+     +          25.85071,26.41409,30.50768,30.51120,30.52603,
+     +          30.52900,30.55789,30.83338,31.04755,31.07468,
+     +          31.18844,31.39210,32.38192,32.44018,33.03993,
+     +          32.46753,33.12850,33.22867,32.49923,32.50248,
+     +          33.10440,32.55044,32.75359,32.86912,33.26843,
+     +          33.09461,33.11074,33.29237,33.41098,33.47767,
+     +          33.56108,33.82355,34.49238,34.65851,35.68315,
+     +          34.62414,34.74557,35.97488,35.15473,35.20011,
+     +          36.44224,35.63120,35.63169,35.63331,35.63889,
+     +          35.65488,35.66108,35.72505,35.73597,35.78030,
+     +          35.84619,35.92926,35.88104,35.92107,36.02005,
+     +          36.02038,36.29863,36.50125/
+        DATA NCSV/5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,6,6,6,5,5,5,5,5,5,5,5,6,6,
+     +          6,6,6,6/
+        DATA GCSV/4.,4.,6.,2.,4.,6.,4.,2.,4.,6.,
+     +          4.,2.,4.,6.,8.,10.,2.,4.,6.,8.,
+     +          2.,4.,6.,8.,2.,6.,4.,2.,8.,10.,
+     +          4.,6.,2.,4.,6.,2.,4.,4.,6.,8.,
+     +          6.,6.,4.,2.,4.,2.,6.,4.,2./
+        DATA ENCSV/0.00000,1.86936,2.52599,3.96143,5.24127,
+     +          14.12201,15.27391,15.60444,17.35273,17.89501,
+     +          19.21398,24.93838,19.57748,19.87813,20.73401,
+     +          21.41419,19.62035,23.33950,20.68059,21.16865,
+     +          21.02250,21.31743,21.74745,22.84341,21.76875,
+     +          23.26189,23.55602,23.71033,23.48458,23.91361,
+     +          24.21763,24.72288,24.81216,26.21969,26.99813,
+     +          25.44195,26.55284,25.58735,25.62902,26.09561,
+     +          27.77253,26.17113,27.75255,26.85938,27.51628,
+     +          27.27816,29.16019,29.42641,31.31882/
+        DATA NCSVI/5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,6,6,6,
+     +          6/
+        DATA GCSVI/1.,3.,5.,5.,1.,5.,3.,5.,7.,1.,
+     +          3.,5.,5.,3.,5.,7.,9.,3.,5.,1.,
+     +          3.,3.,7.,5.,5.,7.,3.,1.,3.,5.,
+     +          3./
+        DATA ENCSVI/0.00000,1.50963,2.18562,4.34706,6.49805,
+     +          13.25126,16.33700,16.50098,17.11513,18.92429,
+     +          19.11814,19.18975,20.91988,21.77724,22.53477,
+     +          23.21852,24.66244,24.11009,24.49672,26.39972,
+     +          26.55567,24.77187,26.30283,26.78093,26.01130,
+     +          28.08532,28.76618,30.03062,30.21733,32.35392,
+     +          32.75994/
+        DATA NCSVII/5,5,5,5,5/
+        DATA GCSVII/2.,4.,2.,4.,6./
+        DATA ENCSVII/0.0, 2.40273, 12.92239, 14.16576, 15.15852/
+
+        DATA NBAIV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,6,6,5,
+     +          5,6,5,5,5,6,5,6,6,5,
+     +          6/
+        DATA GBAIV/4.0D0,2.0D0,2.0D0,6.0D0,4.0D0,
+     +          2.0D0,4.0D0,2.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,4.0D0,4.0D0,6.0D0,
+     +          6.0D0,6.0D0,4.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,6.0D0,4.0D0,4.0D0,
+     +          2.0D0,2.0D0,4.0D0,6.0D0,2.0D0,
+     +          2.0D0/
+        DATA ENBAIV/0.00000,2.17586,15.59784,17.84900,17.92638,
+     +          18.16629,19.60760,19.79711,20.30967,19.64697,
+     +          20.97077,20.05847,20.15922,20.32055,21.17773,
+     +          21.44914,22.15229,22.62135,23.69805,23.84274,
+     +          25.18160,24.29148,24.49173,26.73846,24.60268,
+     +          24.65679,24.86788,25.47575,25.49410,25.57806,
+     +          28.63070/
+        DATA NBAV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,6,6,5,5,
+     +          6,6,6,5,5,6,5,6,6,6,
+     +          6/
+        DATA GBAV/5.0D0,1.0D0,3.0D0,5.0D0,1.0D0,
+     +          5.0D0,3.0D0,1.0D0,7.0D0,5.0D0,
+     +          1.0D0,3.0D0,3.0D0,5.0D0,3.0D0,
+     +          7.0D0,7.0D0,3.0D0,5.0D0,5.0D0,
+     +          7.0D0,1.0D0,7.0D0,5.0D0,3.0D0,
+     +          1.0D0,5.0D0,5.0D0,7.0D0,5.0D0,
+     +          3.0D0,1.0D0,3.0D0,7.0D0,5.0D0,
+     +          3.0D0,5.0D0,3.0D0,7.0D0,3.0D0,
+     +          5.0D0,3.0D0,7.0D0,5.0D0,7.0D0,
+     +          5.0D0,3.0D0,1.0D0,3.0D0,5.0D0,
+     +          3.0D0/
+        DATA ENBAV/0.00000,1.40126,2.03695,3.06495,6.34560,
+     +          16.16766,17.22339,18.34123,19.77238,19.77474,
+     +          19.83884,19.90244,20.24092,20.61597,23.47765,
+     +          25.25298,21.50320,21.64962,24.76659,21.90020,
+     +          22.17123,22.11147,22.42601,24.09980,24.46531,
+     +          24.57044,26.56944,25.26451,25.35254,25.84540,
+     +          26.40830,27.90210,25.94170,26.21646,27.23053,
+     +          27.43150,26.23290,27.07990,27.59710,28.09670,
+     +          28.47560,28.67170,29.23940,28.66390,29.01680,
+     +          29.56630,30.67520,30.72730,31.05060,32.38170,
+     +          32.68140/
+        DATA NBAVI/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,6,5,
+     +          5,5,6,6,6,6,6,6,6/
+        DATA GBAVI/4.0D0,4.0D0,6.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          4.0D0,2.0D0,4.0D0,6.0D0,6.0D0,
+     +          8.0D0,2.0D0,8.0D0,4.0D0,10.0D0,
+     +          2.0D0,6.0D0,8.0D0,4.0D0,6.0D0,
+     +          4.0D0,8.0D0,2.0D0,10.0D0,4.0D0,
+     +          6.0D0,2.0D0,2.0D0,4.0D0,6.0D0,
+     +          8.0D0,6.0D0,4.0D0,2.0D0,2.0D0,
+     +          4.0D0,6.0D0,4.0D0,2.0D0,6.0D0,
+     +          4.0D0,6.0D0,4.0D0,2.0D0/
+        DATA ENBAVI/0.00000,2.14004,2.91948,4.48274,6.15222,
+     +          15.92407,17.34788,17.71138,19.60914,20.27964,
+     +          21.88296,22.20267,22.35350,22.75757,23.72837,
+     +          23.87455,24.03832,24.31705,24.45655,24.68300,
+     +          24.91309,25.02708,26.31051,26.41395,26.64058,
+     +          26.94753,27.06302,27.11458,27.59100,27.78402,
+     +          28.30942,28.42872,29.05118,29.23779,29.33968,
+     +          30.02367,30.14098,30.56163,30.71410,31.12110,
+     +          31.83602,31.90100,32.42980,32.93680,33.18430,
+     +          33.61000,35.77750,36.06740,38.11110/
+        DATA NBAVII/5/
+        DATA GBAVII/1.0/
+        DATA ENBAVII/0.0/
+
+        DATA NRUIV/4,4,4,4,4,4,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5/
+        DATA GRUIV/6.,2.,1.,4.,5.,6.,3.,9.,1.,7.,3.,
+     +          8.,4.,2.,8.,9.,4.,2.,2.,5.,1.,
+     +          4.,8.,4.,8.,4.,4.,3.,1.,5.,6.,
+     +          9.,6.,4.,5.,8.,2.,4.,2.,5.,9./
+        DATA ENRUIV/0.0,2.55735,2.80642,4.75797,5.15216,6.66750,
+     +          7.09153,7.16352,8.11731,8.34653,9.15237,
+     +          10.13235,11.09459,14.36942,14.80033,15.43695,
+     +          17.86554,17.95332,18.00727,18.16835,18.26499,
+     +          18.35984,19.61152,19.63478,19.81012,19.93656,
+     +          19.95027,20.06846,20.25849,20.35488,20.56410,
+     +          20.84863,20.86973,20.96304,21.09263,21.12252,
+     +          21.37174,21.44013,22.14764,22.20650,22.39102/
+
+        DATA NRUV/4,4,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5/
+        DATA GRUV/1.,3.,5.,2.,4.,7.,6.,6.,2.,5.,
+     +          1.,3.,7.,6.,7.,8.,9.,9.,4.,5.,
+     +          8.,2.,5.,1.,3.,5.,7.,1.,5.,6./
+        DATA ENRUV/0.00000,1.86720,3.89413,5.62948,10.08156,
+     +          16.75780,17.32652,33.61127,34.22420,34.58994,
+     +          35.64148,36.33860,36.80277,36.87222,37.37195,
+     +          38.06824,38.18292,38.69125,39.00681,40.46510,
+     +          42.37168,44.56436,44.78192,45.93792,46.58420,
+     +          46.66425,46.83342,46.91763,47.01868,47.34314/
+
+        DATA NRUVI/4/
+        DATA GRUVI/4.0/
+        DATA ENRUVI/0.0/
+
+        DATA NRUVII/4/
+        DATA GRUVII/5.0/
+        DATA ENRUVII/0.0/
+
+        DATA NRHIV/4,4,4,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5/
+        DATA GRHIV/9.,1.,3.,5.,2.,4.,6.,7.,9.,7.,4.,
+     +          4.,2.,4.,1.,3.,7.,6.,3.,1.,4.,
+     +          2.,1.,5.,2.,9.,6.,7.,1.,3.,5.,
+     +          7.,3.,3.,2./
+        DATA ENRHIV/0.,0.43016,2.63948,3.77874,4.80136,9.82832,
+     +          12.20515,13.28801,15.75390,18.05119,24.21488,
+     +          26.20395,26.24490,28.50009,28.87935,29.04735,
+     +          29.56524,29.79675,30.06836,30.27405,30.33255,
+     +          30.54469,30.64260,31.21980,31.28325,31.54078,
+     +          32.25851,32.67604,33.19399,33.28542,33.74099,
+     +          33.77140,34.85942,35.18480,36.19828/
+
+        DATA NRHV/4,4,4,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5/
+        DATA GRHV/6.,2.,2.,4.,2.,4.,6.,8.,2.,8.,4.,
+     +          8.,4.,2.,4.,2.,2.,4.,8.,9.,4.,
+     +          8.,4.,6.,6.,6.,8.,2./
+        DATA ENRHV/0.0,3.34549,3.72329,6.25564,9.28978,16.19571,
+     +          17.77594,18.62125,19.70939,20.24211,21.13393,
+     +          22.57904,23.48007,27.69419,36.68702,36.80255,
+     +          37.15662,37.33413,37.68693,38.41611,38.76895,
+     +          39.06034,39.08606,39.28821,39.44958,39.54643,
+     +          39.80694,40.01594/
+
+        DATA NRHVI/4/
+        DATA GRHVI/1.0/
+        DATA ENRHVI/0.0/
+
+        DATA NRHVII/4/
+        DATA GRHVII/4.0/
+        DATA ENRHVII/0.0/
+
+        DATA NPDIV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5/
+        DATA GPDIV/9.,7.,5.,3.,3.,5.,1.,9.,7.,3.,
+     +          11.,1.,5.,9.,3.,5.,7.,3.,5.,9.,
+     +          7.,5.,3.,1.,7.,5.,3.,1.,9.,5.,
+     +          13.,11.,7.,9.,7.,5.,3.,3.,11.,1.,
+     +          9.,5.,7.,9.,11.,7.,3.,1.,5.,3.,
+     +          7.,5.,9.,13.,1.,11.,7.,9.,7.,3.,
+     +          5.,1.,5.,3.,7.,5.,1.,3.,9.,3.,
+     +          5.,7.,5.,1.,7.,5.,3.,9.,7.,10.,
+     +          8.,6.,4.,2.,8.,6.,4.,2.,10.,12.,
+     +          8.,8.,10.,6.,6.,4.,8.,4.,2.,6.,
+     +          6.,5.,3.,4.,4.,2.,8.,4.,10.,12.,
+     +          14.,12.,10.,6.,8.,6.,10.,6.,8.,4.,
+     +          8.,2.,10.,4.,16.,12.,6.,10.,14.,8.,
+     +          12.,2.,8.,14.,6.,6.,12.,10.,4.,8.,
+     +          2.,12.,8.,10.,4.,6.,4.,8.,12.,6.,
+     +          10.,2.,6.,10.,8.,6.,14.,12.,8.,4.,
+     +          8.,10.,14.,6.,2.,4.,4.,6.,6.,8.,
+     +          4.,10.,12.,8.,2.,12.,1.,16.,4.,10.,
+     +          2.,4.,6.,8.,6.,8.,4.,10.,2.,10.,
+     +          4.,6.,8.,8.,6.,12.,14.,10.,8.,10.,
+     +          6.,4.,12.,6.,4.,2.,8.,6.,8.,2.,
+     +          2.,4.,10.,6.,8.,6.,4.,2.,6.,8.,
+     +          6.,10.,8.,12.,4.,4.,4.,2.,10.,6.,
+     +          2.,8.,6.,4.,4.,8.,6.,10.,6.,8.,
+     +          4.,10.,2.,8.,6.,6.,8.,12.,4.,6.,
+     +          10.,8.,4.,6.,6.,4.,2.,8.,2.,4./
+        DATA ENPDIV/0.00000,0.35502,0.56836,0.69970,1.57731,
+     +          1.62014,1.83944,1.85854,2.20517,2.33579,
+     +          2.48027,2.64843,2.65179,2.84370,3.21165,
+     +          3.82843,4.01249,6.08957,6.25673,10.49253,
+     +          10.71587,10.85435,10.94907,11.00486,12.05586,
+     +          12.29712,12.43455,12.51821,13.15805,13.17869,
+     +          13.17893,13.20117,13.23268,13.45271,13.53224,
+     +          13.53738,13.58692,13.62322,13.71519,13.94314,
+     +          13.96179,13.97467,14.02607,14.17578,14.18626,
+     +          14.30328,14.32754,14.37677,14.39013,14.43232,
+     +          14.46634,14.57272,14.76973,14.82364,14.83121,
+     +          14.87891,14.92083,15.17672,15.22753,15.28605,
+     +          15.31713,15.65199,15.67088,15.68880,16.01332,
+     +          16.04150,16.40238,16.51463,16.71022,16.73807,
+     +          16.83678,16.86607,16.94378,17.34315,17.60724,
+     +          17.70279,17.79939,17.84969,17.92179,17.92828,
+     +          17.94143,18.07919,18.17560,18.24399,18.73157,
+     +          18.76858,18.79204,18.79620,18.81288,18.84045,
+     +          19.06117,19.31709,19.32991,19.34863,19.48681,
+     +          19.54832,19.59948,19.60908,19.61078,19.73791,
+     +          19.82337,19.82988,19.83598,19.85095,20.02523,
+     +          20.13528,20.43848,20.46685,20.48879,20.56845,
+     +          20.61211,20.64504,20.69562,20.70777,20.74299,
+     +          20.76070,20.86514,20.88981,20.94919,20.97216,
+     +          21.08715,21.09667,21.11507,21.12977,21.13530,
+     +          21.14250,21.19139,21.21137,21.21480,21.25183,
+     +          21.30258,21.32154,21.32915,21.34863,21.36925,
+     +          21.44291,21.46888,21.47142,21.48541,21.48983,
+     +          21.60454,21.60981,21.63555,21.65487,21.65902,
+     +          21.66890,21.68213,21.75037,21.81685,21.82737,
+     +          21.86055,21.86067,21.90668,21.92140,21.92173,
+     +          21.92357,21.93342,21.94476,21.94662,21.96158,
+     +          21.98081,21.99725,22.02465,22.05141,22.08129,
+     +          22.10487,22.18031,22.18230,22.22646,22.26373,
+     +          22.34746,22.37359,22.38357,22.44031,22.46290,
+     +          22.48586,22.49659,22.50442,22.54081,22.54455,
+     +          22.60308,22.60657,22.64450,22.66284,22.67159,
+     +          22.67724,22.69094,22.69267,22.74247,22.79774,
+     +          22.81372,22.85758,22.88019,22.90467,22.90629,
+     +          22.99432,23.00836,23.01326,23.05499,23.07634,
+     +          23.08230,23.09632,23.11378,23.27868,23.34467,
+     +          23.41111,23.48869,23.59675,23.64413,23.66038,
+     +          23.69075,23.73189,23.79791,23.84165,23.88831,
+     +          23.95732,24.14577,24.17198,24.17900,24.18837,
+     +          24.38199,24.49073,24.49489,24.69080,24.74805,
+     +          24.79708,24.82880,24.84457,24.91445,24.96435,
+     +          24.97146,25.04967,25.06364,25.08368,25.16719,
+     +          25.21893,25.23061,25.30482,25.34145,25.34920,
+     +          25.35437,25.42064,25.53915,25.54977,25.60470,
+     +          25.69157,25.76352,25.78661,25.81589,25.90965,
+     +          26.08242,26.25200,27.16685,27.31092,27.89119,
+     +          28.04405,28.11420,28.18054,30.30516,30.77852/
+
+        DATA NPDV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5/
+        DATA GPDV/9.,7.,5.,3.,1.,9.,5.,13.,11.,7.,
+     +          9.,5.,11.,3.,1.,9.,7.,5.,3.,7.,
+     +          13.,9.,5.,1.,7.,1.,3.,9.,5.,7.,
+     +          5.,9.,5.,5.,7.,7.,5.,3.,5.,7.,
+     +          9.,11.,13.,5.,7.,3.,7.,9.,5.,11.,
+     +          9.,3.,7.,11.,5.,13.,7.,3.,5.,9.,
+     +          7.,5.,9.,5.,7.,13.,3.,9.,11.,1.,
+     +          3.,5.,9.,7.,9.,11.,5.,7.,3.,7.,
+     +          11.,9.,3.,5.,13.,7.,5.,15.,1.,11.,
+     +          3.,9.,5.,7.,3.,5.,7.,13.,5.,3.,
+     +          9.,5.,7.,11.,11.,7.,5.,3.,15.,13.,
+     +          9.,9.,5.,15.,9.,7.,11.,9.,3.,7.,
+     +          5.,9.,5.,11.,13.,7.,7.,11.,7.,9.,
+     +          3.,1.,5.,13.,3.,11.,9.,5.,7.,9.,
+     +          3.,9.,11.,5.,13.,11.,7.,9.,5.,7.,
+     +          7.,9.,13.,3.,1.,11.,5.,7.,5.,7.,
+     +          9.,11.,13.,3.,9.,5.,7.,15.,3.,9.,
+     +          9.,11.,7.,7.,5.,3.,7.,5.,9.,5.,
+     +          5.,11.,13.,7.,3.,9.,7.,11.,7.,9.,
+     +          5.,11.,3.,9.,7.,5.,3.,5.,7.,7.,
+     +          7.,9.,9.,11.,3.,9.,5.,7.,5.,7.,
+     +          5.,9.,11.,1.,3.,11.,9.,7.,5.,3.,
+     +          7.,5.,3.,5.,7.,3.,5.,5.,7.,5.,
+     +          7./
+        DATA ENPDV/0.00000,0.26084,0.39369,0.48974,0.53393,
+     +          2.34078,2.37463,2.41516,2.45247,2.73029,
+     +          2.77607,2.82226,3.08643,3.09127,3.18093,
+     +          3.27146,3.33451,3.64630,3.71902,3.72968,
+     +          3.79922,4.11939,4.60073,4.60170,5.03009,
+     +          5.66185,5.80222,6.04981,6.06617,6.22247,
+     +          6.28513,6.90964,8.96623,22.54803,22.74018,
+     +          24.06813,24.19045,24.27878,25.86498,25.91627,
+     +          25.97453,26.02411,26.08544,26.11622,26.11929,
+     +          26.16777,26.21948,26.29676,26.35904,26.37709,
+     +          26.48379,26.61424,26.67801,26.69583,26.75932,
+     +          26.78088,26.83228,26.88297,26.90050,26.94799,
+     +          27.01109,27.06023,27.07071,27.07608,27.10350,
+     +          27.13695,27.14891,27.17953,27.18626,27.19147,
+     +          27.22574,27.27866,27.28678,27.38879,27.41103,
+     +          27.44270,27.46396,27.54205,27.56334,27.60873,
+     +          27.61525,27.64719,27.68671,27.69942,27.70371,
+     +          27.72308,27.81447,27.89051,27.89858,27.91024,
+     +          27.91137,27.93116,27.99154,28.01327,28.08154,
+     +          28.09470,28.12319,28.18235,28.24913,28.28621,
+     +          28.33563,28.35346,28.37904,28.46789,28.48777,
+     +          28.51837,28.56359,28.58387,28.58834,28.59295,
+     +          28.61563,28.63018,28.64197,28.64972,28.65105,
+     +          28.66507,28.67762,28.80267,28.83120,28.84499,
+     +          28.84828,28.88102,28.90783,28.93061,28.93888,
+     +          28.95547,28.98031,29.02447,29.03859,29.07396,
+     +          29.11750,29.13661,29.15223,29.17558,29.17814,
+     +          29.22846,29.26372,29.30198,29.30726,29.31119,
+     +          29.32069,29.32769,29.36941,29.41981,29.42718,
+     +          29.44104,29.49494,29.49890,29.53178,29.54434,
+     +          29.55451,29.59575,29.64096,29.66192,29.66535,
+     +          29.66891,29.68358,29.71956,29.77711,29.79108,
+     +          29.83921,29.84141,29.90658,29.91253,29.91470,
+     +          29.94670,29.95634,29.95911,29.97875,30.00269,
+     +          30.05965,30.12318,30.13448,30.17575,30.18232,
+     +          30.24533,30.30739,30.31169,30.32463,30.34028,
+     +          30.38084,30.38228,30.41097,30.41295,30.42318,
+     +          30.44266,30.53069,30.57310,30.67148,30.69633,
+     +          30.70279,30.77588,30.90712,30.99843,31.10890,
+     +          31.27790,31.34633,31.46098,31.49349,31.74065,
+     +          31.80634,31.90733,31.95776,31.98284,31.98958,
+     +          32.00935,32.06415,32.16715,32.34562,32.53179,
+     +          32.53709,32.58669,32.69031,32.88115,32.90936,
+     +          32.92080,32.92911,33.09379,33.13697,33.69248,
+     +          34.14248,34.19780,34.31289,34.93328,34.94095,
+     +          35.11795,35.35924,35.51669,35.69269,35.79295,
+     +          35.91554/
+
+        DATA NPDVI/4/
+        DATA GPDVI/6.0/
+        DATA ENPDVI/0.0/
+
+        DATA NPDVII/4/
+        DATA GPDVII/1.0/
+        DATA ENPDVII/0.0/
+
+        DATA NAGIV/4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,6,5,6,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,6,6,6,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5/
+        DATA GAGIV/9.,7.,5.,5.,3.,1.,5.,9.,1.,11.,
+     +          9.,7.,5.,3.,9.,7.,5.,7.,3.,5.,
+     +          11.,9.,5.,3.,7.,1.,13.,9.,5.,11.,
+     +          3.,7.,3.,5.,9.,1.,11.,3.,5.,5.,
+     +          7.,9.,7.,3.,5.,7.,5.,11.,9.,13.,
+     +          5.,9.,7.,11.,9.,7.,11.,5.,15.,9.,
+     +          11.,11.,9.,13.,15.,11.,11.,15.,13.,13.,
+     +          13.,11.,7.,11.,9.,11.,7.,9.,5.,13.,
+     +          11.,7.,3.,5.,9.,5.,5.,7.,3.,1.,
+     +          9.,11.,7.,9.,5.,7.,5.,3.,7.,3.,
+     +          11.,5.,7.,9.,1.,3.,9.,9.,1.,5.,
+     +          5.,13.,3.,7.,7.,11.,13.,9.,5.,7.,
+     +          3.,11.,1.,7.,3.,5.,7.,9.,11.,15.,
+     +          3.,7.,5.,9.,11.,7.,5.,3.,5.,7.,
+     +          3.,5.,9.,13.,13.,1.,7.,11.,3.,5.,
+     +          3.,5.,9.,9.,5.,7.,5.,3.,11.,7.,
+     +          3.,9.,1.,7.,5.,7.,9.,3.,11.,9.,
+     +          5.,7.,5.,5.,3.,1.,7.,9.,3.,7.,
+     +          3.,5.,5.,7./
+        DATA ENAGIV/0.00000,0.51732,0.72278,1.47188,1.97132,
+     +          1.99520,2.15704,2.55035,5.84444,11.95167,
+     +          12.29268,12.55470,12.72483,12.82884,13.26907,
+     +          13.68496,13.73484,13.76283,13.96208,13.97164,
+     +          14.32642,14.48210,14.70490,14.70623,14.76890,
+     +          14.90491,14.98613,15.09714,15.10536,15.18263,
+     +          15.20990,15.22779,15.50757,15.50759,15.58918,
+     +          15.60439,15.86122,16.18869,16.24264,16.45994,
+     +          16.52279,16.68553,17.21546,18.90190,18.97279,
+     +          19.10918,19.63885,30.58438,30.65214,30.70072,
+     +          31.04154,31.05874,31.15849,31.25552,31.38294,
+     +          32.45611,32.58600,32.65915,32.85658,32.89702,
+     +          32.89862,32.98963,33.20553,33.40026,33.40785,
+     +          33.41422,33.50161,33.75847,33.77626,33.87194,
+     +          33.89986,34.05031,34.49436,34.80244,19.74077,
+     +          19.86914,20.14585,20.34678,20.41743,20.53204,
+     +          20.53208,20.58211,20.59102,20.77147,20.77554,
+     +          20.87524,20.89051,20.90320,20.90367,20.92212,
+     +          21.04452,21.08877,21.22631,21.45783,21.51877,
+     +          21.53773,21.65246,21.69983,21.70432,21.88291,
+     +          22.01990,22.05338,22.06978,22.10882,22.29489,
+     +          22.30645,22.35198,22.38276,22.38444,22.46145,
+     +          22.49131,22.50969,22.54321,22.55796,22.59522,
+     +          22.60450,22.67796,22.69206,22.71823,22.73816,
+     +          22.80412,22.80850,22.82280,22.86019,22.88453,
+     +          22.97187,23.01145,23.04795,23.09449,23.11206,
+     +          23.11291,23.13463,23.13745,23.14910,23.15284,
+     +          23.22905,23.23676,23.29356,23.30475,23.42337,
+     +          23.44582,23.55249,23.57191,23.65048,23.72582,
+     +          23.76502,23.80540,23.82762,23.83136,23.85118,
+     +          23.90798,23.95509,24.00848,24.13013,24.22644,
+     +          24.24651,24.41156,24.44792,24.52995,24.60919,
+     +          24.63081,24.67167,24.67633,24.95423,24.96321,
+     +          25.03956,25.04010,25.17928,25.18795,25.19811,
+     +          25.20403,25.84715,26.68568,26.76806,26.81716,
+     +          26.99529,27.02493,27.41601,27.52925,27.58891,
+     +          27.88070,27.89491,28.12980,28.22416/
+
+        DATA NAGV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5/
+        DATA GAGV/10.,8.,6.,4.,4.,6.,10.,2.,8.,4.,
+     +          12.,6.,2.,10.,4.,6.,8.,4.,6.,10.,
+     +          8.,6.,4.,2.,8.,6.,4.,2.,10.,6.,
+     +          12.,12.,8.,10.,6.,8.,4.,4.,12.,2.,
+     +          10.,10.,12.,12.,12./
+        DATA ENAGV/0.00000,0.45756,0.72104,0.87995,1.76112,
+     +          1.84729,2.09220,2.11606,2.53450,2.67443,
+     +          2.79360,3.02040,3.04990,3.26918,3.73619,
+     +          4.29416,4.53705,6.82424,7.03882,16.45828,
+     +          16.74238,16.91157,17.02919,17.09913,18.12851,
+     +          18.43241,18.59834,18.70541,19.36075,19.39672,
+     +          19.42150,19.44045,19.45331,19.74152,19.82786,
+     +          19.84027,19.86984,19.92471,20.02227,20.32751,
+     +          20.34303,20.49877,20.53113,21.26703,21.33400/
+
+        DATA NAGVI/4/
+        DATA GAGVI/9.0/
+        DATA ENAGVI/0.0/
+
+        DATA NAGVII/4/
+        DATA GAGVII/6.0/
+        DATA ENAGVII/0.0/
+
+        DATA NCDIV/4,4,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5/
+        DATA GCDIV/6.,4.,10.,8.,6.,4.,8.,6.,10.,8.,
+     +          8.,10.,6.,12.,8.,6.,4.,10.,4.,2.,
+     +          8.,6.,10.,6.,8.,4.,8.,6.,2.,4.,
+     +          6.,6.,2.,8.,4.,6.,2.,4.,10.,8.,
+     +          4.,6.,6.,4.,12.,4.,2.,8.,6.,4.,
+     +          2./
+        DATA ENCDIV/0.00000,0.72060,13.47758,13.85325,14.22818,
+     +          14.39766,14.67142,14.94716,16.59652,16.61512,
+     +          21.37326,21.73679,21.97645,22.21462,22.23967,
+     +          22.41783,22.42477,22.52446,22.58695,22.67225,
+     +          22.68576,22.85041,22.98245,23.09912,23.20587,
+     +          23.21145,23.32725,23.34573,23.48310,23.60796,
+     +          23.64304,23.79914,24.07922,24.09844,24.24412,
+     +          24.33252,24.34678,24.36104,24.37033,24.48787,
+     +          24.57615,24.59078,24.73795,24.88896,24.95715,
+     +          25.04072,25.12602,25.14846,25.31708,25.32923,
+     +          25.59059/
+
+        DATA NCDV/4,4,4,4,4,4,4,4,4,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5/
+        DATA GCDV/9.,7.,5.,5.,3.,1.,5.,9.,1.,11.,
+     +          9.,7.,5.,3.,9.,7.,5.,7.,3.,5.,
+     +          11.,9.,3.,1.,5.,7./
+        DATA ENCDV/0.00000,0.65061,0.86738,1.67066,2.26342,
+     +          2.27671,2.50928,2.87733,6.55610,18.13283,
+     +          18.55269,18.88083,19.08634,19.21017,19.56466,
+     +          20.06490,20.09080,20.17359,20.38440,20.42062,
+     +          20.76046,20.94008,21.14543,21.14543,21.17796,
+     +          21.30936/
+
+        DATA NCDVI/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4/
+        DATA GCDVI/10.,8.,6.,4.,4.,6.,10.,2.,8.,4.,
+     +          12.,6.,2.,10.,4.,6.,8.,4.,6./
+        DATA ENCDVI/0.00000,0.57566,0.89079,1.07653,1.93098,
+     +          2.06922,2.32433,2.39221,2.87233,3.02612,
+     +          3.10712,3.39040,3.47042,3.71226,4.28202,
+     +          4.74344,5.05686,7.53089,7.78545/
+
+        DATA NCDVII/4/
+        DATA GCDVII/6.0/
+        DATA ENCDVII/0.0/
+
+        DATA NLAIV/5,4,4,4,4,4,4,4,4,4,4,4,5,5,5,
+     +          5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+     +          6,6,7,7,7,7,7,7,7,7,7,7,7,7,7,
+     +          8,8,8,8/
+        DATA GLAIV/1.,3.,5.,11.,9.,7.,7.,9.,5.,7.,
+     +          9.,5.,1.,3.,5.,9.,7.,7.,3.,5.,
+     +          5.,7.,3.,5.,3.,1.,3.,3.,5.,7.,
+     +          3.,5.,1.,3.,3.,1.,1.,3.,9.,7.,
+     +          5.,5.,7.,3.,5.,5.,3.,5.,3.,1.,
+     +          3.,3.,7.,3.,5.,1.,3.,5.,3.,1.,
+     +          5.,3.,1.,3./
+        DATA ENLAIV/0.00000,18.63379,18.98633,19.39627,19.54633,
+     +          19.55417,20.17791,23.39151,21.23587,22.69224,
+     +          20.68005,23.34746,19.35767,19.66964,20.28044,
+     +          20.47878,20.76913,21.84417,22.96123,23.29772,
+     +          23.75377,24.04961,28.43492,24.93048,25.25127,
+     +          27.04309,27.19861,28.07075,28.48903,28.83299,
+     +          29.02113,29.24149,29.96055,31.16133,31.69570,
+     +          32.07520,34.51161,34.66053,34.84306,34.93152,
+     +          34.89725,35.15248,35.29076,39.13419,37.60222,
+     +          37.71933,36.35050,35.52326,35.40310,38.18436,
+     +          38.12398,37.64703,38.06474,38.29901,38.41955,
+     +          41.77812,40.65761,40.91299,40.93410,39.32446,
+     +          40.19885,40.25144,42.93561,42.96039/
+
+        DATA NLAV/5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,6,6,5,5,5,5,
+     +          5,6,6,6,6,6/
+        DATA GLAV/4.,2.,2.,8.,6.,4.,2.,4.,2.,6.,
+     +          2.,8.,10.,6.,4.,4.,4.,6.,8.,6.,
+     +          8.,6.,4.,6.,6.,4.,2.,6.,4.,4.,
+     +          2.,2.,4.,2.,6.,4./
+        DATA ENLAV/0.00000,2.68229,17.72603,20.65588,20.65588,
+     +          20.74354,21.04613,22.64819,22.75755,23.53741,
+     +          22.95133,23.25138,23.25138,23.25138,23.34610,
+     +          23.58390,24.39935,24.62041,24.89243,24.89243,
+     +          25.71407,25.71407,27.52734,29.30552,27.92013,
+     +          28.33597,28.38197,28.48413,31.11024,28.69292,
+     +          29.41178,29.79439,30.60600,31.04701,31.73202,
+     +          31.86977/
+
+        DATA NLAVI/5/
+        DATA GLAVI/5.0/
+        DATA ENLAVI/0.0/
+
+        DATA NLAVII/5/
+        DATA GLAVII/4.0/
+        DATA ENLAVII/0.0/
+
+        DATA NCEIV/4,4,5,5,6,6,6,6,6,7,5,5,7,7,8,
+     +          5/
+        DATA GCEIV/6.,8.,4.,6.,2.,2.,4.,6.,4.,2.,
+     +          6.,8.,4.,6.,2.,8./
+        DATA ENCEIV/0.00000,0.27934,6.16660,6.47520,10.73728,
+     +          15.19860,15.78220,21.96975,22.18238,22.75135,
+     +          22.88066,22.90558,27.48246,27.50441,27.91231,
+     +          27.97393/
+
+        DATA NCEV/5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,6,6,5,6,6,6,
+     +          6,6,6,6,6,5,5,5,6,5,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6/
+        DATA GCEV/1.,3.,5.,9.,11.,7.,7.,9.,5.,7.,
+     +          7.,9.,5.,1.,3.,5.,9.,7.,5.,7.,
+     +          3.,5.,5.,7.,5.,3.,3.,1.,3.,3.,
+     +          5.,7.,3.,5.,1.,5.,7.,9.,3.,7.,
+     +          3.,5.,1.,1.,3.,5.,9.,7.,5.,7.,
+     +          3.,5.,5.,7.,3./
+        DATA ENCEV/0.00000,13.31341,13.69308,14.10513,14.11711,
+     +          14.26970,14.63853,15.12902,15.44033,17.00501,
+     +          17.43106,17.52739,17.80277,22.11163,22.45547,
+     +          23.11898,23.21938,23.34635,23.73715,24.55154,
+     +          25.67158,26.13252,26.74235,27.06982,30.59093,
+     +          30.67341,31.04555,33.73375,33.90659,35.61782,
+     +          35.84318,36.34340,36.45071,36.81715,37.46709,
+     +          37.73459,38.01046,38.27603,38.83044,38.84214,
+     +          39.69095,39.71376,39.89372,43.66575,43.78489,
+     +          44.02307,44.05310,44.06711,44.25670,44.34567,
+     +          44.78582,47.32734,47.33831,47.46452,47.59228/
+
+        DATA NCEVI/5,5,5/
+        DATA GCEVI/4.,2.,2./
+        DATA ENCEVI/0.00000,3.22161,19.88905/
+
+        DATA NCEVII/5/
+        DATA GCEVII/5.0/
+        DATA ENCEVII/0.0/
+
+        DATA NPRIV/4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,6,6,6,6,6,6,5,5,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+     +          6,6,5,5,5,5,7,5,5,5,5,5,5,5,5,
+     +          5,6,5,5,5,5,5,5,5,5,5,5,5/
+        DATA GPRIV/9.,11.,13.,5.,7.,9.,9.,5.,1.,3.,
+     +          5.,13.,9.,5.,7.,9.,7.,9.,11.,9.,
+     +          11.,13.,5.,3.,5.,7.,3.,1.,5.,7.,
+     +          11.,3.,5.,7.,9.,7.,7.,5.,5.,9.,
+     +          7.,9.,7.,5.,9.,3.,9.,7.,11.,5.,
+     +          5.,9.,7.,9.,11.,9.,9.,11.,9.,11.,
+     +          13.,7.,7.,9.,11.,13.,7.,3.,5.,11.,
+     +          9.,7.,5.,3.,11.,9.,7.,7.,5.,15.,
+     +          13.,3.,5.,11.,13.,7.,9.,3./
+        DATA ENPRIV/0.00000,0.26682,0.54418,0.61950,0.79539,
+     +          0.84988,1.23008,2.14919,2.65200,2.72858,
+     +          2.87155,2.75388,7.58423,7.61976,7.95031,
+     +          8.24718,7.85513,8.13832,8.41844,7.88299,
+     +          8.08865,8.44058,8.09886,8.30294,8.48195,
+     +          8.49237,8.77254,8.78340,8.94981,8.89274,
+     +          9.33175,9.76703,12.43047,12.46585,12.80402,
+     +          12.86383,16.96734,17.00754,17.32206,18.02268,
+     +          17.34233,17.38580,17.51327,17.64687,17.67592,
+     +          17.72941,17.96845,17.97067,18.01257,18.17325,
+     +          23.96993,24.00356,24.02877,24.05569,24.14930,
+     +          24.29061,24.37340,24.58665,24.40009,24.43774,
+     +          24.44930,24.56814,24.69654,24.82196,24.74673,
+     +          24.90766,24.76308,24.77396,24.88327,24.82599,
+     +          25.04299,24.84854,25.14635,24.96610,25.08546,
+     +          25.35994,25.10519,25.12102,25.48391,25.16246,
+     +          25.57787,25.20170,25.67047,25.29676,25.39390,
+     +          25.36184,25.50954,25.58654/
+
+        DATA NPRV/4,4,5,5,6,6,6,7/
+        DATA GPRV/6.,8.,4.,6.,2.,2.,4.,2./
+        DATA ENPRV/0.00000,0.37535,14.26467,14.69384,22.18959,
+     +          27.70775,28.52126,37.75461/
+
+        DATA NPRVI/5/
+        DATA GPRVI/3./
+        DATA ENPRVI/0./
+
+        DATA NPRVII/5/
+        DATA GPRVII/2./
+        DATA ENPRVII/0./
+
+        DATA NNDIV/4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5/
+        DATA GNDIV/10.,12.,14.,16.,4.,6.,10.,8.,4.,10.,
+     +          12.,8.,6.,8.,10.,14.,10.,4.,16.,12.,
+     +          2.,6.,4.,4.,6.,2.,12.,16.,8.,14.,
+     +          18.,10.,4.,12.,6.,6.,8.,10.,8.,8.,
+     +          6.,10.,12.,10.,12.,6.,8.,12.,14.,8.,
+     +          10.,14.,16.,6.,10.,8.,12.,12.,16.,2.,
+     +          14.,8.,4.,10.,12.,6.,18.,4.,6.,10.,
+     +          14.,8.,6.,2.,12.,8.,4.,8.,10.,4.,
+     +          14.,6.,8.,6.,12.,14.,2.,10.,8.,4.,
+     +          4.,6.,10.,10.,8.,16.,12.,6.,8.,8.,
+     +          12.,6.,10.,10.,4.,6.,14.,10.,12.,8.,
+     +          2.,4.,2.,6.,8.,4.,4.,10.,14.,2.,
+     +          12.,6.,8.,6.,4.,16.,8.,2.,14.,6.,
+     +          4.,10.,12.,10.,16.,6.,4.,18.,8.,8.,
+     +          6.,10.,8.,10.,8.,4.,6.,12.,10.,14.,
+     +          4.,6.,12.,8.,10.,6.,8.,10.,8.,14.,
+     +          6.,10.,8.,8.,10.,12.,10.,10.,6.,8.,
+     +          12.,14.,10.,14.,12.,8.,6.,8.,10.,6.,
+     +          12.,6.,6.,12.,10.,10.,14.,8.,8.,12.,
+     +          12.,16.,4.,14.,6.,8.,12.,10.,8.,10.,
+     +          4.,6.,10.,8.,12.,8.,6.,10.,10.,10.,
+     +          12.,6.,10.,12.,8.,8.,10.,14.,12.,14.,
+     +          4.,4.,6.,6.,14.,6.,12.,8.,16.,6./
+        DATA ENNDIV/0.00000,0.23520,0.48441,0.74254,1.45037,
+     +          1.58055,1.58700,1.70106,1.70999,1.85914,
+     +          2.00383,2.18894,2.19539,2.42278,2.47596,
+     +          2.48030,2.66479,2.69058,2.73311,2.73348,
+     +          2.94946,3.01691,3.31794,3.59678,3.61922,
+     +          3.66249,3.74184,3.84797,3.88752,3.91579,
+     +          4.03742,4.18335,4.24956,4.35643,4.36598,
+     +          4.90581,5.08496,6.09655,6.21917,8.53048,
+     +          8.67059,8.78019,8.89525,9.09622,9.11991,
+     +          9.12722,9.21996,9.24575,9.25840,9.38151,
+     +          9.47388,9.48120,9.61373,9.62093,9.64721,
+     +          9.65006,9.65998,9.75793,9.77789,9.79773,
+     +          9.81818,9.83281,9.83678,9.88092,9.92865,
+     +          9.93461,9.97217,10.00094,10.04433,10.06194,
+     +          10.08041,10.08921,10.09517,10.10496,10.12839,
+     +          10.14587,10.16063,10.21183,10.24977,10.29466,
+     +          10.32900,10.36372,10.38591,10.40203,10.40265,
+     +          10.42620,10.44778,10.46526,10.49811,10.50134,
+     +          10.51088,10.52068,10.58230,10.62743,10.67107,
+     +          10.74670,10.79568,10.80076,10.83634,10.85345,
+     +          10.92276,10.92735,10.99033,11.07551,11.19466,
+     +          11.20073,11.20582,11.28616,11.34418,11.51726,
+     +          11.55446,11.64336,11.93881,11.94972,11.97191,
+     +          12.01122,12.11660,12.15256,12.19347,12.21753,
+     +          12.23426,12.27853,12.29874,12.32527,12.32589,
+     +          12.50195,12.51955,12.53183,12.54224,12.59506,
+     +          12.63411,12.65122,12.67652,12.72413,12.74012,
+     +          12.81811,12.82034,12.99044,13.00445,13.37802,
+     +          13.40976,13.56573,13.64520,13.71687,13.75320,
+     +          13.96781,14.01158,14.02497,14.06750,14.35328,
+     +          14.37039,14.42866,14.46858,14.61935,14.68580,
+     +          14.69002,14.77073,15.19005,15.23195,16.90103,
+     +          17.04237,18.29325,18.34259,18.34520,18.66718,
+     +          18.67289,18.73773,18.91912,18.93363,18.97181,
+     +          19.01992,19.03529,19.04744,19.05935,19.10423,
+     +          19.15779,19.16560,19.19424,19.20032,19.20701,
+     +          19.26256,19.31153,19.31599,19.32542,19.34253,
+     +          19.35852,19.36646,19.37538,19.50271,19.50309,
+     +          19.59347,19.67059,19.67952,19.69725,19.74659,
+     +          19.78614,19.81416,19.81739,19.85805,19.88967,
+     +          19.91905,19.94435,19.98935,20.02295,20.03275,
+     +          20.04229,20.07329,20.08966,20.30688,20.45219,
+     +          20.47711,20.48008,20.55088,20.55683,20.56290,
+     +          20.57047,20.69408,21.43860,21.45212,21.56693,
+     +          21.61739,21.64591,21.67293,21.81700,22.08977,
+     +          22.23272,22.25157,22.31269,22.35249,22.50908/
+
+C        CALL APPROX_ION_LEVELS(60, 5,
+C     &                         MNDV, NNDV, GNDV, ENNDV,
+C     &                         SNDV)
+C        NNDV(1) = 5
+C        GNDV(1) = 9.D0
+C        ENNDV(1) = 0.D0
+        DATA NNDV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5/
+        DATA GNDV/9.,11.,13.,5.,7.,9.,9.,5.,1.,3.,
+     +          13.,5.,5.,9.,7.,9.,7.,9.,5.,11.,
+     +          3.,9.,11.,7.,5.,13.,3.,1.,7.,5.,
+     +          11.,3./
+        DATA ENNDV/0.00000,0.35141,0.71209,0.73074,0.96519,
+     +          1.03049,1.52125,2.54805,3.10588,3.21031,
+     +          3.23451,3.40692,15.81527,15.81605,16.00692,
+     +          16.18651,16.25491,16.38601,16.43606,16.43999,
+     +          16.53531,16.65847,16.74124,16.77733,16.78240,
+     +          16.90691,17.14396,17.17419,17.30197,17.38020,
+     +          17.71868,18.30024/
+
+        DATA NNDVI/5/
+        DATA GNDVI/2./
+        DATA ENNDVI/0./
+
+        DATA NNDVII/5/
+        DATA GNDVII/3./
+        DATA ENNDVII/0./
+
+        DATA NERIV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5/
+        DATA GERIV/16.,14.,12.,10.,10.,12.,8.,6.,10.,12.,
+     +          10.,16.,8.,14.,10.,12.,18.,14.,16.,18.,
+     +          14.,20.,14.,18.,22.,16.,20.,12.,18.,14.,
+     +          12.,16.,10.,16.,18.,14.,20.,10.,12.,8.,
+     +          14.,16.,12.,12.,8.,14.,10.,8.,16.,10.,
+     +          14.,18.,12.,10.,12.,8.,12.,14.,10.,16.,
+     +          14.,12.,12.,16.,10.,10.,8.,12.,10.,14.,
+     +          8.,10.,14.,8.,12.,12./
+        DATA ENERIV/0.00000,0.80686,1.26114,1.54589,1.90995,
+     +          2.39680,2.53600,2.77926,3.06685,3.31132,
+     +          3.44263,3.51030,3.50126,4.16038,4.56443,
+     +          5.15889,5.27936,5.50368,9.10371,9.13861,
+     +          9.24131,9.42068,9.78444,9.81387,9.82895,
+     +          9.83963,9.85952,9.88688,10.24238,10.28094,
+     +          10.30430,10.33738,10.37853,10.53773,10.58149,
+     +          10.63044,10.65204,10.71235,10.73198,10.74189,
+     +          10.75498,10.75652,10.77073,10.96723,11.01402,
+     +          11.05416,11.07610,11.08352,11.15221,11.19223,
+     +          11.23275,11.24581,11.24679,11.25762,11.30352,
+     +          11.34064,11.34593,11.41450,11.42978,11.61009,
+     +          11.61703,11.63337,11.71360,11.75085,11.76287,
+     +          11.80974,11.88670,11.92155,11.94077,12.02472,
+     +          12.03197,12.04912,12.07001,12.18165,12.23281,
+     +          12.39690/
+
+C    isoelectric from Ho IV (Freidzon, Kurbatov, Vovna 2018)
+        DATA NERV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4/
+        DATA GERV/17.,15.,13.,11.,9.,11.,5.,9.,7.,5.,
+     +          3.,13.,17.,11./
+        DATA ENERV/0.00000,0.69603,1.19156,1.54660,1.84928,
+     +          2.08044,2.52105,2.60023,2.80585,2.90674,
+     +          2.96294,3.16217,3.17750,3.29244/
+C        CALL APPROX_ION_LEVELS(68, 5,
+C     &                         MERV, NERV, GERV, ENERV,
+C     &                         SERV)
+C        NERV(1) = 5
+C        GERV(1) = 17.D0
+C        ENERV(1) = 0.D0
+
+        DATA NERVI/5/
+        DATA GERVI/16./
+        DATA ENERVI/0./
+
+        DATA NERVII/5/
+        DATA GERVII/13./
+        DATA ENERVII/0./
+
+        DATA NTMIV/4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4,4,4,4,4,4,4/
+        DATA GTMIV/13.,9.,11.,9.,7.,5.,9.,5.,13.,5.,
+     +          13.,15.,19.,17.,11.,19.,13.,17.,15.,17.,
+     +          11.,15.,9.,13.,11.,15.,9.,13.,17.,11.,
+     +          15.,13.,9.,11.,13.,9.,11.,13.,9.,15.,
+     +          11.,13.,15.,9.,13.,7.,11.,11.,15.,13.,
+     +          7.,9.,5.,13.,9.,7.,11.,9.,11.,7.,
+     +          17.,9.,9.,11.,15.,11.,13.,11.,5.,9.,
+     +          5.,9.,13.,11.,11.,13.,13.,5.,9.,7.,
+     +          15.,9.,13.,13.,15.,9.,11.,7.,13.,7.,
+     +          11.,7.,9.,13.,11.,11.,13.,13.,11.,7.,
+     +          15.,9.,11.,7.,11.,9.,7.,11.,11.,7.,
+     +          5.,11.,7.,9.,9.,9.,11.,11.,9.,15.,
+     +          13.,5.,11.,7.,11.,15.,9.,7.,9.,7.,
+     +          15.,5.,9.,13.,9.,11.,7.,5.,11.,9.,
+     +          5.,9.,11.,13.,9.,13.,11.,5.,7.,9.,
+     +          15.,13.,7.,7.,11.,9.,7.,13.,9.,7.,
+     +          7.,9.,13.,7.,11.,9.,9.,11.,7.,7.,
+     +          11.,9.,7.,9.,13.,7.,15.,17.,13.,15.,
+     +          19.,17.,15.,13.,11.,13.,9.,11.,17.,11.,
+     +          15.,13.,11.,9.,9.,15.,11.,13.,11.,13.,
+     +          13.,11.,9.,9.,11.,13.,9.,9.,11./
+        DATA ENTMIV/0.00000,0.69853,1.01878,1.55563,1.78661,
+     +          1.87092,2.62524,3.49177,4.38024,4.77736,
+     +          8.92823,9.04242,9.23757,9.37135,9.72210,
+     +          9.75483,9.82277,9.93399,9.95159,10.19882,
+     +          10.32702,10.35640,10.35876,10.47493,10.60586,
+     +          10.68074,10.73418,10.75166,10.76146,10.79791,
+     +          10.89474,10.90466,10.90949,10.92574,10.93875,
+     +          11.14854,11.17842,11.26297,11.27934,11.29025,
+     +          11.40741,11.47883,11.52693,11.63307,11.66939,
+     +          11.73126,11.76052,11.82561,11.85760,11.86343,
+     +          11.91228,11.95989,11.96683,12.02424,12.06602,
+     +          12.08077,12.10545,12.16719,12.19025,12.24803,
+     +          12.27109,12.28473,12.34201,12.40177,12.41640,
+     +          12.63721,12.64887,12.65866,12.71842,12.73789,
+     +          12.81959,12.86720,12.86944,12.96515,13.03768,
+     +          13.12732,13.15497,13.19961,13.22725,13.23792,
+     +          13.25329,13.27536,13.30276,13.34107,13.37616,
+     +          13.41571,13.42414,13.42811,13.53015,13.56214,
+     +          13.57168,13.60032,13.63417,13.64967,13.72803,
+     +          13.79163,13.80948,13.83639,13.87148,13.91326,
+     +          13.92231,13.93694,13.94723,14.03204,14.06489,
+     +          14.06502,14.06638,14.12986,14.15515,14.25657,
+     +          14.26674,14.35464,14.35836,14.41725,14.42854,
+     +          14.47367,14.49152,14.49946,14.53405,14.57199,
+     +          14.58141,14.60881,14.66584,14.69138,14.76131,
+     +          14.76664,14.76689,14.77259,14.83917,14.89559,
+     +          14.90575,14.90637,14.93613,14.95510,14.97432,
+     +          14.98671,15.01821,15.03296,15.13078,15.13215,
+     +          15.17145,15.17877,15.26084,15.28155,15.35941,
+     +          15.41991,15.45289,15.52704,15.53051,15.59833,
+     +          15.62746,15.63986,15.66243,15.71078,15.74488,
+     +          15.74959,15.85423,15.86241,15.86378,15.91734,
+     +          16.02694,16.08906,16.14039,16.20883,16.22160,
+     +          16.34000,16.39207,16.55487,16.65505,16.77333,
+     +          16.80953,16.96575,17.12222,17.14057,17.24199,
+     +          17.32481,17.97659,18.04764,18.93611,18.97318,
+     +          18.99661,19.08774,19.15134,19.15457,19.46862,
+     +          19.49292,19.74448,19.76321,19.97547,20.01130,
+     +          20.04564,20.05866,20.16739,20.16975,20.48851,
+     +          20.50835,20.54555,20.54728,20.65366,20.70809,
+     +          20.82339,20.83753,20.84782,20.92580,21.19497,
+     +          21.20998,21.23812,21.46811,21.49241/
+
+C       isoelectric from Er IV
+        DATA NTMV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,4,4,4,4,4/
+        DATA GTMV/16.,14.,12.,10.,10.,12.,8.,6.,10.,12.,
+     +          10.,16.,8.,14.,10.,12.,18.,14./
+        DATA ENTMV/0.00000,0.83077,1.29851,1.59169,1.96653,
+     +          2.46781,2.61113,2.86161,3.15771,3.40943,
+     +          3.54463,3.61430,3.60499,4.28364,4.69967,
+     +          5.31173,5.43578,5.66674/
+
+        DATA NTMVI/5/
+        DATA GTMVI/17./
+        DATA ENTMVI/0./
+
+        DATA NTMVII/5/
+        DATA GTMVII/16./
+        DATA ENTMVII/0./
+
+        DATA NYBIV/4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          6,6,5,5,5,5,5,5,5,6,6,5,5,6,6,
+     +          5,5,5,6,5,6,6,6,6,6,5,5,5,5,6,
+     +          6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6/
+        DATA GYBIV/8.,6.,10.,16.,12.,14.,8.,18.,10.,12.,
+     +          16.,14.,6.,8.,10.,12.,6.,8.,10.,12.,
+     +          8.,14.,12.,10.,12.,10.,6.,8.,14.,12.,
+     +          6.,8.,10.,6.,8.,6.,10.,6.,8.,10.,
+     +          12.,6.,8.,10.,8.,14.,12.,8.,12.,10.,
+     +          6.,10.,8.,8.,10.,8.,6.,10.,12.,10.,
+     +          6.,6.,10.,8.,10.,10.,6.,8.,4.,6.,
+     +          6.,6.,8.,8.,8.,10.,12.,14.,8.,10.,
+     +          16.,12.,14.,12.,10.,10.,8.,6.,12.,10.,
+     +          8.,6.,8.,4.,6.,14.,8.,10.,12.,6.,
+     +          12.,10.,8.,8.,8.,6.,10.,6.,8.,6.,
+     +          6.,12.,8.,10./
+        DATA ENYBIV/0.00000,1.26637,9.73638,10.18972,10.25016,
+     +          10.60630,10.45771,10.55414,10.92525,10.93234,
+     +          11.01938,11.08698,10.95052,11.09914,11.16424,
+     +          11.26201,11.34236,11.89963,12.09998,12.29680,
+     +          11.34858,11.39809,11.78818,11.80524,11.54056,
+     +          11.70251,11.71632,11.75794,11.81780,12.09935,
+     +          12.17808,12.21275,12.27091,12.31719,12.44186,
+     +          12.56188,12.64225,12.66599,12.71365,12.74435,
+     +          12.75185,12.83041,12.92238,12.97040,13.10327,
+     +          13.13970,13.24172,13.14728,13.21147,13.33651,
+     +          13.37460,13.51740,13.73853,13.83052,13.90971,
+     +          13.98202,13.97043,13.98695,14.37111,14.37902,
+     +          14.50942,14.91888,14.95665,14.96083,14.97404,
+     +          15.00310,15.18514,15.20671,15.22370,15.33815,
+     +          15.49050,15.67152,15.72950,15.98159,16.18291,
+     +          16.20187,18.91864,18.99542,19.70552,19.70600,
+     +          19.97514,20.09310,20.16418,20.20842,20.20973,
+     +          20.72970,20.75662,20.77864,20.83200,20.84086,
+     +          20.84479,20.98802,21.00511,21.04425,21.16033,
+     +          21.19816,21.26458,21.30879,21.35148,21.79210,
+     +          21.83705,21.88059,21.88852,22.04393,22.07374,
+     +          22.07537,22.13423,22.15410,22.23105,22.87479,
+     +          23.04484,23.05376,23.05761,23.11830/
+
+        DATA NYBV/4,4,4,4,4,4,4,4,4,4,
+     +          4,4,4,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5/
+        DATA GYBV/13.,9.,11.,9.,7.,5.,9.,5.,13.,1.,
+     +          3.,5.,1.,13.,15.,17.,17.,21.,11.,19.,
+     +          13.,15.,17.,17.,9.,11.,15.,13.,11.,9./
+        DATA ENYBV/0.00000,0.75780,1.18775,1.78599,2.02989,
+     +          2.09252,2.99954,3.88315,4.84008,4.93354,
+     +          5.09338,5.34614,10.39037,16.93809,17.08381,
+     +          17.30604,17.45509,17.81202,17.90576,18.02140,
+     +          18.03780,18.20029,18.21089,18.44355,18.58542,
+     +          18.59192,18.61142,18.72425,18.93718,18.96338/
+
+        DATA NYBVI/5/
+        DATA GYBVI/14./
+        DATA ENYBVI/0.0/
+
+        DATA NYBVII/5/
+        DATA GYBVII/13./
+        DATA ENYBVII/0.0/
+
+        DATA NLUIV/4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,7,7,6,6,6,6,
+     +          6,6,6,6,6,7,7,6,6,6,6,5,5,6,5,
+     +          5,5,5,5,5,5,5,5,5,5/
+        DATA GLUIV/1.,5.,11.,7.,13.,3.,9.,5.,9.,7.,
+     +          11.,1.,9.,5.,3.,11.,7.,5.,3.,7.,
+     +          9.,9.,7.,5.,7.,7.,9.,11.,5.,7.,
+     +          9.,7.,5.,3.,9.,5.,7.,5.,11.,9.,
+     +          7.,7.,9.,13.,5.,9.,7.,11.,9.,5.,
+     +          5.,7.,3.,7.,11.,5.,5.,13.,9.,9.,
+     +          11.,7.,11.,9.,11.,5.,13.,5.,7.,11./
+        DATA ENLUIV/0.00000,11.21225,11.74975,12.06783,12.18012,
+     +          12.21306,12.21970,12.35627,12.67324,12.77910,
+     +          12.86940,13.03678,13.18951,13.38863,13.74464,
+     +          13.80909,13.86296,13.96465,14.14032,14.21266,
+     +          14.31627,14.48113,14.54483,15.94106,15.98516,
+     +          20.37089,20.42373,21.47575,21.50065,21.59100,
+     +          21.68358,21.86531,21.92556,22.83857,22.98169,
+     +          23.05945,23.12796,29.21857,29.34298,29.38740,
+     +          29.39748,29.41095,29.43842,29.46654,29.50164,
+     +          29.57037,29.60005,29.62078,30.78600,30.82501,
+     +          30.85974,30.86784,30.93530,30.95668,30.96121,
+     +          30.99035,31.01933,31.05684,31.09393,31.09515,
+     +          31.10493,31.12370,31.13636,31.15813,32.48650,
+     +          32.50531,32.52536,32.57190,32.58496,32.61677/
+
+        DATA NLUV/4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5/
+        DATA GLUV/8.,6.,8.,10.,10.,8.,6.,6.,8.,10.,
+     +          8.,4.,8.,6.,4.,8.,8.,10.,6.,4.,
+     +          8.,6.,8.,10.,8.,10.,8.,6.,6.,10.,
+     +          10.,6.,4.,8.,6.,6./
+        DATA ENLUV/0.00000,1.46212,18.69248,19.21588,19.44762,
+     +          19.71142,19.71793,20.08209,20.15473,20.18542,
+     +          20.35823,20.41596,20.65279,20.73292,20.83098,
+     +          20.91239,21.08026,21.15649,21.20203,21.27240,
+     +          21.42537,21.51396,21.60752,21.68572,21.77849,
+     +          21.99385,22.55192,22.56824,22.76020,22.79668,
+     +          23.53172,23.68049,24.10774,24.23151,24.38839,
+     +          24.80034/
+
+        DATA NLUVI/4/
+        DATA GLUVI/13./
+        DATA ENLUVI/0.0/
+
+        DATA NLUVII/5/
+        DATA GLUVII/8.0/
+        DATA ENLUVII/0.0/
+
+        DATA NWIV/5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,6,6,6,6,5,5,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,6,6,6,6,6/
+        DATA GWIV/4.,6.,8.,10.,4.,2.,6.,8.,10.,10.,
+     +          12.,2.,4.,4.,6.,6.,8.,4.,6.,8.,
+     +          10.,6.,4.,2.,6.,4.,6.,8.,4.,6.,
+     +          10.,8.,2.,4.,2.,6.,8.,10.,12.,4.,
+     +          6.,4.,6.,8.,10.,2.,6.,4.,8.,4.,
+     +          6.,4.,6.,2.,8.,6.,6.,2.,4.,8.,
+     +          8.,10.,8.,10.,4.,10.,12.,6.,8.,2.,
+     +          4.,6.,4.,2.,4.,6.,2.,4.,8.,6.,
+     +          4.,6.,8.,10.,2.,4.,2.,4.,6.,8.,
+     +          6.,4.,4.,2.,6.,6.,8.,4.,2.,6.,
+     +          8.,4.,6.,2.,4./
+        DATA ENWIV/0.00000,0.43859,0.83623,1.14765,1.26720,
+     +          1.45966,2.13127,1.89211,2.98753,2.00915,
+     +          2.75531,2.27694,3.12041,2.29607,2.82267,
+     +          3.46382,3.52265,4.05334,4.35107,4.83907,
+     +          5.35914,5.36685,5.42326,5.64338,5.71413,
+     +          5.91151,6.11701,6.54987,6.42987,6.99464,
+     +          7.07331,7.23727,7.39295,8.01942,9.62215,
+     +          10.57461,11.51140,12.27794,13.53787,10.80797,
+     +          11.74441,11.14532,11.71964,12.43839,13.05100,
+     +          12.20794,12.23622,12.88847,14.39586,12.38195,
+     +          14.76392,12.45420,14.08720,12.55655,12.75396,
+     +          13.23586,12.79722,12.85498,13.50465,13.82612,
+     +          13.23288,14.31062,13.49840,14.84017,13.62367,
+     +          13.66960,15.23114,13.71990,15.08194,13.99301,
+     +          14.07631,14.29757,14.43447,14.59606,14.75922,
+     +          15.27695,15.08612,15.63152,15.36266,15.75557,
+     +          16.13265,16.58728,17.45556,18.64995,16.53430,
+     +          17.63099,16.66093,16.83993,17.39709,18.12719,
+     +          17.79588,18.19471,18.04830,18.27594,18.56766,
+     +          19.31091,19.58755,19.55553,20.16625,20.25597,
+     +          21.23927,20.27588,21.06652,20.92450,21.67072/
+
+        DATA NWV/5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,
+     +         6,6,6,6,6,6,6,6,6,6,6,6,6,6,5,
+     +         5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +         5,7,7,7,7,7,7,7,7,7,7,7,7,7/
+        DATA GWV/5.,7.,9.,1.,3.,5.,5.,9.,1.,3.,
+     +          5.,7.,5.,5.,3.,5.,7.,5.,7.,3.,
+     +          1.,9.,5.,7.,3.,1.,3.,5.,3.,9.,
+     +          5.,7.,3.,9.,7.,11.,5.,9.,11.,7.,
+     +          5.,3.,9.,5.,7.,3.,11.,5.,3.,5.,
+     +          7.,3.,1.,5.,7.,7.,9.,5.,3./
+        DATA ENWV/0.00000,0.77424,1.42822,1.59180,2.02474,
+     +          2.80395,1.70373,2.77053,5.34497,7.25484,
+     +          7.47569,8.26450,9.04573,14.71231,15.16647,
+     +          15.99360,16.05341,16.54321,16.97192,17.07378,
+     +          17.26506,17.71832,17.90207,18.07292,18.49350,
+     +          22.56967,23.03096,24.56229,26.68297,28.21090,
+     +          28.35540,28.79040,29.26800,28.41780,28.50060,
+     +          28.65260,28.98800,29.21040,29.70830,30.08300,
+     +          30.12230,30.84910,29.53790,29.59840,29.68880,
+     +          30.20370,30.64130,31.13390,31.34280,31.82530,
+     +          31.97490,32.08440,32.12430,32.24020,32.28400,
+     +          32.94670,32.98100,33.01340,33.36710/
+
+        DATA NWVI/5,5,6,6,6,5,5,6,6,7,5,5,6,6/
+        DATA GWVI/4.,6.,2.,2.,4.,6.,8.,4.,6.,2.,
+     +          10.,8.,10.,8./
+        DATA ENWVI/0.00000,1.07982,9.84823,18.29425,20.46194,
+     +          32.44430,32.53720,32.44600,32.78287,34.58111,
+     +          44.90980,44.91130,50.96730,50.96830/
+
+        DATA NWVII/5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,6,
+     +          6,6,6,6,6,5,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,
+     +          7,6,7/
+        DATA GWVII/1.,5.,11.,7.,9.,1.,3.,5.,7.,13.,
+     +          5.,9.,3.,7.,11.,9.,5.,3.,7.,1.,
+     +          3.,11.,5.,7.,9.,9.,5.,7.,3.,9.,
+     +          7.,5.,3.,5.,7.,3.,7.,3.,7.,3.,
+     +          11.,5.,7.,9.,3.,7.,5.,1.,3.,9.,
+     +          5.,7.,5.,13.,7.,9.,11.,3.,15.,7.,
+     +          9.,5.,13.,11.,5.,5.,3.,11.,7.,5.,
+     +          9.,3.,13.,5.,7.,9.,11.,11.,7.,9.,
+     +          3.,7.,5.,13.,5.,9.,7.,3.,11.,9.,
+     +          5.,7.,3.,9.,5.,7.,3.,3.,11.,7.,
+     +          9.,7.,5.,3.,5.,7.,3.,3./
+        DATA ENWVII/0.00000,38.61376,39.44994,39.76083,39.98825,
+     +          39.08713,39.53844,41.53680,41.55597,40.54829,
+     +          40.66927,40.90854,41.01706,41.29857,41.53683,
+     +          41.58571,41.88851,42.11800,42.53815,42.10858,
+     +          42.82334,42.94623,43.19240,43.59282,43.70175,
+     +          42.22034,42.56441,43.90414,47.43353,54.20442,
+     +          54.30830,54.95442,55.38980,56.35904,56.44016,
+     +          57.34223,63.58924,64.10898,65.77224,65.89300,
+     +          66.16954,66.26060,66.31145,66.50762,66.81542,
+     +          66.84317,67.40291,68.20143,68.17461,68.40014,
+     +          68.52245,68.63616,77.61720,77.65020,77.74470,
+     +          77.86820,77.94540,77.68610,77.79850,77.99870,
+     +          78.08410,78.10530,78.14500,78.15900,78.40840,
+     +          78.46190,79.65750,79.79240,80.07730,80.14880,
+     +          80.18470,79.83090,80.03270,80.08230,80.17720,
+     +          80.28940,80.32470,79.99937,80.08679,80.16774,
+     +          80.27506,80.64853,80.78088,80.35068,80.41089,
+     +          80.51544,80.54783,80.58752,80.63526,80.91973,
+     +          81.07945,81.35409,81.62706,82.12871,82.22818,
+     +          82.39278,82.54403,82.50462,82.59537,82.74626,
+     +          83.79643,83.83303,84.17895,84.32827,85.95208,
+     +          85.97910,91.86800,95.06800/
+
+        DATA NWVIII/5/
+        DATA GWVIII/8.0/
+        DATA ENWVIII/0.0/
+
+        DATA NHFIV/5,5,6,6,6,7,6,6,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,7,5,5,5,5,5,5,
+     +          5,5,5,5,5,8,6,6/
+        DATA GHFIV/4.0,6.0,2.0,2.0,4.0,2.0,4.0,6.0,6.0,6.0,
+     +          6.0,4.0,4.0,8.0,6.0,8.0,6.0,8.0,4.0,4.0,
+     +          4.0,6.0,4.0,4.0,2.0,6.0,4.0,4.0,8.0,6.0,
+     +          8.0,8.0,4.0,6.0,2.0,2.0,6.0,8.0/
+        DATA ENHFIV/0.00000,0.58181,2.27884,8.31178,9.49895,
+     +          17.38583,17.44573,17.60874,18.08384,18.40905,
+     +          18.67648,18.72186,18.97578,19.12555,19.15134,
+     +          19.20788,19.23615,19.38679,19.63835,19.72155,
+     +          19.89860,20.08842,20.11309,20.15946,20.45070,
+     +          20.55584,20.64882,20.78310,20.82166,20.89320,
+     +          20.99945,21.26775,21.30272,21.31152,21.38306,
+     +          23.54088,24.40108,24.40826/
+
+        DATA NHFV/4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,6,6,6,6,5,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,5,7,5,7,5,5,5,5,5,5,5,5,
+     +          5,6,6,6,6,6,6,6,6,5,5,7/
+        DATA GHFV/1.,5.,11.,7.,9.,3.,13.,5.,9.,7.,
+     +          11.,1.,9.,5.,3.,7.,11.,5.,3.,7.,
+     +          9.,9.,7.,5.,7.,3.,7.,9.,11.,5.,
+     +          7.,7.,9.,5.,3.,9.,5.,7.,3.,5.,
+     +          11.,7.,9.,13.,5.,9.,7.,11.,5.,9.,
+     +          13.,7.,3.,15.,7.,9.,11.,7.,13.,9.,
+     +          11.,9.,5.,7.,3.,11.,5.,7.,9.,3.,
+     +          11.,5./
+        DATA ENHFV/0.00000,19.43897,20.04897,20.41049,20.58778,
+     +          20.66408,20.67813,20.87167,21.23116,21.36585,
+     +          21.47559,21.62695,21.70631,21.92666,22.44663,
+     +          22.47476,22.54864,22.72147,22.73212,23.01627,
+     +          23.13423,26.35084,26.41711,28.02556,28.07767,
+     +          33.30674,33.43926,33.50117,34.97442,34.99494,
+     +          35.06657,35.19608,35.22801,35.23680,36.52978,
+     +          36.70406,36.79693,36.88099,40.32896,44.73849,
+     +          44.84712,44.93605,44.98206,45.03783,45.09147,
+     +          45.19086,45.21388,45.23054,45.82343,45.87417,
+     +          45.87764,45.89870,45.90160,45.92000,45.93400,
+     +          46.02333,46.03779,46.05462,46.07813,46.09471,
+     +          46.09861,46.50231,46.57719,46.69226,46.71742,
+     +          46.75475,46.80493,46.87523,46.90056,47.43759,
+     +          47.53496,47.54903/
+
+        DATA NHFVI/5/
+        DATA GHFVI/8.0/
+        DATA ENHFVI/0.0/
+
+        DATA NHFVII/5/
+        DATA GHFVII/8.0/
+        DATA ENHFVII/0.0/
+
+        DATA NTAIV/5,5,5,5,5,5,5,5,6,6,5,6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6/
+        DATA GTAIV/5.0,7.0,9.0,5.0,1.0,3.0,5.0,9.0,3.0,5.0,7.0,
+     +          1.0,5.0,1.0,5.0,3.0,5.0,7.0,5.0,7.0,3.0,1.0,
+     +          9.0,5.0,7.0,3.0,1.0,3.0,5.0,3.0/
+        DATA ENTAIV/0.0000,0.5632,1.0559,1.3087,1.3845,1.6861,
+     +          2.1831,2.2587,3.5118,3.7149,4.2639,4.2866,5.1489,
+     +          8.5490,9.7440,10.1565,10.7633,10.7839,11.1105,
+     +          11.4886,11.5390,11.7000,11.9758,12.1813,12.3903,
+     +          12.5785,13.9086,14.2891,15.3727,17.5553/
+
+        DATA NTAV/5,5,6,6,6,6,6,7,5,5/
+        DATA GTAV/4.0,6.0,2.0,2.0,4.0,4.0,6.0,2.0,6.0,8.0/
+        DATA ENTAV/0.0000,0.8193,5.8337,13.0884,14.7372,
+     +              24.7117,24.9547,25.6085,25.9217,25.9643/
+
+
+        DATA NTAVI/4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5/
+        DATA GTAVI/1.0,5.0,11.0,7.0,9.0,3.0,13.0,5.0,9.0,7.0,11.0,
+     +              9.0,1.0,5.0,7.0,3.0,3.0,11.0,5.0,7.0,9.0,3.0/
+        DATA ENTAVI/0.0000,28.6310,29.3147,29.7065,29.9094,30.0803,
+     +              30.1665,30.3667,30.7549,30.9321,31.0626,31.2121,
+     +              31.2200,31.4413,32.0581,32.0839,32.2480,32.2926,
+     +              32.4774,32.7990,32.9461,36.7725/
+
+        DATA NTAVII/5/
+        DATA GTAVII/8.0/
+        DATA ENTAVII/0.0/
+
+        DATA NREIV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,6,6,5,6,5,
+     +          5,5,5,6,5,5,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6/
+        DATA GREIV/1.0D0,3.0D0,5.0D0,7.0D0,9.0D0,
+     +          1.0D0,9.0D0,3.0D0,7.0D0,5.0D0,
+     +          11.0D0,13.0D0,9.0D0,5.0D0,9.0D0,
+     +          7.0D0,7.0D0,5.0D0,11.0D0,3.0D0,
+     +          13.0D0,5.0D0,9.0D0,1.0D0,7.0D0,
+     +          3.0D0,5.0D0,5.0D0,7.0D0,9.0D0,
+     +          5.0D0,3.0D0,7.0D0,9.0D0,1.0D0,
+     +          9.0D0,11.0D0,5.0D0,3.0D0,5.0D0,
+     +          7.0D0,7.0D0,9.0D0,3.0D0,1.0D0,
+     +          11.0D0,7.0D0,9.0D0,5.0D0,9.0D0,
+     +          3.0D0,13.0D0,11.0D0,7.0D0,5.0D0,
+     +          3.0D0,1.0D0,11.0D0,5.0D0,7.0D0,
+     +          9.0D0,9.0D0,5.0D0,5.0D0,7.0D0,
+     +          5.0D0,3.0D0,7.0D0,5.0D0,9.0D0,
+     +          7.0D0,3.0D0,1.0D0,5.0D0,11.0D0,
+     +          1.0D0,3.0D0,9.0D0,7.0D0,5.0D0,
+     +          3.0D0,9.0D0,7.0D0,11.0D0,7.0D0,
+     +          3.0D0,9.0D0,5.0D0,5.0D0,11.0D0,
+     +          7.0D0,3.0D0,9.0D0,5.0D0,13.0D0,
+     +          5.0D0,7.0D0,1.0D0,9.0D0,7.0D0,
+     +          3.0D0,5.0D0,13.0D0,11.0D0,9.0D0,
+     +          7.0D0,3.0D0,5.0D0,11.0D0,9.0D0,
+     +          7.0D0,11.0D0,3.0D0,5.0D0,5.0D0,
+     +          9.0D0,7.0D0,5.0D0,9.0D0,11.0D0,
+     +          7.0D0,13.0D0,3.0D0,9.0D0,7.0D0,
+     +          9.0D0,3.0D0,5.0D0,7.0D0,5.0D0,
+     +          11.0D0,5.0D0,7.0D0,13.0D0,3.0D0,
+     +          7.0D0,15.0D0,5.0D0,11.0D0,3.0D0,
+     +          9.0D0,7.0D0,5.0D0,9.0D0,11.0D0,
+     +          13.0D0,5.0D0,7.0D0,9.0D0,3.0D0,
+     +          7.0D0,11.0D0,9.0D0,7.0D0,5.0D0,
+     +          3.0D0,9.0D0,7.0D0,3.0D0,7.0D0,
+     +          7.0D0/
+        DATA ENREIV/0.00000,0.38238,0.74126,1.03529,1.25486,
+     +          1.79820,2.10108,2.39784,2.45701,2.46115,
+     +          2.59493,2.83873,3.01575,3.01928,3.22905,
+     +          3.28256,3.53681,3.62046,3.72593,3.91080,
+     +          4.01657,4.41344,4.46769,4.52349,4.76815,
+     +          4.84998,5.09570,5.15794,5.49604,5.54529,
+     +          5.64158,5.69674,5.76839,5.91444,6.04371,
+     +          6.10113,6.30098,6.49488,6.59872,6.88146,
+     +          7.18255,7.28505,7.32955,7.54547,7.62740,
+     +          7.63211,7.82586,7.92689,8.03955,8.17149,
+     +          8.22310,8.40640,8.67677,8.76694,8.77948,
+     +          8.84395,9.04972,9.24979,9.33829,9.35106,
+     +          9.38833,9.48061,9.52180,9.72964,10.35525,
+     +          11.85819,12.27930,12.54523,12.73825,13.09930,
+     +          13.40862,13.42271,13.44495,13.46132,13.47267,
+     +          13.79586,13.79749,13.87738,14.01928,14.03127,
+     +          14.13589,14.18103,14.39375,14.44907,14.52367,
+     +          14.52402,14.52432,14.57627,14.62429,14.80576,
+     +          14.87439,14.90042,14.91332,14.93005,14.93265,
+     +          15.07366,15.16030,15.19953,15.27111,15.31830,
+     +          15.35407,15.37495,15.45205,15.47943,15.48856,
+     +          15.50596,15.62357,15.68528,15.82182,15.85357,
+     +          15.94280,15.98375,16.01276,16.03683,16.05775,
+     +          16.09624,16.10306,16.18017,16.19246,16.21721,
+     +          16.32103,16.33240,16.37251,16.38082,16.50881,
+     +          16.55234,16.55479,16.55634,16.60380,16.62115,
+     +          16.63220,16.71973,16.74925,16.84752,16.91113,
+     +          17.02219,17.08420,17.11061,17.19081,17.20933,
+     +          17.25470,17.49125,17.49537,17.49778,17.55539,
+     +          17.62227,17.67037,17.67181,17.74255,17.74434,
+     +          17.80885,18.11275,18.11723,18.11842,18.16271,
+     +          18.31786,18.36671,18.46083,18.80628,19.03050,
+     +          19.97460/
+        DATA NREV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6/
+        DATA GREV/4.0D0,6.0D0,8.0D0,10.0D0,4.0D0,
+     +          2.0D0,8.0D0,10.0D0,6.0D0,4.0D0,
+     +          2.0D0,12.0D0,6.0D0,10.0D0,4.0D0,
+     +          6.0D0,8.0D0,4.0D0,6.0D0,4.0D0,
+     +          6.0D0,8.0D0,10.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,4.0D0,8.0D0,6.0D0,
+     +          10.0D0,2.0D0,8.0D0,4.0D0,6.0D0,
+     +          4.0D0,8.0D0,6.0D0,2.0D0,10.0D0,
+     +          6.0D0,4.0D0,8.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,4.0D0,2.0D0,10.0D0,
+     +          8.0D0,6.0D0,8.0D0,4.0D0,4.0D0,
+     +          10.0D0,6.0D0,12.0D0,8.0D0,2.0D0,
+     +          4.0D0,6.0D0,10.0D0,6.0D0,8.0D0,
+     +          4.0D0,2.0D0,4.0D0,6.0D0,10.0D0,
+     +          2.0D0,8.0D0,12.0D0,6.0D0,8.0D0,
+     +          4.0D0,6.0D0,2.0D0,4.0D0/
+        DATA ENREV/0.00000,0.60170,1.11250,1.47713,1.53774,
+     +          1.77612,2.35730,2.47557,2.59401,2.87661,
+     +          2.93457,3.35711,3.56315,3.76484,4.06252,
+     +          4.23552,4.29298,6.45361,6.50509,7.87379,
+     +          8.20635,8.91311,9.58491,9.67010,9.69664,
+     +          10.07323,10.18192,10.63061,10.68271,11.40561,
+     +          11.40710,11.44705,11.61827,12.31611,15.65109,
+     +          16.27126,16.85029,17.05261,17.48457,17.75832,
+     +          17.78869,17.84474,17.94086,17.97105,18.01627,
+     +          18.31862,18.36171,18.36751,18.47984,18.83039,
+     +          19.00611,19.07279,19.29166,19.34031,19.36788,
+     +          19.40237,19.48440,19.54353,19.64441,19.90947,
+     +          19.93026,20.09697,20.25172,20.34187,20.38609,
+     +          20.47683,20.70132,20.74692,20.83109,20.91508,
+     +          21.22435,21.29295,21.39505,21.53918,21.58819,
+     +          21.96919,22.09940,22.75095,24.24831/
+        DATA NREVI/5/
+        DATA GREVI/5.0/
+        DATA ENREVI/0.0/
+        DATA NREVII/5/
+        DATA GREVII/4.0/
+        DATA ENREVII/0.0/
+
+        DATA NOSIV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,6,5,5,5,5,6,
+     +          6,5,5,6,5,6,5,5,6,5,
+     +          6,6,6,6,6,5,6,6,6,6,
+     +          6,6,6,6,6,5,5,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6/
+        DATA GOSIV/6.0D0,6.0D0,8.0D0,4.0D0,6.0D0,
+     +          12.0D0,10.0D0,2.0D0,8.0D0,6.0D0,
+     +          2.0D0,4.0D0,12.0D0,8.0D0,4.0D0,
+     +          10.0D0,14.0D0,6.0D0,6.0D0,8.0D0,
+     +          10.0D0,6.0D0,4.0D0,8.0D0,2.0D0,
+     +          2.0D0,8.0D0,12.0D0,10.0D0,4.0D0,
+     +          6.0D0,6.0D0,4.0D0,8.0D0,6.0D0,
+     +          10.0D0,10.0D0,8.0D0,2.0D0,4.0D0,
+     +          8.0D0,4.0D0,2.0D0,10.0D0,6.0D0,
+     +          2.0D0,12.0D0,4.0D0,6.0D0,8.0D0,
+     +          4.0D0,8.0D0,14.0D0,6.0D0,10.0D0,
+     +          6.0D0,4.0D0,6.0D0,10.0D0,2.0D0,
+     +          8.0D0,12.0D0,8.0D0,10.0D0,4.0D0,
+     +          6.0D0,12.0D0,8.0D0,2.0D0,8.0D0,
+     +          6.0D0,14.0D0,4.0D0,6.0D0,10.0D0,
+     +          12.0D0,4.0D0,6.0D0,10.0D0,2.0D0,
+     +          8.0D0,8.0D0,4.0D0,6.0D0,6.0D0,
+     +          4.0D0,10.0D0,6.0D0,8.0D0,4.0D0,
+     +          2.0D0,2.0D0,8.0D0,10.0D0,4.0D0,
+     +          2.0D0,6.0D0,4.0D0,8.0D0,6.0D0,
+     +          2.0D0,4.0D0,8.0D0,4.0D0,10.0D0,
+     +          6.0D0,8.0D0,6.0D0,4.0D0,4.0D0,
+     +          2.0D0,6.0D0,6.0D0,4.0D0,8.0D0,
+     +          10.0D0,2.0D0,6.0D0,8.0D0,4.0D0,
+     +          8.0D0,8.0D0,12.0D0,10.0D0,4.0D0,
+     +          6.0D0,12.0D0,10.0D0,10.0D0,6.0D0,
+     +          4.0D0,4.0D0,14.0D0,6.0D0,2.0D0,
+     +          8.0D0,2.0D0,10.0D0,6.0D0,2.0D0,
+     +          4.0D0,8.0D0,12.0D0,6.0D0,8.0D0,
+     +          10.0D0,4.0D0,10.0D0,8.0D0,8.0D0,
+     +          2.0D0,6.0D0,8.0D0,10.0D0,4.0D0,
+     +          6.0D0,8.0D0,12.0D0,10.0D0,6.0D0,
+     +          6.0D0,12.0D0,6.0D0,8.0D0,4.0D0,
+     +          2.0D0,10.0D0,14.0D0,4.0D0,6.0D0,
+     +          2.0D0,12.0D0,10.0D0,4.0D0,4.0D0,
+     +          6.0D0,8.0D0,8.0D0,14.0D0,2.0D0,
+     +          6.0D0,4.0D0,2.0D0,16.0D0,12.0D0,
+     +          12.0D0,10.0D0,8.0D0,4.0D0,6.0D0,
+     +          14.0D0,10.0D0,2.0D0,8.0D0,12.0D0,
+     +          10.0D0,6.0D0,4.0D0,8.0D0,10.0D0,
+     +          12.0D0,6.0D0,8.0D0,6.0D0,8.0D0,
+     +          4.0D0,10.0D0,10.0D0,6.0D0,10.0D0,
+     +          4.0D0,12.0D0,2.0D0,8.0D0,6.0D0,
+     +          4.0D0,8.0D0,6.0D0,10.0D0,8.0D0,
+     +          14.0D0,6.0D0,2.0D0,4.0D0,8.0D0,
+     +          8.0D0,4.0D0,6.0D0,4.0D0,6.0D0,
+     +          8.0D0,14.0D0,12.0D0,4.0D0,2.0D0,
+     +          6.0D0,16.0D0,4.0D0,10.0D0,8.0D0,
+     +          12.0D0,6.0D0,10.0D0,2.0D0,6.0D0,
+     +          10.0D0,6.0D0,4.0D0,8.0D0,6.0D0,
+     +          4.0D0,8.0D0,6.0D0,2.0D0,12.0D0,
+     +          10.0D0,4.0D0,2.0D0,8.0D0,8.0D0,
+     +          4.0D0,4.0D0,10.0D0,2.0D0,8.0D0,
+     +          6.0D0,8.0D0,6.0D0,6.0D0,10.0D0,
+     +          6.0D0,4.0D0,8.0D0,10.0D0,4.0D0,
+     +          6.0D0,12.0D0,4.0D0,8.0D0,2.0D0,
+     +          4.0D0,10.0D0,2.0D0,4.0D0,8.0D0,
+     +          6.0D0,10.0D0,6.0D0,4.0D0,6.0D0,
+     +          8.0D0,6.0D0,12.0D0,2.0D0,4.0D0,
+     +          4.0D0,2.0D0,10.0D0,8.0D0,6.0D0,
+     +          12.0D0,6.0D0,4.0D0,6.0D0,4.0D0,
+     +          2.0D0,8.0D0,8.0D0,10.0D0,6.0D0,
+     +          4.0D0,8.0D0,10.0D0,2.0D0,6.0D0,
+     +          4.0D0,10.0D0,4.0D0,8.0D0,12.0D0,
+     +          6.0D0,6.0D0,2.0D0,8.0D0,14.0D0,
+     +          2.0D0,12.0D0,6.0D0,8.0D0,8.0D0,
+     +          10.0D0,4.0D0,8.0D0,2.0D0,10.0D0,
+     +          6.0D0,4.0D0,2.0D0,6.0D0,8.0D0,
+     +          10.0D0,4.0D0,8.0D0,4.0D0,6.0D0,
+     +          8.0D0,6.0D0,12.0D0,14.0D0,6.0D0,
+     +          4.0D0,10.0D0,4.0D0,8.0D0,2.0D0,
+     +          6.0D0,10.0D0,10.0D0,4.0D0,12.0D0,
+     +          6.0D0,10.0D0,8.0D0,2.0D0,6.0D0,
+     +          8.0D0,12.0D0,6.0D0,2.0D0,2.0D0,
+     +          4.0D0/
+        DATA ENOSIV/0.00000,1.93635,2.46559,2.50675,2.59681,
+     +          2.61670,2.69847,2.79235,3.17248,3.35594,
+     +          3.53574,3.66961,3.79237,3.96757,4.03714,
+     +          4.07737,4.16098,4.16270,4.68210,4.79329,
+     +          4.80498,5.01101,5.07558,5.17226,5.35242,
+     +          5.47641,5.47684,5.67933,5.68163,5.72888,
+     +          6.09340,6.19699,6.23953,6.42248,6.63330,
+     +          6.70513,6.94917,7.12640,7.35034,7.76992,
+     +          7.96320,8.06661,8.09700,8.15785,8.21332,
+     +          8.37606,8.58614,8.64391,8.66319,8.66822,
+     +          8.77435,8.80590,8.85665,8.92200,9.04524,
+     +          9.23993,9.28446,9.28572,9.44474,9.49000,
+     +          9.52848,9.59386,9.65180,9.76218,9.84909,
+     +          9.97288,10.08657,10.17910,10.39593,10.44995,
+     +          10.46508,10.49330,10.60152,10.67727,10.84306,
+     +          10.89648,11.01178,11.24237,11.26129,11.47387,
+     +          11.50064,11.52521,11.59175,11.71524,11.87876,
+     +          11.97620,12.11414,12.32808,12.35152,12.49759,
+     +          12.53501,12.76996,12.87849,13.06302,13.19576,
+     +          13.20672,13.35111,13.35904,13.52540,13.80710,
+     +          13.82988,13.89924,14.16874,14.42685,14.43079,
+     +          14.43720,14.72941,14.80379,14.83447,14.91282,
+     +          15.02406,15.17336,15.26974,15.27815,15.30967,
+     +          15.34601,15.51536,15.53918,15.61213,15.69088,
+     +          15.74556,15.83829,15.85292,15.86174,15.86494,
+     +          15.97280,16.03707,16.13250,16.13990,16.18443,
+     +          16.20895,16.24213,16.24355,16.27849,16.30565,
+     +          16.36994,16.39008,16.45755,16.48798,16.49729,
+     +          16.51349,16.61176,16.67181,16.68126,16.72935,
+     +          16.88631,16.89151,16.97165,16.97299,17.02887,
+     +          17.06020,17.13882,17.17485,17.18009,17.19549,
+     +          17.21399,17.24060,17.33268,17.35088,17.35841,
+     +          17.37125,17.45483,17.45949,17.48724,17.60294,
+     +          17.60364,17.60956,17.64360,17.70612,17.71073,
+     +          17.72555,17.73238,17.75476,17.80032,17.80805,
+     +          17.80915,17.86418,17.90285,17.91913,17.96779,
+     +          17.97347,17.98335,18.00740,18.04312,18.10497,
+     +          18.16302,18.16952,18.17918,18.19109,18.25879,
+     +          18.27823,18.29024,18.29314,18.30258,18.37943,
+     +          18.41158,18.41667,18.42039,18.44460,18.51356,
+     +          18.51731,18.60331,18.60813,18.62271,18.64565,
+     +          18.66461,18.73230,18.74108,18.76880,18.89689,
+     +          18.90259,18.90427,18.92896,18.94211,18.95818,
+     +          18.97485,19.02407,19.02896,19.10132,19.11184,
+     +          19.11338,19.13695,19.13975,19.18253,19.20407,
+     +          19.22898,19.28262,19.28626,19.32332,19.34001,
+     +          19.35073,19.40825,19.43816,19.50483,19.51090,
+     +          19.53290,19.54908,19.60423,19.61888,19.64305,
+     +          19.65593,19.68849,19.76237,19.78911,19.82201,
+     +          19.84194,19.94917,19.96022,19.97346,20.01908,
+     +          20.08524,20.17601,20.21743,20.23420,20.24633,
+     +          20.28597,20.35078,20.35482,20.38435,20.42601,
+     +          20.51436,20.53068,20.53100,20.54117,20.54685,
+     +          20.56170,20.58780,20.61152,20.80421,20.80937,
+     +          20.91711,20.95353,21.06620,21.15439,21.22207,
+     +          21.23079,21.24170,21.35531,21.36580,21.36584,
+     +          21.38549,21.38973,21.46574,21.47641,21.47865,
+     +          21.52822,21.56380,21.59526,21.59792,21.61066,
+     +          21.68244,21.73113,21.75029,21.83642,21.86699,
+     +          21.89121,21.89903,21.90245,21.91393,21.95441,
+     +          22.00150,22.02337,22.02887,22.07346,22.10006,
+     +          22.10897,22.13737,22.16390,22.17139,22.21773,
+     +          22.31227,22.33281,22.39258,22.55516,22.57012,
+     +          22.63720,22.64600,22.78332,22.79060,22.84011,
+     +          22.84926,22.88102,23.02513,23.06453,23.11214,
+     +          23.16505,23.17258,23.20663,23.24700,23.29623,
+     +          23.31253,23.41135,23.43589,23.46097,23.47198,
+     +          23.49008,23.49136,23.53039,23.60712,23.64961,
+     +          23.71568,23.79309,23.82220,23.84385,23.85150,
+     +          23.87375,24.01754,24.01755,24.05248,24.07547,
+     +          24.11303,24.16097,24.16412,24.20224,24.31471,
+     +          24.33637,24.34483,24.40894,24.42794,24.49847,
+     +          24.52676,24.53079,24.53770,24.57502,24.59896,
+     +          24.63958,24.66576,24.68617,24.80242,24.90220,
+     +          26.14744/
+
+        DATA NOSV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,6,
+     +          6,6,6/
+        DATA GOSV/1.,3.,5.,7.,9.,1.,9.,7.,5.,3.,
+     +          11.,13.,9.,5.,9.,7.,7.,5.,11.,3.,
+     +          13.,9.,5.,7.,5.,9.,5.,3.,9.,3.,
+     +          7.,11.,3./
+        DATA ENOSV/0.00000,0.53452,1.00216,1.36612,1.60759,
+     +          2.27687,2.52603,2.96847,3.02533,3.05989,
+     +          3.14224,3.43054,3.70021,3.75019,3.94123,
+     +          3.98879,4.30281,4.50151,4.58934,4.77783,
+     +          4.87053,5.42795,5.45031,5.77133,6.19915,
+     +          6.66971,6.82445,6.94157,7.38647,8.82648,
+     +          9.69163,10.65817,10.82784/
+
+        DATA NOSVI/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,6/
+        DATA GOSVI/4.,6.,8.,4.,10.,2.,8.,10.,6.,4.,
+     +          2.,12.,6.,10.,6.,4.,8.,4.,6.,4./
+        DATA ENOSVI/0.00000,0.79318,1.41889,1.78909,1.81988,
+     +          2.07840,2.84167,2.97914,3.07834,3.45842,
+     +          3.57816,3.98681,4.26726,4.58982,4.90987,
+     +          4.98449,5.01479,7.42799,7.56369,12.14306/
+
+        DATA NOSVII/5/
+        DATA GOSVII/5.0/
+        DATA ENOSVII/0.0/
+
+        DATA NIRIV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,6,5,
+     +          5,5,5,5,5,5,5,6,5,5,
+     +          5,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6/
+        DATA GIRIV/9.0D0,5.0D0,7.0D0,3.0D0,1.0D0,
+     +          9.0D0,11.0D0,13.0D0,5.0D0,7.0D0,
+     +          5.0D0,9.0D0,3.0D0,5.0D0,9.0D0,
+     +          11.0D0,7.0D0,7.0D0,7.0D0,13.0D0,
+     +          3.0D0,7.0D0,9.0D0,5.0D0,3.0D0,
+     +          9.0D0,5.0D0,5.0D0,7.0D0,5.0D0,
+     +          9.0D0,7.0D0,5.0D0,9.0D0,13.0D0,
+     +          5.0D0,11.0D0,7.0D0,3.0D0,9.0D0,
+     +          1.0D0,7.0D0,3.0D0,5.0D0,11.0D0,
+     +          7.0D0,5.0D0,9.0D0,3.0D0,13.0D0,
+     +          11.0D0,9.0D0,7.0D0,5.0D0,15.0D0,
+     +          11.0D0,7.0D0,7.0D0,9.0D0,13.0D0,
+     +          5.0D0,11.0D0,7.0D0,9.0D0,9.0D0,
+     +          7.0D0,9.0D0,7.0D0,11.0D0,9.0D0,
+     +          5.0D0,13.0D0,11.0D0,5.0D0,7.0D0,
+     +          9.0D0,5.0D0,7.0D0,7.0D0,5.0D0,
+     +          3.0D0,9.0D0,5.0D0,3.0D0,7.0D0,
+     +          11.0D0,13.0D0,5.0D0,7.0D0,9.0D0,
+     +          11.0D0,3.0D0,9.0D0,7.0D0,7.0D0,
+     +          5.0D0,9.0D0,5.0D0,7.0D0,5.0D0,
+     +          11.0D0,13.0D0,9.0D0,5.0D0,7.0D0,
+     +          3.0D0,9.0D0,3.0D0,11.0D0,3.0D0,
+     +          15.0D0,5.0D0,9.0D0,11.0D0,7.0D0,
+     +          13.0D0,15.0D0,7.0D0,5.0D0,13.0D0,
+     +          11.0D0,9.0D0,7.0D0,5.0D0,7.0D0,
+     +          3.0D0,9.0D0,7.0D0,5.0D0,9.0D0,
+     +          13.0D0,5.0D0,9.0D0,11.0D0,3.0D0,
+     +          11.0D0,5.0D0,7.0D0,9.0D0,5.0D0,
+     +          9.0D0,11.0D0,7.0D0,7.0D0,5.0D0,
+     +          7.0D0,9.0D0,9.0D0,5.0D0,7.0D0,
+     +          3.0D0,5.0D0,11.0D0,5.0D0,13.0D0,
+     +          15.0D0,7.0D0,9.0D0,3.0D0,11.0D0,
+     +          5.0D0,13.0D0,7.0D0,3.0D0,11.0D0,
+     +          7.0D0,17.0D0,9.0D0,15.0D0,5.0D0,
+     +          9.0D0,11.0D0,3.0D0,9.0D0,7.0D0,
+     +          13.0D0,5.0D0,7.0D0,11.0D0,9.0D0,
+     +          5.0D0,7.0D0,5.0D0,9.0D0,13.0D0,
+     +          11.0D0,9.0D0,5.0D0,7.0D0,13.0D0,
+     +          7.0D0,11.0D0,9.0D0,9.0D0,5.0D0,
+     +          7.0D0,5.0D0,3.0D0,9.0D0,5.0D0,
+     +          7.0D0,11.0D0,3.0D0,7.0D0,11.0D0,
+     +          7.0D0,9.0D0,7.0D0,9.0D0,5.0D0,
+     +          11.0D0,5.0D0,13.0D0,11.0D0,9.0D0,
+     +          9.0D0,15.0D0,11.0D0,7.0D0,13.0D0,
+     +          11.0D0,9.0D0,7.0D0/
+        DATA ENIRIV/0.00000,0.64202,0.72210,1.05716,1.07706,
+     +          1.80351,2.28917,2.36771,2.37166,2.62723,
+     +          2.74488,3.21983,3.25313,3.43071,3.46420,
+     +          3.55240,3.59055,3.80549,3.96450,4.12913,
+     +          4.27330,4.39401,4.63550,4.85032,5.27176,
+     +          5.74719,5.77327,6.25103,6.47940,6.55361,
+     +          6.69291,6.75269,6.89696,7.19629,7.28284,
+     +          7.34073,7.34112,7.34391,7.47290,7.92416,
+     +          8.07245,8.19661,8.31834,8.46258,8.57456,
+     +          8.64683,8.71593,8.82664,8.91256,9.01828,
+     +          9.05926,9.18194,9.24243,9.31918,9.36008,
+     +          9.45941,9.48401,9.82060,9.85699,9.99035,
+     +          10.08629,10.11782,10.22353,10.41531,10.50578,
+     +          10.56961,10.88366,10.91176,11.17385,11.22029,
+     +          11.31053,11.31244,11.85645,12.21595,12.46952,
+     +          14.06754,14.11032,14.33706,14.67111,14.69559,
+     +          14.72762,14.96769,14.98866,15.04669,15.11396,
+     +          15.16806,15.20185,15.21860,15.27511,15.52590,
+     +          15.61979,15.84820,15.93113,16.00264,16.08587,
+     +          16.22646,16.37685,16.42398,16.49459,16.51520,
+     +          16.54108,16.60294,16.61702,16.70162,16.78994,
+     +          16.79794,16.81169,16.85571,16.91508,17.00352,
+     +          17.01370,17.01423,17.02022,17.07087,17.07270,
+     +          17.12485,17.16733,17.17551,17.18577,17.24555,
+     +          17.32553,17.35759,17.36455,17.41646,17.42312,
+     +          17.44196,17.49927,17.50835,17.53965,17.63040,
+     +          17.68786,17.71301,17.74920,17.82048,17.89680,
+     +          17.91726,17.93136,17.95975,17.97818,18.02222,
+     +          18.03226,18.04283,18.04425,18.12478,18.14266,
+     +          18.26805,18.32030,18.33536,18.36649,18.39414,
+     +          18.42865,18.43462,18.46592,18.50644,18.51247,
+     +          18.55571,18.62678,18.68517,18.69044,18.72163,
+     +          18.75249,18.76684,18.77062,18.82974,18.88334,
+     +          18.89192,18.91455,18.96738,18.99344,18.99352,
+     +          19.02068,19.05129,19.06025,19.07230,19.11248,
+     +          19.12998,19.19921,19.22809,19.23746,19.29168,
+     +          19.39475,19.43546,19.47787,19.48626,19.50616,
+     +          19.52516,19.61285,19.73342,19.73702,19.76510,
+     +          19.79152,19.80805,19.81165,19.86325,19.96927,
+     +          20.00717,20.04360,20.04626,20.07329,20.10218,
+     +          20.13186,20.16652,20.22389,20.23492,20.23928,
+     +          20.30055,20.33305,20.41892,20.42562,20.44622,
+     +          20.48710,20.49670,20.57185,20.61643,20.69002,
+     +          20.71867,20.76712,21.01414,21.03804,21.04207,
+     +          21.15400,21.70059,22.30994/
+
+        DATA NIRV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,6,6,6,5,6,
+     +          5,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,5,6,6,6,6/
+        DATA GIRV/6.0D0,2.0D0,6.0D0,8.0D0,4.0D0,
+     +          12.0D0,6.0D0,10.0D0,2.0D0,8.0D0,
+     +          6.0D0,2.0D0,12.0D0,4.0D0,8.0D0,
+     +          10.0D0,4.0D0,14.0D0,6.0D0,6.0D0,
+     +          10.0D0,8.0D0,6.0D0,4.0D0,8.0D0,
+     +          2.0D0,8.0D0,10.0D0,12.0D0,4.0D0,
+     +          6.0D0,6.0D0,10.0D0,8.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,6.0D0,8.0D0,
+     +          4.0D0,10.0D0,2.0D0,4.0D0,8.0D0,
+     +          2.0D0,6.0D0,10.0D0,12.0D0,8.0D0,
+     +          4.0D0,6.0D0,8.0D0,4.0D0,14.0D0,
+     +          6.0D0,10.0D0,6.0D0,10.0D0,2.0D0,
+     +          8.0D0,12.0D0,8.0D0,10.0D0,4.0D0,
+     +          6.0D0,8.0D0,12.0D0,8.0D0,6.0D0,
+     +          2.0D0,6.0D0,4.0D0,14.0D0,10.0D0,
+     +          4.0D0,12.0D0,6.0D0,10.0D0,2.0D0,
+     +          8.0D0,8.0D0,4.0D0,6.0D0,6.0D0,
+     +          4.0D0,10.0D0,6.0D0,8.0D0,4.0D0,
+     +          2.0D0,8.0D0,2.0D0,10.0D0,4.0D0,
+     +          6.0D0,2.0D0,8.0D0,4.0D0,2.0D0,
+     +          6.0D0,4.0D0,8.0D0,4.0D0,10.0D0,
+     +          6.0D0,6.0D0,8.0D0,4.0D0,2.0D0,
+     +          8.0D0,10.0D0,6.0D0,4.0D0,6.0D0,
+     +          8.0D0,2.0D0,4.0D0,12.0D0,8.0D0,
+     +          10.0D0,4.0D0,6.0D0,4.0D0,14.0D0,
+     +          10.0D0,6.0D0,12.0D0,2.0D0,6.0D0,
+     +          10.0D0,6.0D0,8.0D0,8.0D0,12.0D0,
+     +          2.0D0,2.0D0,4.0D0,8.0D0,6.0D0,
+     +          10.0D0,4.0D0,8.0D0,10.0D0,8.0D0,
+     +          6.0D0,6.0D0,8.0D0,4.0D0,6.0D0,
+     +          12.0D0,10.0D0,12.0D0,6.0D0,8.0D0,
+     +          2.0D0,10.0D0,4.0D0,14.0D0,4.0D0,
+     +          12.0D0,6.0D0,10.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,8.0D0,14.0D0,6.0D0,
+     +          4.0D0,2.0D0,12.0D0,4.0D0,16.0D0,
+     +          8.0D0,8.0D0,10.0D0,14.0D0,2.0D0,
+     +          6.0D0,10.0D0,10.0D0,6.0D0,12.0D0,
+     +          4.0D0,6.0D0,8.0D0,10.0D0,8.0D0,
+     +          4.0D0,12.0D0,6.0D0,8.0D0,10.0D0,
+     +          12.0D0,4.0D0,2.0D0,10.0D0,8.0D0,
+     +          6.0D0,4.0D0,8.0D0,8.0D0,2.0D0,
+     +          6.0D0,10.0D0,4.0D0,6.0D0,14.0D0,
+     +          8.0D0,4.0D0,6.0D0,8.0D0,6.0D0,
+     +          2.0D0,10.0D0,14.0D0,12.0D0,8.0D0,
+     +          4.0D0,16.0D0,6.0D0,10.0D0,12.0D0,
+     +          6.0D0,2.0D0,4.0D0,10.0D0,8.0D0,
+     +          4.0D0,6.0D0,8.0D0,2.0D0,6.0D0,
+     +          10.0D0,12.0D0,8.0D0,8.0D0,4.0D0,
+     +          2.0D0,4.0D0,8.0D0,10.0D0,6.0D0,
+     +          6.0D0,10.0D0,6.0D0,4.0D0,8.0D0,
+     +          4.0D0,12.0D0,4.0D0,6.0D0,8.0D0,
+     +          2.0D0,10.0D0,6.0D0,10.0D0,4.0D0,
+     +          6.0D0,8.0D0,8.0D0,4.0D0,2.0D0,
+     +          6.0D0,12.0D0,2.0D0,4.0D0,6.0D0,
+     +          8.0D0,10.0D0,4.0D0,6.0D0,4.0D0,
+     +          6.0D0,2.0D0,2.0D0,4.0D0,8.0D0,
+     +          6.0D0,8.0D0,4.0D0,10.0D0,6.0D0,
+     +          4.0D0,2.0D0,8.0D0,6.0D0,12.0D0,
+     +          2.0D0,4.0D0,4.0D0,10.0D0,2.0D0,
+     +          6.0D0,4.0D0,8.0D0,6.0D0,10.0D0,
+     +          8.0D0,2.0D0,6.0D0,6.0D0,4.0D0,
+     +          8.0D0,10.0D0,12.0D0,8.0D0,2.0D0,
+     +          8.0D0,10.0D0,6.0D0,12.0D0,8.0D0,
+     +          6.0D0,14.0D0,4.0D0,4.0D0,2.0D0/
+        DATA ENIRV/0.00000,0.88401,2.06724,2.75493,2.83268,
+     +          2.93578,2.96431,3.05767,3.22836,3.66102,
+     +          3.87019,4.17158,4.29972,4.31570,4.44197,
+     +          4.62979,4.63938,4.74673,4.83680,5.44892,
+     +          5.50282,5.56471,5.84328,5.91632,6.05188,
+     +          6.32674,6.39388,6.60237,6.61980,7.18917,
+     +          7.29256,7.77762,8.01045,8.28289,9.01055,
+     +          9.22172,9.73657,10.21012,10.49075,10.60755,
+     +          10.75290,10.92798,11.34468,12.03004,12.10717,
+     +          12.39073,12.39817,12.41181,12.98062,13.02641,
+     +          13.02853,13.03829,13.08912,13.20096,13.30958,
+     +          13.32852,13.52852,13.74278,13.87697,13.88685,
+     +          14.04438,14.07555,14.10759,14.28168,14.35235,
+     +          14.55702,14.69483,14.75853,15.03561,15.06569,
+     +          15.09200,15.19037,15.20569,15.21281,15.53614,
+     +          15.61782,15.62945,15.91267,15.95677,16.20342,
+     +          16.25495,16.29434,16.35089,16.51148,16.65854,
+     +          16.79990,17.10317,17.30795,17.32214,17.46436,
+     +          17.52219,17.82211,17.88543,18.04181,18.06462,
+     +          18.29806,18.48426,18.52705,18.66939,18.81001,
+     +          19.22369,19.31613,19.63941,19.89736,19.89933,
+     +          19.93786,19.93815,20.23297,20.62507,20.65217,
+     +          20.90026,20.94780,21.05511,21.07472,21.28530,
+     +          21.38129,21.41265,21.47260,21.56875,21.72046,
+     +          21.74417,21.84837,21.86132,21.97418,21.97879,
+     +          22.03897,22.04495,22.06223,22.14871,22.23230,
+     +          22.27919,22.30884,22.38840,22.45944,22.46537,
+     +          22.46829,22.47221,22.50742,22.59291,22.73507,
+     +          22.85240,22.92297,22.95343,23.00559,23.01286,
+     +          23.06767,23.18357,23.23683,23.30769,23.39928,
+     +          23.41787,23.42829,23.57605,23.62593,23.69731,
+     +          23.70331,23.70500,23.71816,23.74234,23.75515,
+     +          23.87091,23.92233,23.93154,24.00818,24.05156,
+     +          24.07233,24.07245,24.13403,24.20003,24.23132,
+     +          24.25812,24.29749,24.34115,24.34545,24.37023,
+     +          24.40604,24.47239,24.49031,24.52773,24.55873,
+     +          24.56392,24.57234,24.66680,24.71954,24.75688,
+     +          24.77285,24.78592,24.83101,24.91358,24.92540,
+     +          24.94333,24.98470,25.00869,25.06203,25.12910,
+     +          25.21453,25.32892,25.35598,25.36294,25.39524,
+     +          25.41795,25.44567,25.45288,25.48659,25.49615,
+     +          25.51001,25.56640,25.62964,25.64503,25.66689,
+     +          25.71442,25.75943,25.78478,25.86422,25.93434,
+     +          26.00071,26.00743,26.01945,26.05463,26.10676,
+     +          26.10704,26.15971,26.17597,26.27781,26.29878,
+     +          26.34245,26.37715,26.42209,26.43942,26.50535,
+     +          26.51834,26.64012,26.67231,26.74142,26.81622,
+     +          26.89545,26.89801,27.01308,27.06328,27.08646,
+     +          27.20498,27.24129,27.24405,27.26659,27.26851,
+     +          27.35721,27.46205,27.52240,27.74841,27.83044,
+     +          27.96894,28.07713,28.10816,28.11154,28.23967,
+     +          28.27112,28.29376,28.37112,28.38359,28.47979,
+     +          28.52201,28.59758,28.76282,28.80686,28.83848,
+     +          28.84827,28.99370,29.01565,29.05756,29.07576,
+     +          29.16902,29.19094,29.19952,29.63545,29.68764,
+     +          29.84411,29.94913,30.00938,30.16610,30.40080,
+     +          30.70295,30.80090,30.81454,31.10726,31.15004,
+     +          31.17149,31.26125,31.39329,31.44264,31.75508,
+     +          31.76822,31.83976,31.87014,31.88489,31.90956,
+     +          31.94862,32.09740,32.10571,32.20266,32.39335,
+     +          32.48770,32.59433,32.62979,32.78167,32.79915,
+     +          32.86350,32.89400,33.11308,33.12114,33.15970,
+     +          33.29211,33.36477,33.38560,33.44003,33.44746,
+     +          33.48032,33.51479,33.53487,33.58211,33.63679/
+
+        DATA NIRVI/5/
+        DATA GIRVI/1.0/
+        DATA ENIRVI/0.0/
+
+        DATA NIRVII/5/
+        DATA GIRVII/4.0/
+        DATA ENIRVII/0.0/
+
+        DATA NPTIV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,6,6,6,
+     +          5,6,6,5,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6/
+        DATA GPTIV/10.0D0,4.0D0,8.0D0,6.0D0,4.0D0,
+     +          6.0D0,10.0D0,2.0D0,12.0D0,8.0D0,
+     +          4.0D0,6.0D0,6.0D0,2.0D0,10.0D0,
+     +          8.0D0,4.0D0,10.0D0,8.0D0,6.0D0,
+     +          4.0D0,4.0D0,2.0D0,6.0D0,8.0D0,
+     +          10.0D0,6.0D0,4.0D0,8.0D0,12.0D0,
+     +          14.0D0,2.0D0,6.0D0,10.0D0,6.0D0,
+     +          8.0D0,4.0D0,12.0D0,4.0D0,6.0D0,
+     +          2.0D0,10.0D0,8.0D0,6.0D0,2.0D0,
+     +          8.0D0,10.0D0,4.0D0,12.0D0,8.0D0,
+     +          4.0D0,2.0D0,6.0D0,14.0D0,10.0D0,
+     +          8.0D0,6.0D0,12.0D0,8.0D0,6.0D0,
+     +          4.0D0,10.0D0,2.0D0,8.0D0,6.0D0,
+     +          4.0D0,4.0D0,10.0D0,2.0D0,6.0D0,
+     +          8.0D0,6.0D0,8.0D0,10.0D0,8.0D0,
+     +          10.0D0,8.0D0,4.0D0,6.0D0,6.0D0,
+     +          2.0D0,8.0D0,2.0D0,4.0D0,8.0D0,
+     +          10.0D0,12.0D0,10.0D0,4.0D0,12.0D0,
+     +          8.0D0,6.0D0,14.0D0,8.0D0,10.0D0,
+     +          6.0D0,6.0D0,8.0D0,12.0D0,4.0D0,
+     +          2.0D0,6.0D0,10.0D0,6.0D0,4.0D0,
+     +          8.0D0,6.0D0,2.0D0,4.0D0,6.0D0,
+     +          4.0D0,10.0D0,8.0D0,2.0D0,4.0D0,
+     +          10.0D0,4.0D0,8.0D0,6.0D0,12.0D0,
+     +          8.0D0,10.0D0,2.0D0,12.0D0,8.0D0,
+     +          6.0D0,4.0D0,10.0D0,2.0D0,14.0D0,
+     +          6.0D0,8.0D0,16.0D0,12.0D0,8.0D0,
+     +          6.0D0,10.0D0,14.0D0,4.0D0,8.0D0,
+     +          14.0D0,2.0D0,12.0D0,6.0D0,6.0D0,
+     +          10.0D0,4.0D0,4.0D0,8.0D0,6.0D0,
+     +          2.0D0,8.0D0,10.0D0,6.0D0,12.0D0,
+     +          10.0D0,8.0D0,2.0D0,4.0D0,6.0D0,
+     +          8.0D0,10.0D0,6.0D0,4.0D0,12.0D0,
+     +          10.0D0,8.0D0,4.0D0,2.0D0,8.0D0,
+     +          12.0D0,14.0D0,6.0D0,6.0D0,10.0D0,
+     +          4.0D0,8.0D0,12.0D0,6.0D0,6.0D0,
+     +          8.0D0,4.0D0,10.0D0,4.0D0,8.0D0,
+     +          10.0D0,16.0D0,6.0D0,4.0D0,8.0D0,
+     +          2.0D0,4.0D0,10.0D0,6.0D0,4.0D0,
+     +          8.0D0,14.0D0,12.0D0,6.0D0,8.0D0,
+     +          10.0D0,2.0D0,4.0D0,10.0D0,8.0D0,
+     +          6.0D0,6.0D0,12.0D0,10.0D0,2.0D0,
+     +          6.0D0,8.0D0,6.0D0,10.0D0,8.0D0,
+     +          2.0D0,8.0D0,6.0D0,2.0D0,12.0D0,
+     +          6.0D0,4.0D0,2.0D0,6.0D0,8.0D0,
+     +          10.0D0,8.0D0,4.0D0,6.0D0,10.0D0,
+     +          6.0D0,8.0D0,12.0D0,8.0D0,10.0D0,
+     +          6.0D0,8.0D0/
+        DATA ENPTIV/0.00000,1.14250,1.18618,1.29599,1.92663,
+     +          2.00474,2.27653,2.43318,3.02986,3.07490,
+     +          3.45546,3.56520,3.98840,4.08564,4.28441,
+     +          4.83565,4.84732,5.59066,6.31737,6.47487,
+     +          6.74561,6.79576,6.95197,7.01610,7.55751,
+     +          8.08035,8.08088,8.33592,8.45527,8.48829,
+     +          8.58262,8.75610,8.96147,9.14545,9.27994,
+     +          9.28743,9.29780,9.34939,9.46121,9.69855,
+     +          9.84608,9.91788,10.06756,10.08326,10.16653,
+     +          10.18026,10.25660,10.29901,10.31821,10.50802,
+     +          10.73374,10.84474,10.90637,10.93956,11.07204,
+     +          11.15968,11.19875,11.24146,11.35582,11.38445,
+     +          11.59695,11.75416,11.87092,11.97502,12.01461,
+     +          12.02096,12.20195,12.59232,12.76517,13.01743,
+     +          13.08381,13.57519,13.90159,13.92826,13.94248,
+     +          14.07730,14.22038,14.59425,14.72480,14.89822,
+     +          15.16266,15.22545,15.40572,15.48597,15.93047,
+     +          15.93667,16.14052,16.21912,16.57124,16.59486,
+     +          16.66414,16.68579,16.79166,16.86626,16.87327,
+     +          16.91777,16.95863,17.01504,17.04439,17.04778,
+     +          17.12417,17.13802,17.18154,17.29551,17.40137,
+     +          17.42501,17.50394,17.54549,17.57818,17.61478,
+     +          17.68932,17.77687,17.80865,17.83233,17.85130,
+     +          17.90386,17.91683,18.10018,18.13184,18.20929,
+     +          18.21957,18.24714,18.28525,18.28832,18.38766,
+     +          18.45193,18.53343,18.54408,18.58138,18.60666,
+     +          18.69051,18.69253,18.70000,18.70701,18.86419,
+     +          18.86421,18.89955,18.91924,19.00670,19.03054,
+     +          19.05201,19.05331,19.08655,19.09501,19.14530,
+     +          19.16116,19.19436,19.29340,19.30358,19.35894,
+     +          19.38531,19.46577,19.50097,19.55114,19.62408,
+     +          19.65880,19.65942,19.67387,19.73766,19.80604,
+     +          19.87055,19.92101,19.93529,19.93926,19.97014,
+     +          20.05690,20.10631,20.17589,20.19152,20.19356,
+     +          20.19838,20.23341,20.25967,20.28895,20.38245,
+     +          20.38425,20.41426,20.44070,20.44820,20.52361,
+     +          20.52641,20.55401,20.68916,20.71671,20.72991,
+     +          20.77321,20.77597,20.78289,20.83252,20.86991,
+     +          20.90392,20.90617,20.94620,20.99509,21.07893,
+     +          21.11638,21.15369,21.20497,21.21341,21.25358,
+     +          21.30303,21.31089,21.39705,21.45198,21.48953,
+     +          21.60243,21.63964,21.64416,21.74606,21.78878,
+     +          21.81982,21.87112,22.02975,22.12345,22.13472,
+     +          22.18445,22.24302,22.25621,22.43280,22.58332,
+     +          22.61808,22.62063,22.81863,22.87730,22.91570,
+     +          23.06235,23.12154,23.16515,23.17811,23.43526,
+     +          23.43966,23.55281,23.78499,24.01160,24.17684,
+     +          24.33626,24.52338/
+        DATA NPTV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,6,5,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6/
+        DATA GPTV/9.0D0,5.0D0,7.0D0,1.0D0,3.0D0,
+     +          9.0D0,11.0D0,13.0D0,5.0D0,7.0D0,
+     +          5.0D0,1.0D0,9.0D0,3.0D0,5.0D0,
+     +          9.0D0,11.0D0,7.0D0,7.0D0,1.0D0,
+     +          13.0D0,7.0D0,3.0D0,9.0D0,5.0D0,
+     +          3.0D0,9.0D0,5.0D0,5.0D0,7.0D0,
+     +          9.0D0,7.0D0,5.0D0,5.0D0,7.0D0,
+     +          5.0D0,9.0D0,13.0D0,5.0D0,7.0D0,
+     +          11.0D0,3.0D0,9.0D0,7.0D0,5.0D0,
+     +          11.0D0,7.0D0,9.0D0,5.0D0,3.0D0,
+     +          13.0D0,11.0D0,9.0D0,7.0D0,5.0D0,
+     +          15.0D0,7.0D0,11.0D0,7.0D0,9.0D0,
+     +          13.0D0,11.0D0,7.0D0,9.0D0,9.0D0,
+     +          7.0D0,7.0D0,9.0D0,9.0D0,11.0D0,
+     +          13.0D0,7.0D0,11.0D0,9.0D0,7.0D0,
+     +          5.0D0,11.0D0,7.0D0,9.0D0,5.0D0,
+     +          7.0D0,9.0D0,7.0D0,5.0D0,3.0D0,
+     +          9.0D0,5.0D0,11.0D0,13.0D0,7.0D0,
+     +          3.0D0,5.0D0,7.0D0,9.0D0,11.0D0,
+     +          3.0D0,9.0D0,7.0D0,7.0D0,5.0D0,
+     +          3.0D0,9.0D0,5.0D0,11.0D0,13.0D0,
+     +          7.0D0,5.0D0,9.0D0,7.0D0,1.0D0,
+     +          5.0D0,3.0D0,9.0D0,3.0D0,11.0D0,
+     +          15.0D0,3.0D0,5.0D0,7.0D0,9.0D0,
+     +          13.0D0,11.0D0,15.0D0,7.0D0,5.0D0,
+     +          11.0D0,13.0D0,7.0D0,7.0D0,9.0D0,
+     +          5.0D0,9.0D0,3.0D0,7.0D0,9.0D0,
+     +          5.0D0,13.0D0,9.0D0,5.0D0,11.0D0,
+     +          3.0D0,5.0D0,11.0D0,9.0D0,3.0D0,
+     +          7.0D0,5.0D0,7.0D0,5.0D0,7.0D0,
+     +          9.0D0,11.0D0,3.0D0,7.0D0,9.0D0,
+     +          7.0D0,9.0D0,11.0D0,5.0D0,5.0D0,
+     +          3.0D0,13.0D0,5.0D0,3.0D0,9.0D0,
+     +          7.0D0,15.0D0,1.0D0,11.0D0,7.0D0,
+     +          13.0D0,11.0D0,3.0D0,5.0D0,9.0D0,
+     +          7.0D0,17.0D0,9.0D0,3.0D0,5.0D0,
+     +          11.0D0,13.0D0,15.0D0,9.0D0,11.0D0,
+     +          7.0D0,5.0D0,7.0D0,9.0D0,3.0D0,
+     +          5.0D0,3.0D0,7.0D0,7.0D0,11.0D0,
+     +          5.0D0,9.0D0,13.0D0,9.0D0,5.0D0,
+     +          7.0D0,3.0D0,13.0D0,9.0D0,7.0D0,
+     +          11.0D0,5.0D0,9.0D0,7.0D0,5.0D0,
+     +          9.0D0,11.0D0,7.0D0,3.0D0,5.0D0,
+     +          9.0D0,5.0D0,7.0D0,3.0D0,11.0D0,
+     +          3.0D0,7.0D0,1.0D0,9.0D0,5.0D0,
+     +          11.0D0,7.0D0,11.0D0,9.0D0,13.0D0,
+     +          7.0D0,5.0D0,9.0D0,7.0D0,15.0D0,
+     +          5.0D0,3.0D0,11.0D0,7.0D0,5.0D0,
+     +          13.0D0,9.0D0,11.0D0,7.0D0,3.0D0,
+     +          5.0D0,7.0D0,9.0D0,7.0D0,9.0D0,
+     +          13.0D0,5.0D0,7.0D0,5.0D0,9.0D0,
+     +          11.0D0,9.0D0,11.0D0/
+        DATA ENPTV/0.00000,0.74717,0.94385,1.34121,1.34235,
+     +          2.03711,2.61569,2.68934,2.82371,3.06170,
+     +          3.17801,3.73174,3.79518,3.85644,4.04567,
+     +          4.06744,4.19884,4.27478,4.53951,4.68094,
+     +          4.80114,5.01750,5.11450,5.48935,5.64014,
+     +          6.11604,6.68520,6.70469,7.62214,7.67403,
+     +          7.74637,7.94259,9.14135,10.30551,10.79432,
+     +          11.02701,11.43755,11.58058,11.60474,11.65327,
+     +          11.65888,11.75624,12.32374,12.50469,12.78004,
+     +          12.88372,13.05624,13.15293,13.18929,13.37939,
+     +          13.51976,13.55369,13.62634,13.68181,13.84493,
+     +          13.94703,13.97855,14.01951,14.38841,14.40632,
+     +          14.59789,14.77721,14.93774,15.12277,15.21468,
+     +          15.26441,15.57479,15.67841,15.99604,16.05787,
+     +          16.25134,16.58266,16.80081,16.81250,17.19944,
+     +          17.50456,17.59638,17.78978,17.87381,19.51294,
+     +          19.79689,19.97004,20.40770,20.47927,20.48538,
+     +          20.54571,20.73977,20.78115,20.81015,20.86739,
+     +          20.87996,20.89701,20.96241,21.19270,21.26906,
+     +          21.63031,21.69512,21.80010,21.89139,22.00942,
+     +          22.16578,22.25351,22.30233,22.35829,22.42644,
+     +          22.43702,22.49909,22.56604,22.67527,22.73827,
+     +          22.75009,22.78168,22.78420,22.83997,22.95475,
+     +          22.97325,23.02607,23.03069,23.06420,23.10388,
+     +          23.19314,23.23007,23.32097,23.33543,23.34717,
+     +          23.41384,23.49891,23.52228,23.60038,23.63742,
+     +          23.66478,23.68829,23.70870,23.71035,23.75059,
+     +          23.80501,23.80796,23.82545,23.87402,23.97994,
+     +          24.03703,24.15218,24.18974,24.19114,24.19710,
+     +          24.20375,24.23290,24.31114,24.31563,24.36709,
+     +          24.36761,24.37541,24.51576,24.53356,24.56012,
+     +          24.68486,24.69441,24.77094,24.77207,24.80567,
+     +          24.81409,24.87848,24.90205,24.95589,24.96775,
+     +          24.97389,24.99157,25.05209,25.10590,25.15620,
+     +          25.20047,25.23505,25.28483,25.31776,25.34733,
+     +          25.35931,25.42358,25.43914,25.47531,25.48442,
+     +          25.48880,25.52007,25.52030,25.55388,25.58197,
+     +          25.58387,25.69720,25.69738,25.70947,25.71155,
+     +          25.88294,25.90273,25.91155,25.96452,26.01697,
+     +          26.02337,26.03889,26.04706,26.22629,26.24448,
+     +          26.26696,26.34401,26.36443,26.41425,26.41513,
+     +          26.47796,26.49742,26.51774,26.55558,26.66139,
+     +          26.69680,26.73782,26.75357,26.77233,26.77483,
+     +          26.87462,26.89258,26.91690,26.92581,26.94390,
+     +          26.98608,27.00258,27.11246,27.11654,27.16739,
+     +          27.18478,27.18787,27.33307,27.36805,27.39820,
+     +          27.42865,27.44895,27.57057,27.61100,27.64018,
+     +          27.70679,27.76792,27.81698,27.90431,27.94397,
+     +          27.94723,28.06770,28.06856,28.31820,28.34340,
+     +          28.37164,28.41430,28.55155,28.65487,28.71112,
+     +          28.98852,28.99131,29.16045,29.22634,29.33702,
+     +          29.52634,29.62384,29.78755/
+        DATA NPTVI/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6/
+        DATA GPTVI/6.0D0,6.0D0,8.0D0,4.0D0,12.0D0,
+     +          6.0D0,10.0D0,2.0D0,8.0D0,6.0D0,
+     +          2.0D0,12.0D0,8.0D0,4.0D0,10.0D0,
+     +          4.0D0,14.0D0,6.0D0,10.0D0,6.0D0,
+     +          8.0D0,6.0D0,4.0D0,8.0D0,2.0D0,
+     +          8.0D0,10.0D0,12.0D0,4.0D0,6.0D0,
+     +          6.0D0,10.0D0,8.0D0,4.0D0,2.0D0,
+     +          6.0D0,4.0D0,2.0D0,4.0D0,6.0D0,
+     +          8.0D0,10.0D0,2.0D0,4.0D0,8.0D0,
+     +          6.0D0,2.0D0,10.0D0,6.0D0,12.0D0,
+     +          8.0D0,4.0D0,8.0D0,4.0D0,6.0D0,
+     +          14.0D0,10.0D0,6.0D0,10.0D0,8.0D0,
+     +          12.0D0,8.0D0,10.0D0,4.0D0,6.0D0,
+     +          12.0D0,6.0D0,8.0D0,6.0D0,14.0D0,
+     +          10.0D0,12.0D0,10.0D0,8.0D0,8.0D0,
+     +          10.0D0,6.0D0,8.0D0,8.0D0,2.0D0,
+     +          10.0D0,8.0D0,2.0D0,4.0D0,6.0D0,
+     +          4.0D0,4.0D0,6.0D0,8.0D0,10.0D0,
+     +          6.0D0,8.0D0,2.0D0,4.0D0,8.0D0,
+     +          10.0D0,6.0D0,4.0D0,8.0D0,6.0D0,
+     +          4.0D0,12.0D0,10.0D0,6.0D0,4.0D0,
+     +          14.0D0,8.0D0,4.0D0,6.0D0,2.0D0,
+     +          10.0D0,12.0D0,6.0D0,10.0D0,8.0D0,
+     +          12.0D0,6.0D0,8.0D0,4.0D0,8.0D0,
+     +          2.0D0,6.0D0,10.0D0,8.0D0,6.0D0,
+     +          4.0D0,8.0D0,10.0D0,6.0D0,8.0D0,
+     +          4.0D0,12.0D0,6.0D0,10.0D0,4.0D0,
+     +          2.0D0,12.0D0,10.0D0,6.0D0,14.0D0,
+     +          4.0D0,8.0D0,12.0D0,6.0D0,10.0D0,
+     +          8.0D0,6.0D0,4.0D0,8.0D0,2.0D0,
+     +          4.0D0,6.0D0,14.0D0,8.0D0,12.0D0,
+     +          4.0D0,2.0D0,10.0D0,8.0D0,16.0D0,
+     +          2.0D0,6.0D0,14.0D0,10.0D0,6.0D0,
+     +          6.0D0,10.0D0,4.0D0,8.0D0,12.0D0,
+     +          4.0D0,8.0D0,10.0D0,6.0D0,12.0D0,
+     +          8.0D0,10.0D0,12.0D0,2.0D0,4.0D0,
+     +          8.0D0,6.0D0,10.0D0,8.0D0,4.0D0,
+     +          8.0D0,6.0D0,6.0D0,10.0D0,4.0D0,
+     +          4.0D0,6.0D0,8.0D0,14.0D0,6.0D0,
+     +          10.0D0,8.0D0,2.0D0,4.0D0,8.0D0,
+     +          6.0D0,14.0D0,12.0D0,10.0D0,16.0D0,
+     +          6.0D0,4.0D0,12.0D0,4.0D0,8.0D0,
+     +          10.0D0,8.0D0,2.0D0,6.0D0,6.0D0,
+     +          10.0D0,12.0D0,8.0D0,8.0D0,4.0D0,
+     +          4.0D0,8.0D0,6.0D0,10.0D0,10.0D0,
+     +          6.0D0,4.0D0,8.0D0,4.0D0,12.0D0,
+     +          6.0D0,6.0D0,8.0D0,10.0D0,10.0D0,
+     +          6.0D0,8.0D0,8.0D0,2.0D0,6.0D0,
+     +          2.0D0,12.0D0,6.0D0,8.0D0,10.0D0,
+     +          2.0D0,6.0D0,8.0D0,4.0D0,6.0D0/
+        DATA ENPTVI/0.00000,2.15031,3.01365,3.10735,3.22981,
+     +          3.30847,3.39502,3.60539,4.12125,4.33554,
+     +          4.77047,4.80729,4.87860,4.91181,5.15123,
+     +          5.20300,5.33285,5.46462,6.17333,6.20785,
+     +          6.27671,6.62487,6.70939,6.89131,7.11359,
+     +          7.28522,7.49584,7.56720,8.08937,8.37089,
+     +          8.86662,8.98731,9.35231,9.99686,10.71336,
+     +          11.74424,12.05310,13.45875,14.15360,14.74821,
+     +          15.21134,15.54957,15.70973,16.54511,16.66170,
+     +          16.98127,17.08109,17.09531,17.77820,17.79090,
+     +          17.79241,17.81338,17.81590,18.03165,18.07829,
+     +          18.17367,18.41487,18.63158,18.75483,18.92038,
+     +          18.95968,19.03720,19.24412,19.27194,19.54009,
+     +          19.88314,20.04545,20.09522,20.25766,20.36751,
+     +          20.67423,20.85477,21.07512,21.39629,21.50051,
+     +          22.55025,22.72012,22.72680,23.18746,23.34019,
+     +          23.41954,23.94401,24.13407,24.35667,25.02708,
+     +          25.11614,25.41226,25.42151,25.48745,25.72305,
+     +          25.82081,26.09908,26.64616,26.74322,26.87936,
+     +          26.94587,27.12061,27.21075,27.44319,27.51689,
+     +          27.64590,27.64886,27.89951,27.98252,28.07545,
+     +          28.09798,28.12769,28.31065,28.34336,28.39042,
+     +          28.43001,28.48099,28.51877,28.52746,28.61660,
+     +          28.70570,28.74079,28.80842,28.83374,28.84676,
+     +          28.98402,29.09200,29.19835,29.33533,29.37032,
+     +          29.42326,29.47788,29.49225,29.52960,29.64664,
+     +          29.79308,29.90306,29.91578,29.93944,30.12129,
+     +          30.13642,30.13710,30.18842,30.22422,30.22485,
+     +          30.30490,30.35756,30.43179,30.53263,30.56836,
+     +          30.62529,30.68944,30.71570,30.75349,30.77430,
+     +          30.80726,30.93455,30.93500,30.96350,30.96583,
+     +          30.98244,31.01782,31.06773,31.12312,31.15327,
+     +          31.19687,31.25033,31.25680,31.31316,31.33366,
+     +          31.37100,31.48881,31.49316,31.54359,31.57329,
+     +          31.62197,31.70829,31.74466,31.74467,31.90504,
+     +          31.90793,31.94050,31.99763,32.09213,32.14014,
+     +          32.24148,32.25958,32.28229,32.28899,32.30224,
+     +          32.32938,32.38931,32.40641,32.46790,32.54063,
+     +          32.55137,32.63970,32.64206,32.69591,32.73571,
+     +          32.76816,32.78068,32.80695,32.96432,33.01803,
+     +          33.05657,33.11035,33.14234,33.17042,33.24969,
+     +          33.30389,33.40054,33.40574,33.41357,33.46445,
+     +          33.51887,33.56508,33.68013,33.69775,33.87595,
+     +          33.94957,33.99527,34.04804,34.20688,34.22868,
+     +          34.33573,34.38852,34.42334,34.44693,34.54732,
+     +          34.65145,34.87311,34.99153,35.28110,35.40810,
+     +          35.42837,35.50395,35.54204,35.59895,35.75191,
+     +          35.77171,35.92463,36.08457,36.10026,36.18711,
+     +          36.31665,36.34173,36.41196,36.56698,36.60395,
+     +          37.11517,37.24561,38.30202,38.30344,38.69228/
+        DATA NPTVII/5/
+        DATA GPTVII/1.0/
+        DATA ENPTVII/0.0/
+        DATA NTLIV/5,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          7,6,6,6,7,6,6,6,6,6,
+     +          6,6,7,7,6,6,6,6,6,8,
+     +          8,8,8/
+        DATA GTLIV/1.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,9.0D0,
+     +          5.0D0,7.0D0,3.0D0,1.0D0,7.0D0,
+     +          3.0D0,5.0D0,3.0D0,9.0D0,5.0D0,
+     +          7.0D0,3.0D0,11.0D0,7.0D0,5.0D0,
+     +          7.0D0,5.0D0,9.0D0,1.0D0,3.0D0,
+     +          7.0D0,3.0D0,5.0D0,3.0D0,5.0D0,
+     +          9.0D0,5.0D0,7.0D0,1.0D0,7.0D0,
+     +          5.0D0,3.0D0,5.0D0/
+        DATA ENTLIV/0.00000,9.30496,9.75061,11.61419,11.99238,
+     +          18.30408,18.57747,20.63365,20.76711,20.78848,
+     +          21.11863,21.35910,21.73269,22.69996,23.26842,
+     +          23.33760,23.57465,31.21959,31.51146,31.57049,
+     +          31.62614,31.70194,31.71955,31.74866,31.76009,
+     +          31.95698,31.97865,32.02338,32.51911,33.78986,
+     +          33.82372,33.94650,34.02048,34.06720,34.11555,
+     +          34.12460,34.23970,34.32700,35.08600,39.74481,
+     +          39.80117,42.05590,42.08743/
+
+        DATA NTLV/5,5,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6/
+        DATA GTLV/6.,4.,10.,8.,6.,4.,6.,8.,2.,4.,
+     +          6.,4.,10.,8.,2.,4.,6.,2./
+        DATA ENTLV/0.00000,2.33383,11.57354,12.50808,12.99672,
+     +          13.26229,14.25631,14.37846,14.75962,15.10349,
+     +          15.36627,15.79303,16.20472,16.31917,16.36362,
+     +          17.44187,17.57278,20.63829/
+
+        DATA NTLVI/5,5,5,5,5,5,5,5,5,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6/
+        DATA GTLVI/7.,5.,7.,1.,5.,3.,7.,5.,1.,11.,
+     +          9.,5.,7.,3.,5.,9.,7.,3.,11.,7.,
+     +          5.,9.,3.,5.,13.,1.,7.,11.,9.,5.,
+     +          7.,7.,5.,3.,7.,5.,3.,9.,11.,1.,
+     +          9.,5.,3.,7.,3.,7.,5.,5./
+        DATA ENTLVI/0.00000,1.01704,2.23019,2.86067,3.15524,
+     +          3.66350,4.18241,5.37033,8.82270,15.02793,
+     +          16.08539,16.91211,17.04463,17.21620,17.54762,
+     +          17.65448,17.89827,18.52974,18.78259,18.91176,
+     +          19.18178,19.27157,19.45750,19.49531,19.73178,
+     +          19.89882,20.22703,20.26827,20.40409,21.18637,
+     +          21.22481,21.22481,21.23498,21.31332,21.33467,
+     +          21.71644,22.07752,22.24258,22.38123,22.56562,
+     +          22.85178,23.08465,23.11726,23.21331,25.53546,
+     +          25.57014,25.61342,26.31852/
+        DATA NTLVII/5/
+        DATA GTLVII/10./
+        DATA ENTLVII/0.0/
+
+        DATA NAUIV/5,5,5,5,5,5,5,5,6,5,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6/
+        DATA GAUIV/9.0D0,5.0D0,7.0D0,5.0D0,1.0D0,
+     +          3.0D0,9.0D0,5.0D0,11.0D0,1.0D0,
+     +          9.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          9.0D0,7.0D0,3.0D0,11.0D0,7.0D0,
+     +          5.0D0,9.0D0,3.0D0,5.0D0,13.0D0,
+     +          1.0D0,7.0D0,11.0D0,9.0D0,7.0D0,
+     +          5.0D0,3.0D0,5.0D0,5.0D0,7.0D0,
+     +          3.0D0,9.0D0,11.0D0,1.0D0,9.0D0,
+     +          5.0D0,3.0D0,7.0D0,3.0D0,5.0D0,
+     +          7.0D0,9.0D0,11.0D0,5.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,7.0D0,9.0D0,
+     +          5.0D0,11.0D0,13.0D0,5.0D0,3.0D0,
+     +          9.0D0,1.0D0,7.0D0,11.0D0,7.0D0,
+     +          3.0D0,9.0D0,13.0D0,9.0D0,1.0D0,
+     +          5.0D0,7.0D0,11.0D0,9.0D0,7.0D0,
+     +          5.0D0,11.0D0,3.0D0,7.0D0,9.0D0,
+     +          5.0D0,7.0D0,3.0D0,5.0D0,7.0D0,
+     +          5.0D0,3.0D0,9.0D0,7.0D0,1.0D0,
+     +          5.0D0,3.0D0,13.0D0,5.0D0,7.0D0,
+     +          9.0D0,11.0D0,7.0D0,3.0D0,5.0D0,
+     +          1.0D0,11.0D0,9.0D0,5.0D0,7.0D0,
+     +          3.0D0,15.0D0,5.0D0,9.0D0,3.0D0,
+     +          11.0D0,7.0D0,3.0D0,9.0D0,13.0D0,
+     +          5.0D0,7.0D0,7.0D0,11.0D0,9.0D0,
+     +          5.0D0,7.0D0,3.0D0,9.0D0,3.0D0,
+     +          5.0D0,1.0D0,9.0D0,7.0D0,5.0D0,
+     +          13.0D0,3.0D0,5.0D0,9.0D0,3.0D0,
+     +          7.0D0,5.0D0,11.0D0,1.0D0,9.0D0,
+     +          11.0D0,5.0D0,3.0D0,7.0D0,5.0D0,
+     +          5.0D0,7.0D0,3.0D0,7.0D0,3.0D0,
+     +          9.0D0,5.0D0,1.0D0,7.0D0,5.0D0,
+     +          3.0D0,7.0D0/
+        DATA ENAUIV/0.00000,0.82203,1.52422,2.24423,2.25468,
+     +          2.66441,3.18666,3.81074,6.36001,6.85357,
+     +          7.22127,7.90587,8.01660,8.19774,8.34278,
+     +          8.41273,8.54139,9.04695,9.31037,9.40039,
+     +          9.68769,9.71550,9.84981,9.85752,10.09280,
+     +          10.36189,10.41177,10.55194,10.63753,11.06016,
+     +          11.10669,11.13408,11.35971,11.47872,11.48562,
+     +          11.79106,11.88780,12.03780,12.09466,12.45643,
+     +          12.70986,12.76276,12.80662,14.50615,14.61898,
+     +          14.73304,14.90506,15.18753,15.32569,16.16509,
+     +          16.23172,16.32721,16.40313,16.53930,16.61882,
+     +          17.03340,17.17740,17.24016,17.26386,17.31907,
+     +          17.39611,17.43103,17.65515,17.78359,17.94291,
+     +          17.99383,18.11571,18.52546,18.57509,18.59312,
+     +          18.62564,18.63498,18.64661,18.68799,18.71931,
+     +          18.79447,18.82379,18.88064,18.88138,18.88970,
+     +          18.98123,19.17763,19.23911,19.25335,19.46550,
+     +          19.48401,19.48805,19.59543,19.63386,19.63910,
+     +          19.69454,19.75351,19.80844,19.84264,19.84265,
+     +          19.90305,19.93431,19.99110,19.99410,20.11569,
+     +          20.14743,20.23725,20.24501,20.35158,20.36226,
+     +          20.36238,20.50387,20.60001,20.65522,20.74523,
+     +          20.87862,20.89065,20.97182,20.99797,21.01703,
+     +          21.12174,21.20813,21.22353,21.25294,21.43336,
+     +          21.46725,21.51389,21.54330,21.56484,21.75504,
+     +          21.84474,21.85841,21.91746,21.99003,22.05923,
+     +          22.13190,22.23226,22.36912,22.46164,22.46621,
+     +          22.52759,22.55864,22.61331,22.70151,22.98457,
+     +          22.99033,23.02693,23.12775,23.13302,23.23715,
+     +          23.33018,23.35048,23.61899,23.63070,24.80924,
+     +          25.03241,25.03241,25.04481,25.14400,25.46635,
+     +          25.72672,25.76392/
+        DATA NAUV/5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5,5,5,
+     +          5,5,5,5,5,5,5,5/
+        DATA GAUV/10.,4.,8.,6.,4.,6.,10.,2.,12.,8.,
+     +          4.,6.,6.,2.,10.,8.,4.,4.,6.,10.,
+     +          8.,6.,4.,2.,8.,10.,6.,4.,8.,12.,
+     +          14.,2.,6.,10.,4.,8.,6.,12.,4.,6.,
+     +          2.,10.,8.,6.,2.,8.,10.,4.,12.,8.,
+     +          2.,6.,14.,10.,8.,6.,6.,12.,8.,4.,
+     +          10.,6.,8.,10.,6.,8.,10.,8./
+        DATA ENAUV/0.00000,1.28568,1.48629,1.52510,2.34197,
+     +          2.43749,2.64969,2.89212,3.48132,3.62023,
+     +          4.18011,4.26849,4.58704,4.86936,5.06278,
+     +          5.67911,5.73304,7.84336,8.11546,9.67948,
+     +          10.56533,10.67846,11.07331,11.31391,11.75296,
+     +          12.41320,12.42909,12.58717,12.85737,12.91965,
+     +          13.02949,13.15827,13.47349,13.65041,13.79721,
+     +          13.81581,13.83784,13.85293,14.08048,14.21416,
+     +          14.50068,14.59735,14.75339,14.77408,14.89723,
+     +          14.90114,14.95148,14.98634,15.06206,15.23998,
+     +          15.42278,15.70359,15.75301,15.84715,15.87543,
+     +          15.98978,16.04571,16.08149,16.15481,16.45874,
+     +          16.66162,16.86241,16.90058,17.61455,18.02925,
+     +          18.17711,19.06372,19.10442/
+        DATA NAUVI/5/
+        DATA GAUVI/9.0D0/
+        DATA ENAUVI/0.0/
+        DATA NAUVII/5/
+        DATA GAUVII/6.0D0/
+        DATA ENAUVII/0.0/
+
+        DATA NHGIV/5,5,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,7,6,6,
+     +          7,6,6,6,6,6,6,6,6,6,
+     +          7,7,6,6,6,6,6,6,6,6,
+     +          6,7,7,6,6,6,6,6,6,6,
+     +          6,6,6,7,6,6,7,7,6,6,
+     +          6,6,6,6,6,7,6,6,7,6,
+     +          6,6,6,7,7,6,6,6,6,6,
+     +          6,6,6,6,6,6,7,7,6,6,
+     +          6,6,6,6,7,6/
+        DATA GHGIV/6.0D0,4.0D0,10.0D0,8.0D0,6.0D0,
+     +          4.0D0,6.0D0,8.0D0,2.0D0,4.0D0,
+     +          6.0D0,4.0D0,10.0D0,8.0D0,2.0D0,
+     +          4.0D0,6.0D0,2.0D0,8.0D0,10.0D0,
+     +          4.0D0,6.0D0,6.0D0,8.0D0,2.0D0,
+     +          12.0D0,4.0D0,10.0D0,8.0D0,6.0D0,
+     +          2.0D0,6.0D0,4.0D0,8.0D0,6.0D0,
+     +          10.0D0,2.0D0,8.0D0,4.0D0,6.0D0,
+     +          10.0D0,8.0D0,4.0D0,6.0D0,4.0D0,
+     +          6.0D0,8.0D0,2.0D0,4.0D0,2.0D0,
+     +          6.0D0,4.0D0,12.0D0,6.0D0,4.0D0,
+     +          8.0D0,10.0D0,4.0D0,6.0D0,8.0D0,
+     +          2.0D0,2.0D0,4.0D0,6.0D0,8.0D0,
+     +          12.0D0,10.0D0,10.0D0,14.0D0,4.0D0,
+     +          8.0D0,12.0D0,8.0D0,10.0D0,6.0D0,
+     +          4.0D0,6.0D0,8.0D0,2.0D0,8.0D0,
+     +          6.0D0,4.0D0,10.0D0,4.0D0,2.0D0,
+     +          6.0D0,4.0D0,10.0D0,8.0D0,6.0D0,
+     +          2.0D0,8.0D0,6.0D0,12.0D0,10.0D0,
+     +          6.0D0,8.0D0,4.0D0,2.0D0,4.0D0,
+     +          4.0D0,8.0D0,6.0D0,2.0D0,6.0D0,
+     +          8.0D0,6.0D0,4.0D0,2.0D0,6.0D0,
+     +          10.0D0,4.0D0,2.0D0,6.0D0,4.0D0,
+     +          4.0D0,8.0D0,12.0D0,2.0D0,4.0D0,
+     +          6.0D0,8.0D0,14.0D0,10.0D0,8.0D0,
+     +          6.0D0,10.0D0,4.0D0,8.0D0,6.0D0,
+     +          12.0D0,10.0D0,6.0D0,8.0D0,2.0D0,
+     +          6.0D0,4.0D0,6.0D0,8.0D0,4.0D0,
+     +          10.0D0,2.0D0,4.0D0,4.0D0,2.0D0,
+     +          6.0D0/
+        DATA ENHGIV/0.00000,1.94478,7.45614,8.19650,8.67177,
+     +          8.89753,9.63053,9.77663,10.21522,10.40426,
+     +          10.66652,11.02219,11.45059,11.55321,11.58090,
+     +          12.41769,12.51159,15.36747,16.21882,16.56633,
+     +          17.19796,17.26632,18.19697,18.26114,18.54624,
+     +          18.62621,18.85711,18.90675,19.01345,19.10909,
+     +          19.12331,19.33616,19.43748,19.80013,19.90619,
+     +          20.01213,20.15291,20.35171,20.46600,20.47898,
+     +          20.56928,20.79546,20.88098,20.99589,21.42030,
+     +          21.45521,21.48755,21.52238,21.55370,22.05474,
+     +          22.07249,22.08785,22.15559,22.30380,22.33708,
+     +          22.72759,22.93021,23.15789,23.40724,23.41709,
+     +          23.70915,24.45092,26.47546,28.94399,29.02137,
+     +          29.10301,29.18034,29.25238,29.28751,29.31110,
+     +          29.34730,29.40341,29.43979,29.52609,29.65916,
+     +          29.94764,30.03132,30.08204,30.14849,30.26901,
+     +          30.27173,30.30918,30.36176,30.41742,30.42928,
+     +          30.55229,30.86656,30.96319,31.01016,31.12903,
+     +          31.14179,31.14664,31.18132,31.21178,31.28744,
+     +          31.29995,31.30142,31.37507,31.67511,31.71677,
+     +          31.77318,31.81113,31.90844,31.91242,31.99818,
+     +          32.00475,32.00689,32.03417,32.05522,32.06523,
+     +          32.10614,32.11451,32.31425,32.35612,32.38653,
+     +          32.50747,32.59764,32.60024,32.64629,32.64863,
+     +          32.71385,32.82234,32.84031,32.88763,32.96554,
+     +          32.97806,33.08231,33.17817,33.21561,33.22467,
+     +          33.27170,33.28353,33.65640,33.70451,33.76640,
+     +          33.86976,33.87206,33.89806,33.90727,33.96039,
+     +          33.98956,34.01035,34.66737,36.89522,36.95634,
+     +          37.02776/
+        DATA NHGV/5,5,5,5,5,5,5,5,5,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6/
+        DATA GHGV/9.0D0,5.0D0,7.0D0,1.0D0,5.0D0,
+     +          3.0D0,9.0D0,5.0D0,1.0D0,11.0D0,
+     +          9.0D0,5.0D0,7.0D0,3.0D0,5.0D0,
+     +          9.0D0,7.0D0,3.0D0,11.0D0,7.0D0,
+     +          5.0D0,9.0D0,3.0D0,5.0D0,13.0D0,
+     +          1.0D0,7.0D0,11.0D0,9.0D0,7.0D0,
+     +          5.0D0,3.0D0,5.0D0,7.0D0,5.0D0,
+     +          3.0D0,9.0D0,11.0D0,1.0D0,9.0D0,
+     +          5.0D0,3.0D0,7.0D0,3.0D0,5.0D0,
+     +          7.0D0,9.0D0,5.0D0,11.0D0,3.0D0,
+     +          5.0D0,5.0D0,7.0D0,7.0D0,9.0D0,
+     +          5.0D0,5.0D0,11.0D0,3.0D0,13.0D0,
+     +          9.0D0,1.0D0,7.0D0,11.0D0,3.0D0,
+     +          7.0D0,9.0D0,13.0D0,9.0D0,11.0D0,
+     +          1.0D0,7.0D0,7.0D0,5.0D0,5.0D0,
+     +          9.0D0,7.0D0,3.0D0,11.0D0,9.0D0,
+     +          5.0D0,7.0D0,3.0D0,5.0D0,7.0D0,
+     +          5.0D0,1.0D0,3.0D0,5.0D0,7.0D0,
+     +          9.0D0,3.0D0,11.0D0,13.0D0,7.0D0,
+     +          5.0D0,9.0D0,5.0D0,3.0D0,9.0D0,
+     +          7.0D0,11.0D0,5.0D0,1.0D0,7.0D0,
+     +          3.0D0,15.0D0,9.0D0,5.0D0,3.0D0,
+     +          7.0D0,3.0D0,11.0D0,9.0D0,13.0D0,
+     +          5.0D0,7.0D0,11.0D0,7.0D0,9.0D0,
+     +          5.0D0,3.0D0,7.0D0,9.0D0,5.0D0,
+     +          9.0D0,3.0D0,1.0D0,7.0D0,5.0D0,
+     +          3.0D0,13.0D0,5.0D0,5.0D0,3.0D0,
+     +          9.0D0,7.0D0,1.0D0,11.0D0,5.0D0,
+     +          3.0D0,7.0D0,9.0D0,11.0D0,5.0D0,
+     +          7.0D0,5.0D0,3.0D0,7.0D0,3.0D0,
+     +          9.0D0,5.0D0,1.0D0,7.0D0,5.0D0,
+     +          3.0D0,7.0D0/
+        DATA ENHGV/0.00000,0.93066,1.86322,2.57503,2.69545,
+     +          3.16747,3.68229,4.57093,7.68057,10.49431,
+     +          11.46110,12.27263,12.28294,12.52061,12.74140,
+     +          12.81538,13.00349,13.56666,13.83780,13.94722,
+     +          14.23340,14.28572,14.44453,14.46517,14.70479,
+     +          14.92105,15.11295,15.20506,15.31396,15.92184,
+     +          15.94670,16.00366,16.07663,16.19963,16.37100,
+     +          16.71131,16.84303,16.98648,17.13752,17.43422,
+     +          17.68151,17.72691,17.79923,19.72786,19.82894,
+     +          19.88488,20.41562,20.56938,20.65377,21.82026,
+     +          21.90740,22.13009,22.16232,22.31025,22.46449,
+     +          23.06197,23.24755,23.26327,23.31344,23.31477,
+     +          23.45602,23.47863,23.67323,23.72552,24.01126,
+     +          24.18867,24.24754,24.51098,24.65914,24.69209,
+     +          24.84831,24.87294,24.87536,24.95403,25.11836,
+     +          25.18006,25.21454,25.22545,25.24412,25.26421,
+     +          25.38196,25.52251,25.57092,25.65100,25.76573,
+     +          25.89455,25.98000,25.98162,26.02501,26.04697,
+     +          26.22220,26.24424,26.31940,26.35416,26.46087,
+     +          26.46423,26.48585,26.57394,26.62567,26.63654,
+     +          26.67788,26.80040,26.83906,26.90064,26.95176,
+     +          27.02077,27.07335,27.16617,27.23317,27.28009,
+     +          27.46888,27.56063,27.59877,27.68139,27.73073,
+     +          27.89025,27.91564,28.05197,28.10199,28.12994,
+     +          28.33482,28.34426,28.35965,28.50005,28.73262,
+     +          28.79354,28.80178,28.86291,28.90863,29.01145,
+     +          29.11933,29.15216,29.29754,29.46496,29.49759,
+     +          29.51226,29.52691,29.62315,29.66394,29.79736,
+     +          30.04673,30.09457,30.10116,30.13277,30.17837,
+     +          30.23512,30.46277,30.66962,30.68853,32.16851,
+     +          32.37566,32.38848,32.58025,32.62198,32.91633,
+     +          33.07828,33.25512/
+        DATA NHGVI/5/
+        DATA GHGVI/10.0/
+        DATA ENHGVI/0.0/
+        DATA NHGVII/5/
+        DATA GHGVII/9.0/
+        DATA ENHGVII/0.0/
+
+        DATA NPBIV/6,6,6,6,6,6,6,6,6,6,
+     +          6,7,6,6,6,6,6,6,6,6,
+     +          6,6,6,7,7,6,6,6,6,6,
+     +          5,5,6,6,6,8,7,7,6,8,
+     +          8,6,5,5,6,6,6,9,8,8,
+     +          6,6,6,7,7,7,6,6,6,6,
+     +          7,7,7,6,7,10,9,9,6,6,
+     +          6,6,6,6,7,7,6,6,6,6,
+     +          6,6,6,6,7,8,6,6,7,6,
+     +          6,7,6,7,6,6,6,6,6,5,
+     +          5,5/
+        DATA GPBIV/2.0D0,2.0D0,4.0D0,6.0D0,4.0D0,
+     +          6.0D0,8.0D0,6.0D0,4.0D0,4.0D0,
+     +          6.0D0,2.0D0,4.0D0,10.0D0,4.0D0,
+     +          6.0D0,8.0D0,2.0D0,6.0D0,4.0D0,
+     +          2.0D0,8.0D0,4.0D0,2.0D0,4.0D0,
+     +          2.0D0,6.0D0,4.0D0,8.0D0,6.0D0,
+     +          6.0D0,8.0D0,2.0D0,6.0D0,4.0D0,
+     +          2.0D0,4.0D0,6.0D0,6.0D0,2.0D0,
+     +          4.0D0,6.0D0,10.0D0,8.0D0,8.0D0,
+     +          6.0D0,6.0D0,2.0D0,4.0D0,6.0D0,
+     +          4.0D0,6.0D0,6.0D0,4.0D0,6.0D0,
+     +          8.0D0,8.0D0,10.0D0,4.0D0,6.0D0,
+     +          8.0D0,6.0D0,4.0D0,6.0D0,2.0D0,
+     +          2.0D0,4.0D0,6.0D0,6.0D0,2.0D0,
+     +          6.0D0,4.0D0,4.0D0,4.0D0,8.0D0,
+     +          10.0D0,4.0D0,4.0D0,2.0D0,2.0D0,
+     +          4.0D0,6.0D0,6.0D0,6.0D0,2.0D0,
+     +          10.0D0,6.0D0,6.0D0,4.0D0,4.0D0,
+     +          6.0D0,4.0D0,4.0D0,4.0D0,6.0D0,
+     +          4.0D0,6.0D0,4.0D0,2.0D0,2.0D0,
+     +          4.0D0,4.0D0/
+        DATA ENPBIV/0.00000,9.44230,12.05356,12.55359,15.19647,
+     +          20.62705,21.40797,21.48013,21.74544,22.88244,
+     +          23.16236,22.94991,23.40315,23.53531,23.98938,
+     +          24.02514,24.03498,24.07133,24.42787,24.79952,
+     +          24.97793,25.85373,25.91919,26.01057,27.01028,
+     +          26.08253,26.47313,26.63704,26.64327,26.93134,
+     +          27.20978,27.48934,28.64202,28.84350,29.20651,
+     +          30.95081,31.04601,31.17213,32.38418,32.54516,
+     +          32.78602,33.33615,33.53732,33.53766,33.74986,
+     +          33.79548,34.72525,34.81856,34.85366,34.91390,
+     +          35.36973,35.52420,35.56136,35.78204,37.17592,
+     +          36.12689,36.21785,36.27070,36.29606,36.46450,
+     +          36.55782,36.58238,36.73119,36.81853,36.93814,
+     +          37.00130,37.00343,37.03626,37.01858,37.41307,
+     +          37.63145,37.64691,39.53572,37.72811,37.84358,
+     +          37.87918,37.89341,37.97077,38.12190,38.24143,
+     +          38.24774,38.61283,38.83427,38.84084,38.84643,
+     +          38.92352,39.05029,39.11704,39.12588,39.41123,
+     +          39.42678,39.49328,39.50913,39.86897,40.07194,
+     +          40.21905,40.25833,40.28636,40.45094,41.03600,
+     +          43.84600,41.22200/
+        DATA NPBV/5,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,7,7,6,
+     +          6,6,6,6,6,6,6,7,7,7,
+     +          7,7,7,7/
+        DATA GPBV/1.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,9.0D0,
+     +          5.0D0,7.0D0,3.0D0,1.0D0,7.0D0,
+     +          3.0D0,5.0D0,3.0D0,9.0D0,5.0D0,
+     +          7.0D0,3.0D0,11.0D0,7.0D0,5.0D0,
+     +          9.0D0,1.0D0,7.0D0,5.0D0,3.0D0,
+     +          7.0D0,5.0D0,1.0D0,3.0D0,9.0D0,
+     +          5.0D0,7.0D0,3.0D0,5.0D0,5.0D0,
+     +          7.0D0,5.0D0,7.0D0,5.0D0/
+        DATA ENPBV/0.00000,13.73375,14.22204,16.45454,16.86199,
+     +          24.15300,24.44162,26.91345,27.21366,27.40907,
+     +          27.76156,28.08392,28.24856,29.46661,30.33449,
+     +          30.41082,30.69821,40.22562,40.59694,40.69639,
+     +          40.86248,40.88482,40.91341,41.18779,41.22539,
+     +          41.31375,41.89779,41.96188,42.06030,43.26753,
+     +          43.31793,43.67940,45.07200,43.59884,43.76110,
+     +          43.87783,44.02452,44.69648,44.76811,45.65965,
+     +          45.87316,46.97192,47.21574,48.41944/
+             DATA NPBVI/5,5,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6/
+             DATA GPBVI/6.,4.,10.,8.,6.,4.,6.,8.,2.,4.,
+     +          6.,4.,10.,8.,2.,4.,6.,8.,2.,10.,
+     +          4.,6.,6.,8.,2.,4.,12.,6.,10.,2.,
+     +          8.,6.,4.,10.,8.,6.,8.,4.,6.,2./
+             DATA ENPBVI/0.00000,2.65393,16.33214,17.20481,17.70727,
+     +          18.01054,19.30621,19.40240,19.68417,20.22037,
+     +          20.48119,20.96692,21.36692,21.49346,21.53740,
+     +          22.90831,23.07975,27.84732,27.14322,28.23970,
+     +          28.98924,29.10870,30.63988,30.68165,30.82438,
+     +          31.43623,31.79038,31.81120,32.18250,31.73324,
+     +          32.20155,32.58441,32.34767,32.67720,32.97789,
+     +          33.16578,33.44674,33.74647,34.02498,33.59871/
+             DATA NPBVII/5/
+             DATA GPBVII/9.0D0/
+             DATA ENPBVII/0.00000/
+        DATA NBIIV/6,6,6,6,6,6,6,6,6,7,
+     +          6,6,7,6,6,6,7,7,7,7,
+     +          6,6,6,7,7,6,5,5,5,5,
+     +          6,8,7,7,8,7,7/
+        DATA GBIIV/1.0D0,1.0D0,3.0D0,5.0D0,3.0D0,
+     +          1.0D0,5.0D0,3.0D0,3.0D0,3.0D0,
+     +          5.0D0,7.0D0,1.0D0,5.0D0,5.0D0,
+     +          5.0D0,1.0D0,1.0D0,1.0D0,1.0D0,
+     +          9.0D0,3.0D0,5.0D0,3.0D0,5.0D0,
+     +          7.0D0,7.0D0,5.0D0,9.0D0,7.0D0,
+     +          3.0D0,3.0D0,3.0D0,5.0D0,1.0D0,
+     +          7.0D0,5.0D0/
+        DATA ENBIIV/0.00000,8.79830,9.41360,11.95490,14.20880,
+     +          20.64980,22.83300,22.93880,24.44360,24.48020,
+     +          24.52770,24.76820,24.99290,25.09860,27.00660,
+     +          27.80870,27.84494,27.84688,27.84772,27.84833,
+     +          27.97290,28.28410,28.59530,28.75350,28.84210,
+     +          28.91780,29.00670,29.15760,29.21770,29.32450,
+     +          29.47120,33.06340,33.17520,33.20990,33.25140,
+     +          33.31300,33.44570/
+        DATA NBIV/6,6,6,6,6,6,6,6,7,7,
+     +          7,7,7,8/
+        DATA GBIV/2.0D0,2.0D0,6.0D0,4.0D0,4.0D0,
+     +          4.0D0,4.0D0,6.0D0,2.0D0,2.0D0,
+     +          4.0D0,4.0D0,6.0D0,2.0D0/
+        DATA ENBIV/0.00000,10.88010,12.85170,14.34170,16.58560,
+     +          27.67620,28.42820,28.83100,28.93000,33.55320,
+     +          34.84960,39.34110,39.50500,39.72800/
+        DATA NBIVI/5,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,6,6,5,6,6,6,6,6,6,
+     +          6,5,7,6,7,6,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,6,6,
+     +          6,5,6,6,6,6,5,6,5,6,
+     +          5,6,6,6,7,7,6,6,6,6,
+     +          6,6,6,6,6,6,6,6,5,6,
+     +          6,6,6,6,6,7,6,6,6,7,
+     +          6,6,6,6,6,6,6,6,6,7,
+     +          6,6,6,6,6,6,6,7,7,6,
+     +          6,6,6,6/
+        DATA GBIVI/1.0D0,7.0D0,5.0D0,3.0D0,5.0D0,
+     +          5.0D0,7.0D0,5.0D0,3.0D0,9.0D0,
+     +          5.0D0,3.0D0,7.0D0,1.0D0,7.0D0,
+     +          3.0D0,5.0D0,3.0D0,9.0D0,5.0D0,
+     +          7.0D0,3.0D0,11.0D0,3.0D0,7.0D0,
+     +          5.0D0,9.0D0,3.0D0,5.0D0,1.0D0,
+     +          7.0D0,3.0D0,7.0D0,3.0D0,5.0D0,
+     +          3.0D0,7.0D0,7.0D0,3.0D0,5.0D0,
+     +          9.0D0,5.0D0,5.0D0,7.0D0,7.0D0,
+     +          5.0D0,9.0D0,5.0D0,7.0D0,9.0D0,
+     +          3.0D0,5.0D0,9.0D0,7.0D0,3.0D0,
+     +          5.0D0,7.0D0,9.0D0,9.0D0,1.0D0,
+     +          7.0D0,7.0D0,5.0D0,3.0D0,3.0D0,
+     +          5.0D0,7.0D0,5.0D0,9.0D0,7.0D0,
+     +          5.0D0,3.0D0,7.0D0,5.0D0,5.0D0,
+     +          3.0D0,5.0D0,7.0D0,3.0D0,3.0D0,
+     +          7.0D0,5.0D0,3.0D0,7.0D0,3.0D0,
+     +          5.0D0,5.0D0,5.0D0,7.0D0,3.0D0,
+     +          9.0D0,5.0D0,9.0D0,7.0D0,3.0D0,
+     +          1.0D0,5.0D0,7.0D0,3.0D0,3.0D0,
+     +          3.0D0,5.0D0,1.0D0,7.0D0,3.0D0,
+     +          1.0D0,3.0D0,3.0D0,7.0D0,5.0D0,
+     +          3.0D0,5.0D0,3.0D0,3.0D0/
+        DATA ENBIVI/0.00000,18.53488,19.06090,21.69938,22.12836,
+     +          30.34147,30.64418,33.55041,33.99126,34.45039,
+     +          34.83180,35.21588,35.21846,37.12696,37.84848,
+     +          37.92693,38.26292,49.59610,50.04043,50.17053,
+     +          50.36696,50.44102,50.48281,50.50040,50.82090,
+     +          50.87063,50.97643,51.27520,51.40650,51.64801,
+     +          52.49700,52.77980,52.88984,52.98500,53.00115,
+     +          53.15080,53.19955,53.21400,53.60330,53.65270,
+     +          53.80427,53.90990,53.95068,54.12557,54.13500,
+     +          54.15600,54.17900,54.59530,54.78150,54.81970,
+     +          54.83210,54.93280,55.01010,55.02170,55.23670,
+     +          55.23710,55.25680,55.30280,55.40380,55.43800,
+     +          55.50880,55.75560,55.77010,55.78820,56.07568,
+     +          56.15412,56.48500,56.62230,56.75500,56.79420,
+     +          56.94570,57.08750,57.23890,57.43420,57.70270,
+     +          57.74740,57.76370,57.84210,57.84940,58.01620,
+     +          58.07040,58.62370,58.63230,58.81240,58.86200,
+     +          58.97540,59.03740,59.18730,59.20030,59.25170,
+     +          59.50620,59.58090,59.68090,59.97400,59.99330,
+     +          60.02250,60.42520,60.44540,60.50860,60.67540,
+     +          60.85070,60.99170,60.99680,61.42600,61.49220,
+     +          61.75060,61.99110,62.17560,62.17750,63.49910,
+     +          63.73800,64.78610,66.73240,70.04980/
+
+        DATA NBIVII/5/
+        DATA GBIVII/6./
+        DATA ENBIVII/0./
+
+        DATA NTHIV/5,5,6,6,7,7,7,8,7,7,
+     +          6,6,8,8,5,5,9,8,8,7,
+     +          7,6,6,10/
+        DATA GTHIV/6.,8.,4.,6.,2.,2.,4.,2.,4.,6.,
+     +          6.,8.,2.,4.,10.,8.,2.,4.,6.,6.,
+     +          8.,10.,8.,2./
+        DATA ENTHIV/0.00000,0.53627,1.13982,1.79608,2.86785,
+     +          7.46870,9.05778,14.83119,14.83900,15.05504,
+     +          15.77937,15.84708,16.67792,17.34178,19.75949,
+     +          19.76184,19.92774,20.07974,20.15088,20.40218,
+     +          20.46471,22.52471,22.52483,22.61980/
+             DATA NTHV/6,5,5,5,5,5,5,5,5/
+             DATA GTHV/1.,3.,5.,9.,11.,7.,7.,9.,5./
+             DATA ENTHV/0.00000,16.73725,17.33820,17.74958,17.94225,
+     +          18.14062,18.35970,19.16201,19.74424/
+             DATA NTHVI/6/
+             DATA GTHVI/4.0D0/
+             DATA ENTHVI/0.00000/
+             DATA NTHVII/6/
+             DATA GTHVII/5.0D0/
+             DATA ENTHVII/0.00000/
+
+        DATA SCI/4.179704,4.179868,4.180140,4.284864,4.411317, 
+     +          4.556712,4.417538,4.418036,4.419087,4.460873,
+     +          5.012059,5.012145,5.012123,4.656621,4.682271,
+     +          4.682931,4.683973,4.715525,4.735114,4.735517, 
+     +          4.736181,4.776610,4.823287,5.245868,4.960446, 
+     +          4.636463,4.637096,4.638772,4.981131,4.981795, 
+     +          4.983181,4.985224,4.985476,4.985839,4.648973, 
+     +          4.987257,5.002644,5.026932,5.027268,5.027448, 
+     +          4.751991,4.753114,4.754886,4.775015,4.807735, 
+     +          4.820394,4.821310,4.822433,4.849118,4.880081, 
+     +          4.964531,4.983084,4.983084,4.983084,4.988046, 
+     +          4.988550,4.989272,4.739796,4.996660,5.002712, 
+     +          5.007890,5.009317,5.009317,4.830776,4.830763, 
+     +          4.830763,4.843919,4.885500,4.908801,4.963564, 
+     +          4.983777,4.984663,4.984663,4.989659,4.989659, 
+     +          4.992449,4.793379,4.998577,5.003253,5.004741, 
+     +          5.006231,5.006231,4.972326,4.984214,4.985345, 
+     +          4.985345,4.991673,4.991673,4.995098,4.831870, 
+     +          5.000666,5.004451,5.005935,5.005935,5.004665, 
+     +          4.984616,4.985763,4.985763,4.999064,4.999064, 
+     +          4.999064,5.002865,5.004758,5.006233,5.006233, 
+     +          5.006233,4.984145,4.984145,4.984432,5.002990, 
+     +          5.002990,5.002990,5.005628,5.006508,5.006508, 
+     +          5.006508,4.983365,4.983365,4.983365,5.006886, 
+     +          5.006886,5.006886,5.008002,5.012074,5.012074, 
+     +          5.012074,5.014099,5.014099,5.014099,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000/ 
+        DATA SCII/3.322208,3.322644,3.633090,3.633257,3.633480,
+     +          3.893420,3.893440,4.089184,4.229172,4.229597, 
+     +          3.436720,3.692591,3.692789,4.589103,3.953149, 
+     +          3.953178,4.702748,4.702820,3.603431,3.770060, 
+     +          3.770254,4.440431,4.441056,4.442240,3.961645, 
+     +          3.961659,4.991754,4.992091,3.992479,3.992479, 
+     +          3.697579,3.795690,3.796068,4.770876,4.780956, 
+     +          3.968260,3.968260,3.994325,3.994325,3.754887, 
+     +          4.893884,4.894430,4.895358,4.896706,4.906213, 
+     +          4.906944,3.971236,3.971236,3.996578,3.996578, 
+     +          5.011171,5.086056,5.086787,5.087796,5.188515, 
+     +          5.190205,5.591661,5.735427,5.737656,5.740739, 
+     +          5.745144,5.937513,5.941305,5.947732,5.956571, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000,
+     +          6.000000,6.000000,6.000000,6.000000,6.000000,
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000,6.000000,6.000000,6.000000, 
+     +          6.000000,6.000000/
+        DATA SCIII/2.247678,2.511178,2.511298,2.511595,2.783334,
+     +          2.988424,2.988601,2.988887,3.040348,3.275480,
+     +          2.516355,2.624130,2.770250,2.779440,2.779510,
+     +          2.779673,2.913505,2.912204,2.913576,3.001503,
+     +          3.471912,3.472452,3.473566,2.656192,3.501991,
+     +          2.707107,2.843331,2.843331,2.843447,3.667003,
+     +          2.928022,2.928408,2.928967,2.942070,2.942230,
+     +          2.942442,2.952919,2.960061,3.725865,3.726323,
+     +          3.727023,2.996535,3.802981,3.848412,3.848814,
+     +          3.849514,3.907525,3.915897,3.920174,3.920667,
+     +          3.921389,4.006182,3.997117,4.006877,2.756046,
+     +          4.057183,4.057739,4.058045,4.085242,2.876864,
+     +          2.910818,2.910818,2.910818,4.166811,2.957773,
+     +          2.957773,2.957773,2.998549,2.998549,2.998583,
+     +          2.998549,3.003525,3.005696,3.020441,3.020510,
+     +          3.020601,3.088544,2.797248,2.916939,2.968366,
+     +          2.968366,2.968366,3.000603,3.000603,3.000640,
+     +          3.003372,3.005378,3.009464,3.009464,3.009464,
+     +          3.027199,2.830505,2.926040,2.976524,2.976524,
+     +          2.976524,3.009360,2.932986,2.982088,2.982088,
+     +          2.982088,2.986294,2.986294,2.986294,4.828427,
+     +          4.828427,4.828427,5.151012,5.224114,5.224114,
+     +          5.227788,5.497263,5.497263,5.502663,5.756044,
+     +          5.817122,6.000000,6.000000,6.000000,6.000000,
+     +          6.000000,6.000000,6.000000,6.000000,6.000000,
+     +          6.000000,6.000000,6.000000,6.000000,6.000000,
+     +          6.000000,6.000000,6.000000,6.000000,6.000000,
+     +          6.000000,6.000000,6.000000,6.000000,6.000000,
+     +          6.000000,6.000000,6.000000,6.000000,6.000000,
+     +          6.000000,6.000000,6.000000,6.000000,6.000000,
+     +          6.000000,6.000000,6.000000,6.000000,6.000000,
+     +          6.000000/
+        DATA SCIV/1.644934,1.923884,1.924364,1.778341,1.948965,
+     +          1.949284,1.998202,1.998312,1.838941,1.962835,
+     +          1.963075,1.999589,1.999669,2.001418,2.001418,
+     +          1.874532,1.972046,1.972243,2.001394,2.001394,
+     +          2.002842,2.002845,2.003133,2.003133,1.897882,
+     +          1.978616,1.978616,2.003384,2.003384,2.004821,
+     +          2.004821,2.005002,2.005002,2.005023,2.005023,
+     +          1.913888,1.984033,1.984033,2.005113,2.005113,
+     +          2.007061,2.007061,2.007217,2.007217,2.007234,
+     +          2.007234,1.989961,1.989961,2.009654,2.009654,
+     +          2.009800,2.009800,2.009800,2.009800,2.009800/
+        DATASCV/0.6309066,0.7688928,0.9242349,0.9241881,0.9246764,
+     +          1.026124,1.003322,1.003322,1.003322,1.020118,
+     +          1.021842,1.027042,1.033988,1.051912,1.003001/
+        DATA SNI/4.931870,5.108953,5.109031,5.204087,5.204087,
+     +          5.329969,5.330800,5.331948,5.401419,5.403777,
+     +          5.968683,5.969459,5.969806,5.605717,5.641185,
+     +          5.641868,5.642995,5.644538,5.662621,5.663186,
+     +          5.664362,5.702335,5.703489,5.705897,5.734946,
+     +          5.736104,5.797976,5.797737,5.588642,5.591228,
+     +          5.594790,5.615995,5.620492,5.980873,5.982464,
+     +          5.982872,5.983638,5.985012,5.986994,5.988774,
+     +          5.991692,5.990931,5.991989,5.990646,5.995945,
+     +          5.996395,5.996926,5.997295,6.001428,6.002394,
+     +          5.745163,5.761658,5.762813,5.764937,5.768167,
+     +          5.774817,5.775745,5.778173,5.802792,5.696104,
+     +          5.699982,5.706142,5.715098,5.722151,5.983984,
+     +          5.985277,5.987724,5.991767,5.985780,5.989671,
+     +          5.990610,5.994303,5.985830,5.987479,5.992273,
+     +          5.996771,5.993288,5.995173,5.998955,6.002261,
+     +          6.003886,6.255743,6.257061,6.360914,6.362586,
+     +          5.757127,5.763044,5.772635,5.779661,5.791555,
+     +          5.984846,5.986194,5.990250,5.997386,5.990476,
+     +          5.992170,5.992623,6.000597,5.993189,5.993189,
+     +          5.993189,6.000802,5.996590,5.998751,6.003087,
+     +          6.005032,6.007153,5.793718,5.804320,5.818227,
+     +          5.815205,5.821445,5.989322,5.989322,5.989322,
+     +          5.989322,5.992901,5.992901,5.992901,6.003714,
+     +          5.994695,5.997311,5.995185,6.008173,6.001116,
+     +          6.010741,6.005529,6.005529,6.008008,5.801159,
+     +          5.821038,5.833978,5.835981,5.835981,5.989852,
+     +          5.989852,5.989852,5.989852,5.993398,5.993398,
+     +          5.996287,5.996287,6.005342,6.014956,6.015613,
+     +          6.015613,6.015613,5.971639,5.971639,5.850568,
+     +          5.850568,5.850568,5.990061,5.990061,5.990061,
+     +          5.990061,5.991796,5.991796,5.993244,5.993244,
+     +          6.011374,6.018783,6.017594,6.017594,6.017594,
+     +          5.858175,5.858175,5.863377,5.863377,5.863377,
+     +          5.988659,5.988659,5.988659,5.988659,5.989390,
+     +          5.989390,5.994151,5.994151,6.020563,6.027375,
+     +          6.026996,6.026996,6.026996,5.866343,5.866343,
+     +          5.874646,5.874646,5.874646,5.990859,5.990859,
+     +          5.992667,5.992667,5.994933,5.994933,5.994933,
+     +          5.994933,6.030020,6.030020,6.038991,6.038991,
+     +          6.038991,5.873279,5.873279,5.877365,5.877365,
+     +          5.877365,5.992039,5.992039,5.996431,5.996431,
+     +          6.000838,6.000838,6.000838,6.000838,6.039686,
+     +          6.039686,6.042562,6.042562,6.042562,6.018730,
+     +          5.886326,5.994597,5.994597,6.047575,6.047575,
+     +          6.047575,6.078406,6.078406/
+        DATA SNII/4.048939,4.049242,4.049750,4.145151,4.258360,
+     +          4.356432,4.688145,4.688257,4.688270,4.826217,
+     +          4.826217,4.826272,5.142618,4.284333,4.284811,
+     +          4.286872,4.288557,5.253337,4.532960,4.564950,
+     +          4.565974,4.567596,5.379367,4.605227,4.634192,
+     +          4.634804,4.635817,4.698180,4.771750,4.928997,
+     +          4.930175,4.931792,4.940517,4.947424,4.947905,
+     +          4.948512,4.976005,4.977055,4.977624,4.985716,
+     +          5.001774,4.517682,4.519204,4.522714,5.167543,
+     +          4.688999,4.706267,4.707887,4.710950,4.720615,
+     +          4.721386,4.723658,4.732426,4.791679,5.359476,
+     +          5.360877,5.362645,4.824183,4.939473,4.941747,
+     +          4.944790,4.948400,4.959554,4.960499,4.962098,
+     +          4.976268,4.977930,4.978850,4.988034,4.988136,
+     +          4.988983,4.989127,4.990716,4.997378,4.997656,
+     +          5.001124,4.999108,5.001566,5.001872,5.002052,
+     +          5.004650,5.004791,5.510713,5.511550,5.512880,
+     +          4.633615,4.635821,4.641956,4.663452,4.970949,
+     +          4.970949,4.970949,4.990886,4.990886,4.991119,
+     +          4.994713,4.999842,5.000126,5.004091,5.004655,
+     +          5.899771,5.900361,5.901458,5.903069,5.905087,
+     +          5.975470,5.976437,5.978201,6.162114,7.000000,
+     +          7.000000,7.000000,7.000000,7.000000,7.000000,
+     +          7.000000,7.000000,7.000000,7.000000,7.000000,
+     +          7.000000,7.000000/
+        DATA SNIII/3.264886,3.265738,3.559230,3.555733,3.556163,
+     +          3.795859,3.795903,3.971288,4.062202,4.062887,
+     +          4.328298,4.441761,4.441879,3.362787,4.644640,
+     +          4.644671,3.648880,3.649321,3.924340,3.924418,
+     +          4.208216,4.209135,4.210838,4.353292,4.355043,
+     +          3.749472,4.546074,4.546964,4.554955,4.555551,
+     +          4.556746,4.558211,3.785649,3.786211,4.632736,
+     +          4.686664,4.687436,4.688480,3.926233,3.926969,
+     +          3.987034,3.987034,4.752837,4.754452,4.866728,
+     +          4.928826,4.929522,4.930549,4.931964,4.980142,
+     +          4.980413,4.980860,4.981436,3.664742,5.015918,
+     +          5.016470,5.050785,5.051935,5.052674,5.126587,
+     +          5.129026,3.959079,3.959144,5.192320,5.193925,
+     +          3.989434,3.989434,4.005147,4.005147,3.968565,
+     +          3.968565,3.992409,3.992409,4.006539,4.006539,
+     +          5.571515,5.574721,5.580696,6.132490,6.134099,
+     +          5.935632,5.939608,6.083616,6.087341,6.092149,
+     +          6.099411,6.364476,6.365573,6.178216,6.185985,
+     +          6.229222,6.316157,6.320952,6.326658,7.000000,
+     +          7.000000,7.000000,7.000000,7.000000,7.000000,
+     +          7.000000,7.000000,7.000000,7.000000,7.000000,
+     +          7.000000,7.000000,7.000000,7.000000,7.000000,
+     +          7.000000,7.000000,7.000000,7.000000,7.000000,
+     +          7.000000,7.000000,7.000000,7.000000,7.000000,
+     +          7.000000,7.000000,7.000000,7.000000,7.000000,
+     +          7.000000,7.000000,7.000000,7.000000,7.000000,
+     +          7.000000,7.000000,7.000000/
+        DATA SNIV/2.226836,2.490623,2.490878,2.491461,2.755431,
+     +          2.952339,2.952669,2.953231,3.013266,3.231892,
+     +          2.493613,2.749589,2.762857,2.763010,2.763353,
+     +          2.901417,2.901452,2.901533,2.994477,3.382731,
+     +          3.383611,3.385459,3.472422,3.564919,3.607152,
+     +          3.607152,3.608737,3.645438,3.728391,3.728391,
+     +          2.639493,3.779903,3.797702,3.799535,3.799535,
+     +          3.799535,2.797721,2.797721,2.797721,3.872625,
+     +          3.873032,3.873596,3.883205,2.857107,2.934635,
+     +          2.934635,2.934635,3.951730,3.952443,3.952443,
+     +          2.993446,3.029914,3.030044,3.030246,4.061023,
+     +          3.127314,2.880353,2.950477,2.950477,2.950477,
+     +          2.998267,2.998267,2.998267,2.959708,2.959708,
+     +          2.959708,4.785085,4.873190,4.873190,4.874527,
+     +          7.000000,7.000000,7.000000/
+        DATA SNV/1.634565,1.915400,1.916327,1.771111,1.943796,
+     +          1.944398,1.997854,1.998051,1.833396,1.959357,
+     +          1.959357,1.999384,1.999384,1.870467,1.969524,
+     +          1.969524,2.001982,2.001982,1.895972,1.977561,
+     +          1.977561,2.004889,2.004593,2.005843,2.005843,
+     +          2.006106,2.006106,2.006106,1.914798,1.983841,
+     +          1.983841,2.007186,2.007186,2.008574,2.008574,
+     +          2.008797,2.008797,2.008797,2.008797,1.929893,
+     +          1.990742,1.990742,2.010469,2.010469,2.011696,
+     +          2.011696,2.011930,2.011930,2.011930,2.011930,
+     +          2.011930/
+        DATA SNVI/0.6290283,0.7657156,0.9208641,0.9208946,0.9217644,
+     +          0.9074407,1.024314,1.024867/
+        DATA SOI/5.998809,6.000254,6.000874,6.149045,6.029965,
+     +          6.280362,6.354168,6.620857,6.620917,6.621027,
+     +          6.681873,6.681856,6.681878,6.554275,6.592577,
+     +          6.991942,6.991948,6.991948,6.991953,6.991953,
+     +          6.991953,6.994710,6.994710,6.994710,6.749977,
+     +          6.750016,6.750087,6.784759,6.784759,6.784759,
+     +          7.156593,7.157186,7.157570,6.676266,6.701954,
+     +          7.234456,6.993919,6.993919,6.993919,6.993919,
+     +          6.993919,6.997045,6.997045,6.997045,6.836974,
+     +          6.836974,6.836974,6.746833,6.766088,6.996467,
+     +          6.996467,6.996467,6.996467,6.996467,6.999115,
+     +          6.999115,6.999115,6.869720,6.869720,6.869720,
+     +          6.793480,6.808908,6.999084,6.999084,6.999084,
+     +          6.999084,6.999084,7.001479,7.001479,7.001479,
+     +          6.826997,6.839929,7.001803,7.001803,7.001803,
+     +          7.001803,7.001803,7.003955,7.003955,7.003955,
+     +          6.852827,6.864539,7.004705,8.000000,7.004705,
+     +          7.004705,7.004705,7.007905,7.007905,7.007905,
+     +          6.877349,6.883498,7.007761,7.007761,7.007761,
+     +          7.007761,7.007761,7.010591,7.010591,7.010591,
+     +          6.890946,6.900387,7.011453,7.011453,7.011453,
+     +          7.011453,7.011453,7.012788,7.012788,7.012788,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000/
+        DATA SOII/4.784610,4.940430,4.940555,5.022952,5.022962,
+     +          5.557054,5.558274,5.558889,5.930025,5.929834,
+     +          5.160761,5.162283,5.164577,5.214052,5.216705,
+     +          6.210938,5.445367,5.490556,5.491464,5.492962,
+     +          5.495002,5.494491,5.494507,5.517109,5.517870,
+     +          5.519391,5.570158,5.573380,5.580988,6.392210,
+     +          6.394130,5.615287,5.616316,5.844496,5.880436,
+     +          5.880893,5.904250,5.904674,5.930839,5.931911,
+     +          5.933457,5.935489,5.954107,5.955576,5.956912,
+     +          5.954453,5.955388,5.959104,5.959794,5.959825,
+     +          5.959952,5.960805,5.964087,5.973599,5.975908,
+     +          5.993385,5.994448,5.442262,5.445265,5.449878,
+     +          5.491284,5.496742,6.232405,5.654758,5.656267,
+     +          5.658962,5.662895,5.725537,5.731195,5.738926,
+     +          5.741796,6.348958,6.348958,6.373241,6.373322,
+     +          6.408604,6.408635,6.419951,6.420006,6.439373,
+     +          6.439435,5.943564,5.943564,5.943564,5.947441,
+     +          5.961402,5.961402,5.961402,5.961402,6.471051,
+     +          5.965786,5.967088,5.967867,5.968222,5.972136,
+     +          5.972852,5.978758,6.488330,5.986873,5.991322,
+     +          5.986938,5.991353,5.994984,5.994948,5.989273,
+     +          5.989404,5.991879,5.997332,5.991945,5.997554,
+     +          5.992443,5.994410,6.001196,6.001346,6.002642,
+     +          6.003121,6.002740,6.003380,5.576062,5.580966,
+     +          5.588796,5.609913,5.619139,6.121709,6.121740,
+     +          5.734796,5.734796,5.738977,5.745944,5.750079,
+     +          5.750079,5.754774,5.772264,5.781077,5.960446,
+     +          5.960446,5.960446,5.960446,5.972282,5.974347,
+     +          5.974347,5.980535,5.980535,5.983981,5.987715,
+     +          5.990945,5.996456,5.985451,5.986923,5.990890,
+     +          6.000214,5.991003,6.000511,5.996286,5.996286,
+     +          6.000386,6.002267,6.003636,6.004436,6.003808,
+     +          6.004436,6.864734,6.865004,6.865458,6.871479,
+     +          6.874276,6.883227,6.883227,6.929313,6.929313,
+     +          6.945119,6.945119,6.947771,6.947771,7.214550,
+     +          7.214550,6.955942,6.960794,6.960794,6.963802,
+     +          6.963802,6.974759,6.974759,6.897856,6.897856,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000/
+        DATA SOIII/3.980091,3.980605,3.981483,4.073126,4.181011,
+     +          4.263698,4.567496,2.851461,2.851508,4.688399,
+     +          4.688406,4.688483,4.944256,5.004756,5.087306,
+     +          4.201648,4.202927,4.205704,4.265077,5.589531,
+     +          5.591178,5.591910,4.466920,4.500863,4.502461,
+     +          4.505044,4.544430,5.702087,4.576288,4.577272,
+     +          4.578837,4.653335,4.743010,4.880211,4.882788,
+     +          4.885133,4.883788,4.916797,4.917453,4.918434,
+     +          4.946753,4.948285,4.949112,4.978528,4.991553,
+     +          5.071567,5.073311,5.091046,6.092469,5.236801,
+     +          5.238239,5.240906,4.450987,4.453166,4.458786,
+     +          4.490992,5.440957,5.477274,5.477840,5.478956,
+     +          5.480584,5.482658,4.640882,4.657492,4.659830,
+     +          4.664354,4.689624,5.526725,5.527675,5.529354,
+     +          4.742366,4.744359,4.746791,4.755242,4.803841,
+     +          5.629193,5.463434,5.633066,5.655169,4.904211,
+     +          4.904211,4.904211,4.911571,5.696494,5.696715,
+     +          5.697021,4.948280,4.949739,4.951245,4.983719,
+     +          4.983719,4.983719,4.985557,4.992922,4.595488,
+     +          4.595488,4.595488,4.614187,5.995187,5.995924,
+     +          5.997336,6.003933,6.004729,6.005913,6.007472,
+     +          6.009368,6.079757,6.079680,6.079593,6.079808,
+     +          6.081549,6.087021,6.088523,6.089349,6.127790,
+     +          6.130199,6.131379,6.150372,6.152512,6.155484,
+     +          4.922875,4.922875,4.922875,4.932409,4.922875,
+     +          4.922875,4.922875,4.991952,4.997716,6.251313,
+     +          6.251994,6.253141,4.947119,4.974443,4.974443,
+     +          4.974443,5.003925,6.782259,6.828280,6.541492,
+     +          6.547457,6.555665,6.965416,7.060263,7.160808,
+     +          7.160808,7.166230,7.174317,7.185196,7.256399,
+     +          7.261456,7.271212,7.771374,7.771374,7.771374,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000/
+        DATA SOIV/3.228562,3.230039,3.508826,3.509360,3.510109,
+     +          3.741247,3.741307,3.904661,3.977057,3.978160,
+     +          4.214302,4.331145,4.331291,4.503491,4.503533,
+     +          3.322590,3.617383,3.618198,4.097019,4.098440,
+     +          4.101037,4.249484,4.252384,4.410741,4.412061,
+     +          4.420406,4.421309,4.422863,4.425270,4.491520,
+     +          4.543003,4.544125,4.545658,4.591770,4.594849,
+     +          3.506632,4.717019,4.742457,4.743450,4.744866,
+     +          4.746809,4.800908,4.801279,4.801878,4.802707,
+     +          4.826727,4.827440,4.856910,4.858391,4.859354,
+     +          3.927959,3.928085,4.948471,4.951597,4.995503,
+     +          4.997566,5.057139,5.057223,3.602068,5.487784,
+     +          5.488193,5.528638,5.529685,3.943577,3.943577,
+     +          3.956409,3.956409,5.607411,5.152442,5.155901,
+     +          5.162243,5.906104,5.906104,5.285100,5.290775,
+     +          3.955026,3.955026,5.325924,5.330538,6.007065,
+     +          6.007765,6.023023,6.026014,6.030425,6.132527,
+     +          6.133009,5.594399,5.600957,3.969004,3.969004,
+     +          5.768017,5.824149,5.824149,5.824149,5.824149,
+     +          5.865850,5.865850,5.865850,5.887424,5.890223,
+     +          5.900586,5.903125,5.912084,5.919259,5.981793,
+     +          5.988238,6.512458,4.040435,4.040435,6.034046,
+     +          6.039135,6.592915,6.593322,6.679720,6.679720,
+     +          6.679720,6.679720,6.791924,6.791924,6.791924,
+     +          7.150804,7.152208,7.208681,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000,
+     +          8.000000/
+        DATA SOV/2.212299,2.477108,2.477559,2.478570,2.736373,
+     +          2.929941,2.930501,2.931468,2.995396,3.204502,
+     +          2.480139,2.586177,2.736415,2.753261,2.753545,
+     +          2.754149,2.895501,2.895588,2.895747,2.990361,
+     +          3.333698,3.335127,3.338143,3.434917,3.509306,
+     +          3.551885,3.553720,3.556629,3.614975,3.666382,
+     +          3.667461,3.669268,3.714561,3.738797,3.808601,
+     +          3.809227,3.810236,3.840735,3.845908,3.847311,
+     +          3.848131,3.893723,3.957266,2.655746,2.780047,
+     +          2.842480,2.842480,2.842734,2.867645,2.932266,
+     +          2.932352,2.932553,2.996815,3.040747,2.722722,
+     +          2.858081,4.369750,4.369750,4.369750,2.990545,
+     +          4.293693,4.399677,4.429359,4.432752,4.438707,
+     +          4.454041,4.514207,4.514207,4.517767,4.570812,
+     +          4.571450,2.913395,2.952782,2.965416,2.965416,
+     +          2.965416,4.644915,4.646958,4.649636,2.994349,
+     +          4.688903,4.691261,4.692408,4.774586,4.782194,
+     +          2.928606,3.022013,3.022013,3.022013,2.997125,
+     +          2.933282,2.986425,2.986425,2.986425,5.872365,
+     +          5.931636,5.931636,5.931636,6.025977,6.025977,
+     +          6.025977,6.090481,6.099398,6.217293,6.217293,
+     +          6.217293,6.343698,8.000000,8.000000,8.000000,
+     +          8.000000,8.000000,8.000000,8.000000,8.000000/
+        DATA SOVI/1.626749,1.908750,1.910343,1.765577,1.939605,
+     +          1.940666,1.997515,1.997865,1.829541,1.956604,
+     +          1.957376,1.999562,1.999822,2.001964,2.002083,
+     +          1.867336,1.968342,1.968342,2.001995,2.001995,
+     +          1.976059,1.976059,2.004681,2.004681,2.007063,
+     +          2.007063,2.007365,2.007365,2.007365,1.914098,
+     +          1.982390,1.982390,2.008208,2.008208,2.010369,
+     +          2.010369,2.010631,2.010631,2.010631,2.010631,
+     +          1.930105,1.987143,1.987143,2.014184,2.014184,
+     +          2.014431,2.014431,2.014431,2.014431,2.014431,
+     +          2.014965,2.014965/
+        DATA SOVII/0.6273875,0.7631111,0.9180546,0.9182081,0.9196253,
+     +          1.029738,0.9543552,0.9543552,0.9543552,1.004676,
+     +          1.004676,1.004676,1.025589,1.027917,1.034432,
+     +          1.045346/
+
+        DATA SGAIV/MGAIV*1.0/
+        DATA SGAV/MGAV*1.0/
+        DATA SGAVI/MGAVI*1.0/
+        DATA SGAVII/MGAVII*1.0/
+
+        DATA SGEIV/MGEIV*1.0/
+        DATA SGEV/MGEV*1.0/
+        DATA SGEVI/MGEVI*1.0/
+        DATA SGEVII/MGEVII*1.0/
+        DATA SGEVIII/MGEVIII*1.0/
+
+        DATA SASIV/MASIV*1.0/
+        DATA SASV/MASV*1.0/
+        DATA SASVI/MASVI*1.0/
+        DATA SASVII/MASVII*1.0/
+
+        DATA SSEIV/MSEIV*1.0/
+        DATA SSEV/MSEV*1.0/
+        DATA SSEVI/MSEVI*1.0/
+        DATA SSEVII/MSEVII*1.0/
+
+        DATA SBRIV/MBRIV*1.0/
+        DATA SBRV/MBRV*1.0/
+        DATA SBRVI/MBRVI*1.0/
+        DATA SBRVII/MBRVII*1.0/
+        DATA SBRVIII/MBRVIII*1.0/
+
+        DATA SKRIV/MKRIV*1.0/
+        DATA SKRV/MKRV*1.0/
+        DATA SKRVI/MKRVI*1.0/
+
+        DATA SRBIV/MRBIV*1.0/
+        DATA SRBV/MRBV*1.0/
+        DATA SRBVI/MRBVI*1.0/
+        DATA SRBVII/MRBVII*1.0/
+
+        CALL EST_SCREEN(38, 4, MSRIV, NSRIV, ENSRIV, SSRIV)
+        CALL EST_SCREEN(38, 5, MSRV, NSRV, ENSRV, SSRV)
+        CALL EST_SCREEN(38, 6, MSRVI, NSRVI, ENSRVI, SSRVI)
+        CALL EST_SCREEN(38, 7, MSRVII, NSRVII, ENSRVII, SSRVII)
+
+        CALL EST_SCREEN(39, 4, MYIV, NYIV, ENYIV, SYIV)
+        CALL EST_SCREEN(39, 5, MYV, NYV, ENYV, SYV)
+        CALL EST_SCREEN(39, 6, MYVI, NYVI, ENYVI, SYVI)
+
+        DATA SZRIV/MZRIV*1.0/
+        SZRIV = 33.5545 + ENZRIV/ZRIV * (42.0-33.5545)
+        SZRIV(1) = 26.9284
+        CALL EST_SCREEN(40, 5, MZRV, NZRV, ENZRV, SZRV)
+        CALL EST_SCREEN(40, 6, MZRVI, NZRVI, ENZRVI, SZRVI)
+        CALL EST_SCREEN(40, 7, MZRVII, NZRVII, ENZRVII, SZRVII)
+        CALL EST_SCREEN(40, 8, MZRVIII, NZRVIII, ENZRVIII, SZRVIII)
+
+        DATA SNBIV/MNBIV*1.0/
+        DATA SNBV/MNBV*1.0/
+        DATA SNBVI/MNBVI*1.0/
+        DATA SNBVII/MNBVII*1.0/
+        DATA SNBVIII/MNBVIII*1.0/
+
+        DATA SMOIV/MMOIV*1.0/
+        DATA SMOV/MMOV*1.0/
+        DATA SMOVI/MMOVI*1.0/
+        DATA SMOVII/MMOVII*1.0/
+        DATA SMOVIII/MMOVIII*1.0/
+
+        CALL EST_SCREEN(50, 4, MSNIV, NSNIV, ENSNIV, SSNIV)
+        CALL EST_SCREEN(50, 5, MSNV, NSNV, ENSNV, SSNV)
+        CALL EST_SCREEN(50, 6, MSNVI, NSNVI, ENSNVI, SSNVI)
+
+        DATA SINIV/MINIV*1.0/
+        DATA SINV/MINV*1.0/
+        DATA SINVI/MINVI*1.0/
+
+        DATA SSBIV/MSBIV*22.0/
+C       1931PPS....43..538B
+        DATA SSBV/MSBV*31.53/
+        DATA SSBVI/MSBVI*1.0/
+        DATA SSBVII/MSBVII*1.0/
+
+        DATA STEIV/MTEIV*1.0/
+        DATA STEV/MTEV*1.0/
+        DATA STEVI/MTEVI*1.0/
+        DATA STEVII/MTEVII*1.0/
+        DATA STEVIII/MTEVIII*1.0/
+
+        DATA SIIV/MIIV*1.0/
+        DATA SIV/MIV*1.0/
+        DATA SIVI/MIVI*1.0/
+        DATA SIVII/MIVII*1.0/
+
+        DATA SXEIV/MXEIV*1.0/
+        DATA SXEV/MXEV*1.0/
+        DATA SXEVI/MXEVI*1.0/
+        DATA SXEVII/MXEVII*1.0/
+
+        DATA SCSIV/MCSIV*1.0/
+        DATA SCSV/MCSV*1.0/
+        DATA SCSVI/MCSVI*1.0/
+        DATA SCSVII/MCSVII*1.0/
+
+        DATA SBAIV/MBAIV*1.0/
+        DATA SBAV/MBAV*1.0/
+        DATA SBAVI/MBAVI*1.0/
+        DATA SBAVII/MBAVII*1.0/
+
+        DATA SRUIV/MRUIV*1.0/
+        DATA SRUV/MRUV*1.0/
+        DATA SRUVI/MRUVI*1.0/
+        DATA SRUVII/MRUVII*1.0/
+
+        DATA SRHIV/MRHIV*1.0/
+        DATA SRHV/MRHV*1.0/
+        DATA SRHVI/MRHVI*1.0/
+        DATA SRHVII/MRHVII*1.0/
+
+        DATA SPDIV/MPDIV*1.0/
+        DATA SPDV/MPDV*1.0/
+        DATA SPDVI/MPDVI*1.0/
+        DATA SPDVII/MPDVII*1.0/
+
+        DATA SAGIV/MAGIV*1.0/
+        DATA SAGV/MAGV*1.0/
+        DATA SAGVI/MAGVI*1.0/
+        DATA SAGVII/MAGVII*1.0/
+
+        DATA SCDIV/MCDIV*1.0/
+        DATA SCDV/MCDV*1.0/
+        DATA SCDVI/MCDVI*1.0/
+        DATA SCDVII/MCDVII*1.0/
+
+        DATA SLAIV/MLAIV*1.0/
+        DATA SLAV/MLAV*1.0/
+        DATA SLAVI/MLAVI*1.0/
+        DATA SLAVII/MLAVII*1.0/
+
+        DATA SCEIV/MCEIV*1.0/
+        DATA SCEV/MCEV*1.0/
+        DATA SCEVI/MCEVI*1.0/
+        DATA SCEVII/MCEVII*1.0/
+
+        DATA SPRIV/MPRIV*1.0/
+        DATA SPRV/MPRV*1.0/
+        DATA SPRVI/MPRVI*1.0/
+        DATA SPRVII/MPRVII*1.0/
+
+        DATA SNDIV/MNDIV*1.0/
+C        DATA SNDV/MNDV*1.0/
+        CALL EST_SCREEN(60, 5, MNDIV, NNDIV, ENNDIV, SNDIV)
+        DATA SNDVI/MNDVI*1.0/
+        DATA SNDVII/MNDVII*1.0/
+
+        DATA SERIV/MERIV*1.0/
+C        DATA SERV/MERV*1.0/
+        DATA SERVI/MERVI*1.0/
+        DATA SERVII/MERVII*1.0/
+
+        DATA STMIV/MTMIV*1.0/
+        DATA STMV/MTMV*1.0/
+        DATA STMVI/MTMVI*1.0/
+        DATA STMVII/MTMVII*1.0/
+
+        DATA SYBIV/MYBIV*1.0/
+        DATA SYBV/MYBV*1.0/
+        DATA SYBVI/MYBVI*1.0/
+        DATA SYBVII/MYBVII*1.0/
+
+        DATA SLUIV/MLUIV*1.0/
+        DATA SLUV/MLUV*1.0/
+        DATA SLUVI/MLUVI*1.0/
+        DATA SLUVII/MLUVII*1.0/
+
+        DATA SWIV/MWIV*1.0/
+        DATA SWV/MWV*1.0/
+        DATA SWVI/MWVI*1.0/
+        DATA SWVII/MWVII*1.0/
+        DATA SWVIII/MWVIII*1.0/
+
+        DATA SHFIV/MHFIV*1.0/
+        DATA SHFV/MHFV*1.0/
+        DATA SHFVI/MHFVI*1.0/
+        DATA SHFVII/MHFVII*1.0/
+
+        DATA STAIV/MTAIV*1.0/
+        DATA STAV/MTAV*42.0/
+        DATA STAVI/MTAVI*1.0/
+        DATA STAVII/MTAVII*1.0/
+
+        DATA SREIV/MREIV*1.0/
+        SREIV = 57.6170 + ENREIV/MAXVAL(ENREIV) * (75.0-57.6170)
+        DATA SREV/MREV*1.0/
+        SREV = 57.6170 + ENREV/MAXVAL(ENREV) * (75.0-57.6170)
+        DATA SREVI/MREVI*1.0/
+        DATA SREVII/MREVII*1.0/
+
+        DATA SOSIV/MOSIV*1.0/
+        DATA SOSV/MOSV*1.0/
+        DATA SOSVI/MOSVI*1.0/
+        DATA SOSVII/MOSVII*1.0/
+
+        DATA SIRIV/MIRIV*1.0/
+        DATA SIRV/MIRV*1.0/
+        DATA SIRVI/MIRVI*1.0/
+        DATA SIRVII/MIRVII*1.0/
+
+        DATA SPTIV/MPTIV*1.0/
+        DATA SPTV/MPTV*1.0/
+        DATA SPTVI/MPTVI*1.0/
+        DATA SPTVII/MPTVII*1.0/
+
+        DATA SAUIV/MAUIV*1.0/
+        DATA SAUV/MAUV*1.0/
+        DATA SAUVI/MAUVI*1.0/
+        DATA SAUVII/MAUVII*1.0/
+
+C        DATA SHGIV/MHGIV*1.0/
+C        DATA SHGV/MHGV*1.0/
+C        DATA SHGVI/MHGVI*1.0/
+C        DATA SHGVII/MHGVII*1.0/
+        CALL EST_SCREEN(80, 4, MHGIV, NHGIV, ENHGIV, SHGIV)
+        CALL EST_SCREEN(80, 5, MHGV, NHGV, ENHGV, SHGV)
+        CALL EST_SCREEN(80, 6, MHGVI, NHGVI, ENHGVI, SHGVI)
+        CALL EST_SCREEN(80, 7, MHGVII, NHGVII, ENHGVII, SHGVII)
+
+        CALL EST_SCREEN(81, 4, MTLIV, NTLIV, ENTLIV, STLIV)
+        CALL EST_SCREEN(81, 5, MTLV, NTLV, ENTLV, STLV)
+        CALL EST_SCREEN(81, 6, MTLVI, NTLVI, ENTLVI, STLVI)
+C        DATA STLIV/MTLIV*1.0/
+C        DATA STLV/MTLV*1.0/
+        DATA STLVII/MTLVII*1.0/
+
+        DATA SPBIV/MPBIV*1.0/
+C       use screening from Clementi (1967); fake the higher levels
+C       'PBIV' is the ionization energy
+        SPBIV = 76.35 + ENPBIV/PBIV * (82.0-76.35)
+        DATA SPBV/MPBV*1.0/
+        SPBV = 76.35 + ENPBV/PBV * (82.0-76.35)
+        SPBV(1) = 71.15
+        CALL EST_SCREEN(82, 6, MPBVI, NPBVI, ENPBVI, SPBVI)
+        DATA SPBVII/MPBVII*1.0/
+
+        CALL EST_SCREEN(83, 4, MBIIV, NBIIV, ENBIIV, SBIIV)
+        CALL EST_SCREEN(83, 5, MBIV, NBIV, ENBIV, SBIV)
+        CALL EST_SCREEN(83, 6, MBIVI, NBIVI, ENBIVI, SBIVI)
+        DATA SBIVII/MBIVII*1.0/
+
+        CALL EST_SCREEN(90, 4, MTHIV, NTHIV, ENTHIV, STHIV)
+        CALL EST_SCREEN(90, 5, MTHV, NTHV, ENTHV, STHV)
+C        DATA STHIV/MTHIV*1.0/
+C        DATA STHV/MTHV*1.0/
+        DATA STHVI/MTHVI*1.0/
+        DATA STHVII/MTHVII*1.0/
+*
+*       Find index for atom and ion, 10*IAT+IZI
+*
+        IND=10*IAT+IZI
+C        WRITE(*,*)'PFSPEC IND:',IND
+        IF(IND.EQ.314) GO TO 314
+        IF(IND.EQ.315) GO TO 315
+        IF(IND.EQ.316) GO TO 316
+        IF(IND.EQ.317) GO TO 317
+        IF(IND.EQ.324) GO TO 324
+        IF(IND.EQ.325) GO TO 325
+        IF(IND.EQ.326) GO TO 326
+        IF(IND.EQ.327) GO TO 327
+        IF(IND.EQ.328) GO TO 328
+        IF(IND.EQ.334) GO TO 334
+        IF(IND.EQ.335) GO TO 335
+        IF(IND.EQ.336) GO TO 336
+        IF(IND.EQ.337) GO TO 337
+        IF(IND.EQ.344) GO TO 344
+        IF(IND.EQ.345) GO TO 345
+        IF(IND.EQ.346) GO TO 346
+        IF(IND.EQ.347) GO TO 347
+        IF(IND.EQ.354) GO TO 354
+        IF(IND.EQ.355) GO TO 355
+        IF(IND.EQ.356) GO TO 356
+        IF(IND.EQ.357) GO TO 357
+        IF(IND.EQ.358) GO TO 358
+        IF(IND.EQ.364) GO TO 364
+        IF(IND.EQ.365) GO TO 365
+        IF(IND.EQ.366) GO TO 366
+        IF(IND.EQ.374) GO TO 374
+        IF(IND.EQ.375) GO TO 375
+        IF(IND.EQ.376) GO TO 376
+        IF(IND.EQ.377) GO TO 377
+        IF(IND.EQ.384) GO TO 384
+        IF(IND.EQ.385) GO TO 385
+        IF(IND.EQ.386) GO TO 386
+        IF(IND.EQ.387) GO TO 387
+        IF(IND.EQ.394) GO TO 394
+        IF(IND.EQ.395) GO TO 395
+        IF(IND.EQ.396) GO TO 396
+        IF(IND.EQ.404) GO TO 404
+        IF(IND.EQ.405) GO TO 405
+        IF(IND.EQ.406) GO TO 406
+        IF(IND.EQ.407) GO TO 407
+        IF(IND.EQ.408) GO TO 408
+        IF(IND.EQ.414) GO TO 414
+        IF(IND.EQ.415) GO TO 415
+        IF(IND.EQ.416) GO TO 416
+        IF(IND.EQ.417) GO TO 417
+        IF(IND.EQ.418) GO TO 418
+        IF(IND.EQ.424) GO TO 424
+        IF(IND.EQ.425) GO TO 425
+        IF(IND.EQ.426) GO TO 426
+        IF(IND.EQ.427) GO TO 427
+        IF(IND.EQ.428) GO TO 428
+        IF(IND.EQ.444) GO TO 444
+        IF(IND.EQ.445) GO TO 445
+        IF(IND.EQ.446) GO TO 446
+        IF(IND.EQ.447) GO TO 447
+        IF(IND.EQ.454) GO TO 454
+        IF(IND.EQ.455) GO TO 455
+        IF(IND.EQ.456) GO TO 456
+        IF(IND.EQ.457) GO TO 457
+        IF(IND.EQ.464) GO TO 464
+        IF(IND.EQ.465) GO TO 465
+        IF(IND.EQ.466) GO TO 466
+        IF(IND.EQ.467) GO TO 467
+        IF(IND.EQ.474) GO TO 474
+        IF(IND.EQ.475) GO TO 475
+        IF(IND.EQ.476) GO TO 476
+        IF(IND.EQ.477) GO TO 477
+        IF(IND.EQ.484) GO TO 484
+        IF(IND.EQ.485) GO TO 485
+        IF(IND.EQ.486) GO TO 486
+        IF(IND.EQ.487) GO TO 487
+        IF(IND.EQ.494) GO TO 494
+        IF(IND.EQ.495) GO TO 495
+        IF(IND.EQ.496) GO TO 496
+        IF(IND.EQ.504) GO TO 504
+        IF(IND.EQ.505) GO TO 505
+        IF(IND.EQ.506) GO TO 506
+        IF(IND.EQ.514) GO TO 514
+        IF(IND.EQ.515) GO TO 515
+        IF(IND.EQ.516) GO TO 516
+        IF(IND.EQ.517) GO TO 517
+        IF(IND.EQ.524) GO TO 524
+        IF(IND.EQ.525) GO TO 525
+        IF(IND.EQ.526) GO TO 526
+        IF(IND.EQ.527) GO TO 527
+        IF(IND.EQ.528) GO TO 528
+        IF(IND.EQ.534) GO TO 534
+        IF(IND.EQ.535) GO TO 535
+        IF(IND.EQ.536) GO TO 536
+        IF(IND.EQ.537) GO TO 537
+        IF(IND.EQ.544) GO TO 544
+        IF(IND.EQ.545) GO TO 545
+        IF(IND.EQ.546) GO TO 546
+        IF(IND.EQ.547) GO TO 547
+        IF(IND.EQ.554) GO TO 554
+        IF(IND.EQ.555) GO TO 555
+        IF(IND.EQ.556) GO TO 556
+        IF(IND.EQ.557) GO TO 557
+        IF(IND.EQ.564) GO TO 564
+        IF(IND.EQ.565) GO TO 565
+        IF(IND.EQ.566) GO TO 566
+        IF(IND.EQ.567) GO TO 567
+        IF(IND.EQ.574) GO TO 574
+        IF(IND.EQ.575) GO TO 575
+        IF(IND.EQ.576) GO TO 576
+        IF(IND.EQ.577) GO TO 577
+        IF(IND.EQ.584) GO TO 584
+        IF(IND.EQ.585) GO TO 585
+        IF(IND.EQ.586) GO TO 586
+        IF(IND.EQ.587) GO TO 587
+        IF(IND.EQ.594) GO TO 594
+        IF(IND.EQ.595) GO TO 595
+        IF(IND.EQ.596) GO TO 596
+        IF(IND.EQ.597) GO TO 597
+        IF(IND.EQ.604) GO TO 604
+        IF(IND.EQ.605) GO TO 605
+        IF(IND.EQ.606) GO TO 606
+        IF(IND.EQ.607) GO TO 607
+        IF(IND.EQ.684) GO TO 684
+        IF(IND.EQ.685) GO TO 685
+        IF(IND.EQ.686) GO TO 686
+        IF(IND.EQ.687) GO TO 687
+        IF(IND.EQ.694) GO TO 694
+        IF(IND.EQ.695) GO TO 695
+        IF(IND.EQ.696) GO TO 696
+        IF(IND.EQ.697) GO TO 697
+        IF(IND.EQ.704) GO TO 704
+        IF(IND.EQ.705) GO TO 705
+        IF(IND.EQ.706) GO TO 706
+        IF(IND.EQ.707) GO TO 707
+        IF(IND.EQ.714) GO TO 714
+        IF(IND.EQ.715) GO TO 715
+        IF(IND.EQ.716) GO TO 716
+        IF(IND.EQ.717) GO TO 717
+        IF(IND.EQ.724) GO TO 724
+        IF(IND.EQ.725) GO TO 725
+        IF(IND.EQ.726) GO TO 726
+        IF(IND.EQ.727) GO TO 727
+        IF(IND.EQ.734) GO TO 734
+        IF(IND.EQ.735) GO TO 735
+        IF(IND.EQ.736) GO TO 736
+        IF(IND.EQ.737) GO TO 737
+        IF(IND.EQ.744) GO TO 744
+        IF(IND.EQ.745) GO TO 745
+        IF(IND.EQ.746) GO TO 746
+        IF(IND.EQ.747) GO TO 747
+        IF(IND.EQ.748) GO TO 748
+        IF(IND.EQ.754) GO TO 754
+        IF(IND.EQ.755) GO TO 755
+        IF(IND.EQ.756) GO TO 756
+        IF(IND.EQ.757) GO TO 757
+        IF(IND.EQ.764) GO TO 764
+        IF(IND.EQ.765) GO TO 765
+        IF(IND.EQ.766) GO TO 766
+        IF(IND.EQ.767) GO TO 767
+        IF(IND.EQ.774) GO TO 774
+        IF(IND.EQ.775) GO TO 775
+        IF(IND.EQ.776) GO TO 776
+        IF(IND.EQ.777) GO TO 777
+        IF(IND.EQ.784) GO TO 784
+        IF(IND.EQ.785) GO TO 785
+        IF(IND.EQ.786) GO TO 786
+        IF(IND.EQ.787) GO TO 787
+        IF(IND.EQ.794) GO TO 794
+        IF(IND.EQ.795) GO TO 795
+        IF(IND.EQ.796) GO TO 796
+        IF(IND.EQ.797) GO TO 797
+        IF(IND.EQ.804) GO TO 804
+        IF(IND.EQ.805) GO TO 805
+        IF(IND.EQ.806) GO TO 806
+        IF(IND.EQ.807) GO TO 807
+        IF(IND.EQ.814) GO TO 814
+        IF(IND.EQ.815) GO TO 815
+        IF(IND.EQ.816) GO TO 816
+        IF(IND.EQ.817) GO TO 817
+        IF(IND.EQ.824) GO TO 824
+        IF(IND.EQ.825) GO TO 825
+        IF(IND.EQ.826) GO TO 826
+        IF(IND.EQ.827) GO TO 827
+        IF(IND.EQ.834) GO TO 834
+        IF(IND.EQ.835) GO TO 835
+        IF(IND.EQ.836) GO TO 836
+        IF(IND.EQ.837) GO TO 837
+        IF(IND.EQ.904) GO TO 904
+        IF(IND.EQ.905) GO TO 905
+        IF(IND.EQ.906) GO TO 906
+        IF(IND.EQ.907) GO TO 907
+
+c       IF(IAT.EQ.26.AND.IZI.GE.6.AND.IZI.LE.9) GO TO 260
+        IF(IAT.GT.2.AND.IAT.LT.6)GO TO 9999
+        IF(IAT.LT.1.OR.IAT.GT.8)GO TO 9999
+        IF(IND.EQ.11) GO TO 11
+        IF(IND.EQ.21) GO TO 21
+        IF(IND.EQ.22) GO TO 22
+        IF(IND.EQ.61) GO TO 61
+        IF(IND.EQ.61) GO TO 62
+        IF(IND.EQ.63) GO TO 63
+        IF(IND.EQ.64) GO TO 64
+        IF(IND.EQ.65) GO TO 65
+        IF(IND.EQ.66) GO TO 66
+        IF(IND.EQ.71) GO TO 71
+        IF(IND.EQ.72) GO TO 72
+        IF(IND.EQ.73) GO TO 73
+        IF(IND.EQ.74) GO TO 74
+        IF(IND.EQ.75) GO TO 75
+        IF(IND.EQ.76) GO TO 76
+        IF(IND.EQ.77) GO TO 77
+        IF(IND.EQ.81) GO TO 81
+        IF(IND.EQ.82) GO TO 82
+        IF(IND.EQ.83) GO TO 83
+        IF(IND.EQ.84) GO TO 84
+        IF(IND.EQ.85) GO TO 85
+        IF(IND.EQ.86) GO TO 86
+        IF(IND.EQ.87) GO TO 87
+        IF(IND.EQ.88) GO TO 88
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR HYDROGEN
+* 
+ 11     CALL PARTDV(T,ANE,ZH,MH,NHYD,GHYD,ENHYD,SHYD,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR HEI
+* 
+ 21     CALL PARTDV(T,ANE,ZHE,MHEI,NHEL,GHEL,ENHEL,SHEL,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR HEII
+* 
+ 22     CALL PARTDV(T,ANE,ZHE,MHEII,NHYD,GHYD,ENHYD,SHYD,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR CI
+* 
+ 61     CALL PARTDV(T,ANE,ZC,MCI,NCI,GCI,ENCI,SCI,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR CII
+* 
+ 62     CALL PARTDV(T,ANE,ZC,MCII,NCII,GCII,ENCII,SCII,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR CIII
+* 
+ 63     CALL PARTDV(T,ANE,ZC,MCIII,NCIII,GCIII,ENCIII,SCIII,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR CIV
+* 
+ 64     CALL PARTDV(T,ANE,ZC,MCIV,NCIV,GCIV,ENCIV,SCIV,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR CV
+* 
+ 65     CALL PARTDV(T,ANE,ZC,MCV,NCV,GCV,ENCV,SCV,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR CVI
+* 
+ 66     CALL PARTDV(T,ANE,ZC,MH,NHYD,GHYD,ENHYD,SHYD,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR NI
+* 
+ 71     CALL PARTDV(T,ANE,ZN,MNI,NNI,GNI,ENNI,SNI,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR NII
+* 
+ 72     CALL PARTDV(T,ANE,ZN,MNII,NNII,GNII,ENNII,SNII,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR NIII
+* 
+ 73     CALL PARTDV(T,ANE,ZN,MNIII,NNIII,GNIII,ENNIII,SNIII,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR NIV
+* 
+ 74     CALL PARTDV(T,ANE,ZN,MNIV,NNIV,GNIV,ENNIV,SNIV,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR NV
+* 
+ 75     CALL PARTDV(T,ANE,ZN,MNV,NNV,GNV,ENNV,SNV,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR NVI
+* 
+ 76     CALL PARTDV(T,ANE,ZN,MNVI,NNVI,GNVI,ENNVI,SNVI,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR NVII
+* 
+ 77     CALL PARTDV(T,ANE,ZN,MH,NHYD,GHYD,ENHYD,SHYD,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR OI
+* 
+ 81     CALL PARTDV(T,ANE,ZO,MOI,NOI,GOI,ENOI,SOI,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR OII
+* 
+ 82     CALL PARTDV(T,ANE,ZO,MOII,NOII,GOII,ENOII,SOII,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR OIII
+* 
+ 83     CALL PARTDV(T,ANE,ZO,MOIII,NOIII,GOIII,ENOIII,SOIII,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR OIV
+* 
+ 84     CALL PARTDV(T,ANE,ZO,MOIV,NOIV,GOIV,ENOIV,SOIV,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR OV
+* 
+ 85     CALL PARTDV(T,ANE,ZO,MOV,NOV,GOV,ENOV,SOV,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR OVI
+* 
+ 86     CALL PARTDV(T,ANE,ZO,MOVI,NOVI,GOVI,ENOVI,SOVI,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR OVII
+* 
+ 87     CALL PARTDV(T,ANE,ZO,MOVII,NOVII,GOVII,ENOVII,SOVII,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR OVIII
+* 
+ 88     CALL PARTDV(T,ANE,ZO,MH,NHYD,GHYD,ENHYD,SHYD,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR GAIV
+* 
+ 314    CALL PARTDV(T,ANE,ZGA,MGAIV,NGAIV,GGAIV,ENGAIV,SGAIV,U)
+C        WRITE(*,*)'PARTDV:GA4:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR GAV
+* 
+ 315    CALL PARTDV(T,ANE,ZGA,MGAV,NGAV,GGAV,ENGAV,SGAV,U)
+C        WRITE(*,*)'PARTDV:GA5:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR GAVI
+*
+ 316    CALL PARTDV(T,ANE,ZGA,MGAVI,NGAVI,GGAVI,ENGAVI,SGAVI,U)
+C        WRITE(*,*)'PARTDV:GA6:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR GAVII
+*
+ 317    CALL PARTDV(T,ANE,ZGA,MGAVII,NGAVII,GGAVII,ENGAVII,SGAVII,U)
+C        WRITE(*,*)'PARTDV:GA7:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR GEIV
+* 
+ 324    CALL PARTDV(T,ANE,ZGE,MGEIV,NGEIV,GGEIV,ENGEIV,SGEIV,U)
+C        WRITE(*,*)'PARTDV:GE4:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR GEV
+* 
+ 325    CALL PARTDV(T,ANE,ZGE,MGEV,NGEV,GGEV,ENGEV,SGEV,U)
+C        WRITE(*,*)'PARTDV:GE5:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR GEVI
+*
+ 326    CALL PARTDV(T,ANE,ZGE,MGEVI,NGEVI,GGEVI,ENGEVI,SGEVI,U)
+C        WRITE(*,*)'PARTDV:GE6:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR GEVII
+*
+ 327    CALL PARTDV(T,ANE,ZGE,MGEVII,NGEVII,GGEVII,ENGEVII,SGEVII,U)
+C        WRITE(*,*)'PARTDV:GE7:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR GEVIII
+*
+ 328    CALL PARTDV(T,ANE,ZGE,MGEVIII,NGEVIII,GGEVIII,ENGEVIII,
+     +          SGEVIII,U)
+C        WRITE(*,*)'PARTDV:GE8:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR ASIV
+* 
+ 334    CALL PARTDV(T,ANE,ZAS,MASIV,NASIV,GASIV,ENASIV,SASIV,U)
+C        WRITE(*,*)'PARTDV:AS4:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR ASV
+* 
+ 335    CALL PARTDV(T,ANE,ZAS,MASV,NASV,GASV,ENASV,SASV,U)
+C        WRITE(*,*)'PARTDV:AS5:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR ASVI
+*
+ 336    CALL PARTDV(T,ANE,ZAS,MASVI,NASVI,GASVI,ENASVI,SASVI,U)
+C        WRITE(*,*)'PARTDV:AS6:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR ASVII
+*
+ 337    CALL PARTDV(T,ANE,ZAS,MASVII,NASVII,GASVII,ENASVII,SASVII,U)
+C        WRITE(*,*)'PARTDV:AS7:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR SEIV
+* 
+ 344    CALL PARTDV(T,ANE,ZSE,MSEIV,NSEIV,GSEIV,ENSEIV,SSEIV,U)
+C        WRITE(*,*)'PARTDV:SE4:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR SEV
+* 
+ 345    CALL PARTDV(T,ANE,ZSE,MSEV,NSEV,GSEV,ENSEV,SSEV,U)
+C        WRITE(*,*)'PARTDV:SE5:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR SEVI
+* 
+ 346    CALL PARTDV(T,ANE,ZSE,MSEVI,NSEVI,GSEVI,ENSEVI,SSEVI,U)
+C        WRITE(*,*)'PARTDV:SE6:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR SEVII
+*
+ 347    CALL PARTDV(T,ANE,ZSE,MSEVII,NSEVII,GSEVII,ENSEVII,SSEVII,U)
+C        WRITE(*,*)'PARTDV:SE7:U=',U
+        GO TO 8888
+*
+*
+*       CALCULATING PARTITION FUNCTIONS FOR BR
+*
+ 354    CALL PARTDV(T,ANE,ZBR,MBRIV,NBRIV,GBRIV,ENBRIV,SBRIV,U)
+        GO TO 8888
+ 355    CALL PARTDV(T,ANE,ZBR,MBRV,NBRV,GBRV,ENBRV,SBRV,U)
+        GO TO 8888
+ 356    CALL PARTDV(T,ANE,ZBR,MBRVI,NBRVI,GBRVI,ENBRVI,SBRVI,U)
+        GO TO 8888
+ 357    CALL PARTDV(T,ANE,ZBR,MBRVII,NBRVII,GBRVII,
+     +              ENBRVII,SBRVII,U)
+ 358    CALL PARTDV(T,ANE,ZBR,MBRVIII,NBRVIII,GBRVIII,
+     +              ENBRVIII,SBRVIII,U)
+        GO TO 8888
+*
+*
+*       CALCULATING PARTITION FUNCTIONS FOR KR
+*
+ 364    CALL PARTDV(T,ANE,ZKR,MKRIV,NKRIV,GKRIV,ENKRIV,SKRIV,U)
+        GO TO 8888
+ 365    CALL PARTDV(T,ANE,ZKR,MKRV,NKRV,GKRV,ENKRV,SKRV,U)
+        GO TO 8888
+ 366    CALL PARTDV(T,ANE,ZKR,MKRVI,NKRVI,GKRVI,ENKRVI,SKRVI,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR RB
+*
+ 374    CALL PARTDV(T,ANE,ZRB,MRBIV,NRBIV,GRBIV,ENRBIV,SRBIV,U)
+        GO TO 8888
+ 375    CALL PARTDV(T,ANE,ZRB,MRBV,NRBV,GRBV,ENRBV,SRBV,U)
+        GO TO 8888
+ 376    CALL PARTDV(T,ANE,ZRB,MRBVI,NRBVI,GRBVI,ENRBVI,SRBVI,U)
+        GO TO 8888
+ 377    CALL PARTDV(T,ANE,ZRB,MRBVII,NRBVII,GRBVII,ENRBVII,SRBVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR SR
+*
+ 384    CALL PARTDV(T,ANE,ZSR,MSRIV,NSRIV,GSRIV,ENSRIV,SSRIV,U)
+        GO TO 8888
+ 385    CALL PARTDV(T,ANE,ZSR,MSRV,NSRV,GSRV,ENSRV,SSRV,U)
+        GO TO 8888
+ 386    CALL PARTDV(T,ANE,ZSR,MSRVI,NSRVI,GSRVI,ENSRVI,SSRVI,U)
+        GO TO 8888
+ 387    CALL PARTDV(T,ANE,ZSR,MSRVII,NSRVII,GSRVII,ENSRVII,SSRVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR Y
+*
+ 394    CALL PARTDV(T,ANE,ZY,MYIV,NYIV,GYIV,ENYIV,SYIV,U)
+        GO TO 8888
+ 395    CALL PARTDV(T,ANE,ZY,MYV,NYV,GYV,ENYV,SYV,U)
+        GO TO 8888
+ 396    CALL PARTDV(T,ANE,ZY,MYVI,NYVI,GYVI,ENYVI,SYVI,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR ZR
+*
+ 404    CALL PARTDV(T,ANE,ZZR,MZRIV,NZRIV,GZRIV,ENZRIV,SZRIV,U)
+        GO TO 8888
+ 405    CALL PARTDV(T,ANE,ZZR,MZRV,NZRV,GZRV,ENZRV,SZRV,U)
+        GO TO 8888
+ 406    CALL PARTDV(T,ANE,ZZR,MZRVI,NZRVI,GZRVI,ENZRVI,SZRVI,U)
+        GO TO 8888
+ 407    CALL PARTDV(T,ANE,ZZR,MZRVII,NZRVII,GZRVII,ENZRVII,SZRVII,U)
+        GO TO 8888
+ 408    CALL PARTDV(T,ANE,ZZR,MZRVIII,NZRVIII,GZRVIII,ENZRVIII,
+     +          SZRVIII,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR NBIV
+* 
+ 414    CALL PARTDV(T,ANE,ZNB,MNBIV,NNBIV,GNBIV,ENNBIV,SNBIV,U)
+C        WRITE(*,*)'PARTDV:NB4:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR NBV
+* 
+ 415    CALL PARTDV(T,ANE,ZNB,MNBV,NNBV,GNBV,ENNBV,SNBV,U)
+C        WRITE(*,*)'PARTDV:NB5:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR NBVI
+* 
+ 416    CALL PARTDV(T,ANE,ZNB,MNBVI,NNBVI,GNBVI,ENNBVI,SNBVI,U)
+C        WRITE(*,*)'PARTDV:NB6:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR NBVII
+* 
+ 417    CALL PARTDV(T,ANE,ZNB,MNBVII,NNBVII,GNBVII,ENNBVII,SNBVII,U)
+C        WRITE(*,*)'PARTDV:NB7:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR NBVIII
+* 
+ 418    CALL PARTDV(T,ANE,ZNB,MNBVIII,NNBVIII,GNBVIII,ENNBVIII,
+     +          SNBVIII,U)
+C        WRITE(*,*)'PARTDV:NB8:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR MOIV
+* 
+ 424    CALL PARTDV(T,ANE,ZMO,MMOIV,NMOIV,GMOIV,ENMOIV,SMOIV,U)
+C        WRITE(*,*)'PARTDV:MO4:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR MOV
+* 
+ 425    CALL PARTDV(T,ANE,ZMO,MMOV,NMOV,GMOV,ENMOV,SMOV,U)
+C        WRITE(*,*)'PARTDV:MO5:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR MOVI
+* 
+ 426    CALL PARTDV(T,ANE,ZMO,MMOVI,NMOVI,GMOVI,ENMOVI,SMOVI,U)
+C        WRITE(*,*)'PARTDV:MO6:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR MOVII
+*
+ 427    CALL PARTDV(T,ANE,ZMO,MMOVII,NMOVII,GMOVII,ENMOVII,SMOVII,U)
+C        WRITE(*,*)'PARTDV:MO7:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR MOVIII
+*
+ 428    CALL PARTDV(T,ANE,ZMO,MMOVIII,NMOVIII,GMOVIII,ENMOVIII,
+     +          SMOVIII,U)
+C        WRITE(*,*)'PARTDV:MO8:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR RU
+*
+ 444    CALL PARTDV(T,ANE,ZRU,MRUIV,NRUIV,GRUIV,ENRUIV,SRUIV,U)
+        GO TO 8888
+ 445    CALL PARTDV(T,ANE,ZRU,MRUV,NRUV,GRUV,ENRUV,SRUV,U)
+        GO TO 8888
+ 446    CALL PARTDV(T,ANE,ZRU,MRUVI,NRUVI,GRUVI,ENRUVI,SRUVI,U)
+        GO TO 8888
+ 447    CALL PARTDV(T,ANE,ZRU,MRUVII,NRUVII,GRUVII,ENRUVII,SRUVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR RH
+*
+ 454    CALL PARTDV(T,ANE,ZRH,MRHIV,NRHIV,GRHIV,ENRHIV,SRHIV,U)
+        GO TO 8888
+ 455    CALL PARTDV(T,ANE,ZRH,MRHV,NRHV,GRHV,ENRHV,SRHV,U)
+        GO TO 8888
+ 456    CALL PARTDV(T,ANE,ZRH,MRHVI,NRHVI,GRHVI,ENRHVI,SRHVI,U)
+        GO TO 8888
+ 457    CALL PARTDV(T,ANE,ZRH,MRHVII,NRHVII,GRHVII,ENRHVII,SRHVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR PD
+*
+ 464    CALL PARTDV(T,ANE,ZPD,MPDIV,NPDIV,GPDIV,ENPDIV,SPDIV,U)
+        GO TO 8888
+ 465    CALL PARTDV(T,ANE,ZPD,MPDV,NPDV,GPDV,ENPDV,SPDV,U)
+        GO TO 8888
+ 466    CALL PARTDV(T,ANE,ZPD,MPDVI,NPDVI,GPDVI,ENPDVI,SPDVI,U)
+        GO TO 8888
+ 467    CALL PARTDV(T,ANE,ZPD,MPDVII,NPDVII,GPDVII,ENPDVII,SPDVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR AG IV-VII
+*
+ 474    CALL PARTDV(T,ANE,ZAG,MAGIV,NAGIV,GAGIV,ENAGIV,SAGIV,U)
+        GO TO 8888
+ 475    CALL PARTDV(T,ANE,ZAG,MAGV,NAGV,GAGV,ENAGV,SAGV,U)
+        GO TO 8888
+ 476    CALL PARTDV(T,ANE,ZAG,MAGVI,NAGVI,GAGVI,ENAGVI,SAGVI,U)
+        GO TO 8888
+ 477    CALL PARTDV(T,ANE,ZAG,MAGVII,NAGVII,GAGVII,ENAGVII,SAGVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR CD IV-VII
+*
+ 484    CALL PARTDV(T,ANE,ZCD,MCDIV,NCDIV,GCDIV,ENCDIV,SCDIV,U)
+        GO TO 8888
+ 485    CALL PARTDV(T,ANE,ZCD,MCDV,NCDV,GCDV,ENCDV,SCDV,U)
+        GO TO 8888
+ 486    CALL PARTDV(T,ANE,ZCD,MCDVI,NCDVI,GCDVI,ENCDVI,SCDVI,U)
+        GO TO 8888
+ 487    CALL PARTDV(T,ANE,ZCD,MCDVII,NCDVII,GCDVII,ENCDVII,SCDVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR INIV
+*
+ 494    CALL PARTDV(T,ANE,ZIN,MINIV,NINIV,GINIV,ENINIV,SINIV,U)
+C        WRITE(*,*)'PARTDV:IN4:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR INV
+*
+ 495    CALL PARTDV(T,ANE,ZIN,MINV,NINV,GINV,ENINV,SINV,U)
+C        WRITE(*,*)'PARTDV:IN5:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR INVI
+*
+ 496    CALL PARTDV(T,ANE,ZIN,MINVI,NINVI,GINVI,ENINVI,SINVI,U)
+C        WRITE(*,*)'PARTDV:IN6:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR SNIV
+* 
+ 504    CALL PARTDV(T,ANE,ZSN,MSNIV,NSNIV,GSNIV,ENSNIV,SSNIV,U)
+C        WRITE(*,*)'PARTDV:SN4:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR SNV
+* 
+ 505    CALL PARTDV(T,ANE,ZSN,MSNV,NSNV,GSNV,ENSNV,SSNV,U)
+C        WRITE(*,*)'PARTDV:SN5:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR SNVI
+*
+ 506    CALL PARTDV(T,ANE,ZSN,MSNVI,NSNVI,GSNVI,ENSNVI,SSNVI,U)
+C        WRITE(*,*)'PARTDV:SN6:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR SBIV
+* 
+ 514    CALL PARTDV(T,ANE,ZSB,MSBIV,NSBIV,GSBIV,ENSBIV,SSBIV,U)
+C        WRITE(*,*)'PARTDV:SB4:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR SBV
+* 
+ 515    CALL PARTDV(T,ANE,ZSB,MSBV,NSBV,GSBV,ENSBV,SSBV,U)
+C        WRITE(*,*)'PARTDV:SB5:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR SBVI
+*
+ 516    CALL PARTDV(T,ANE,ZSB,MSBVI,NSBVI,GSBVI,ENSBVI,SSBVI,U)
+C        WRITE(*,*)'PARTDV:SB6:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR SBVII
+*
+ 517    CALL PARTDV(T,ANE,ZSB,MSBVII,NSBVII,GSBVII,ENSBVII,SSBVII,U)
+C        WRITE(*,*)'PARTDV:SB7:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR TEIV
+*
+ 524    CALL PARTDV(T,ANE,ZTE,MTEIV,NTEIV,GTEIV,ENTEIV,STEIV,U)
+C        WRITE(*,*)'PARTDV:TE4:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR TEV
+*
+ 525    CALL PARTDV(T,ANE,ZTE,MTEV,NTEV,GTEV,ENTEV,STEV,U)
+C        WRITE(*,*)'PARTDV:TE5:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR TEVI
+*
+ 526    CALL PARTDV(T,ANE,ZTE,MTEVI,NTEVI,GTEVI,ENTEVI,STEVI,U)
+C        WRITE(*,*)'PARTDV:TE6:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR TEVII
+*
+ 527    CALL PARTDV(T,ANE,ZTE,MTEVII,NTEVII,GTEVII,ENTEVII,STEVII,U)
+C        WRITE(*,*)'PARTDV:TE7:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR TEVIII
+*
+ 528    CALL PARTDV(T,ANE,ZTE,MTEVIII,NTEVIII,GTEVIII,ENTEVIII,
+     +          STEVIII,U)
+C        WRITE(*,*)'PARTDV:TE8:U=',U
+        GO TO 8888
+
+
+*
+*       CALCULATING PARTITION FUNCTIONS FOR IIV
+*
+ 534    CALL PARTDV(T,ANE,ZI,MIIV,NIIV,GIIV,ENIIV,SIIV,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR IV
+*
+ 535    CALL PARTDV(T,ANE,ZI,MIV,NIV,GIV,ENIV,SIV,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR IVI
+*
+ 536    CALL PARTDV(T,ANE,ZI,MIVI,NIVI,GIVI,ENIVI,SIVI,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR IVII
+*
+ 537    CALL PARTDV(T,ANE,ZI,MIVII,NIVII,GIVII,ENIVII,SIVII,U)
+        GO TO 8888
+
+
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR XEIV
+* 
+ 544    CALL PARTDV(T,ANE,ZXE,MXEIV,NXEIV,GXEIV,ENXEIV,SXEIV,U)
+C        WRITE(*,*)'PARTDV:XE4:U=',U
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR XEV
+* 
+ 545    CALL PARTDV(T,ANE,ZXE,MXEV,NXEV,GXEV,ENXEV,SXEV,U)
+C        WRITE(*,*)'PARTDV:XE5:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR XEVI
+*
+ 546    CALL PARTDV(T,ANE,ZXE,MXEVI,NXEVI,GXEVI,ENXEVI,SXEVI,U)
+C        WRITE(*,*)'PARTDV:XE6:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR XEVII
+*
+ 547    CALL PARTDV(T,ANE,ZXE,MXEVII,NXEVII,GXEVII,ENXEVII,SXEVII,U)
+C        WRITE(*,*)'PARTDV:XE7:U=',U
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR CS IV-VII
+*
+ 554    CALL PARTDV(T,ANE,ZCS,MCSIV,NCSIV,GCSIV,ENCSIV,SCSIV,U)
+        GO TO 8888
+ 555    CALL PARTDV(T,ANE,ZCS,MCSV,NCSV,GCSV,ENCSV,SCSV,U)
+        GO TO 8888
+ 556    CALL PARTDV(T,ANE,ZCS,MCSVI,NCSVI,GCSVI,ENCSVI,SCSVI,U)
+        GO TO 8888
+ 557    CALL PARTDV(T,ANE,ZCS,MCSVII,NCSVII,GCSVII,ENCSVII,SCSVII,U)
+        GO TO 8888
+* 
+*       CALCULATING PARTITION FUNCTIONS FOR BAIV-VII
+* 
+ 564    CALL PARTDV(T,ANE,ZBA,MBAIV,NBAIV,GBAIV,ENBAIV,SBAIV,U)
+        GO TO 8888
+ 565    CALL PARTDV(T,ANE,ZBA,MBAV,NBAV,GBAV,ENBAV,SBAV,U)
+        GO TO 8888
+ 566    CALL PARTDV(T,ANE,ZBA,MBAVI,NBAVI,GBAVI,ENBAVI,SBAVI,U)
+        GO TO 8888
+ 567    CALL PARTDV(T,ANE,ZBA,MBAVII,NBAVII,GBAVII,ENBAVII,SBAVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR LA IV-VII
+*
+ 574    CALL PARTDV(T,ANE,ZLA,MLAIV,NLAIV,GLAIV,ENLAIV,SLAIV,U)
+        GO TO 8888
+ 575    CALL PARTDV(T,ANE,ZLA,MLAV,NLAV,GLAV,ENLAV,SLAV,U)
+        GO TO 8888
+ 576    CALL PARTDV(T,ANE,ZLA,MLAVI,NLAVI,GLAVI,ENLAVI,SLAVI,U)
+        GO TO 8888
+ 577    CALL PARTDV(T,ANE,ZLA,MLAVII,NLAVII,GLAVII,ENLAVII,SLAVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR CE IV-VII
+*
+ 584    CALL PARTDV(T,ANE,ZCE,MCEIV,NCEIV,GCEIV,ENCEIV,SCEIV,U)
+        GO TO 8888
+ 585    CALL PARTDV(T,ANE,ZCE,MCEV,NCEV,GCEV,ENCEV,SCEV,U)
+        GO TO 8888
+ 586    CALL PARTDV(T,ANE,ZCE,MCEVI,NCEVI,GCEVI,ENCEVI,SCEVI,U)
+        GO TO 8888
+ 587    CALL PARTDV(T,ANE,ZCE,MCEVII,NCEVII,GCEVII,ENCEVII,SCEVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR PR IV-VII
+*
+ 594    CALL PARTDV(T,ANE,ZPR,MPRIV,NPRIV,GPRIV,ENPRIV,SPRIV,U)
+        GO TO 8888
+ 595    CALL PARTDV(T,ANE,ZPR,MPRV,NPRV,GPRV,ENPRV,SPRV,U)
+        GO TO 8888
+ 596    CALL PARTDV(T,ANE,ZPR,MPRVI,NPRVI,GPRVI,ENPRVI,SPRVI,U)
+        GO TO 8888
+ 597    CALL PARTDV(T,ANE,ZPR,MPRVII,NPRVII,GPRVII,ENPRVII,SPRVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR ND IV-VII
+*
+ 604    CALL PARTDV(T,ANE,ZND,MNDIV,NNDIV,GNDIV,ENNDIV,SNDIV,U)
+        GO TO 8888
+ 605    CALL PARTDV(T,ANE,ZND,MNDV,NNDV,GNDV,ENNDV,SNDV,U)
+        GO TO 8888
+ 606    CALL PARTDV(T,ANE,ZND,MNDVI,NNDVI,GNDVI,ENNDVI,SNDVI,U)
+        GO TO 8888
+ 607    CALL PARTDV(T,ANE,ZND,MNDVII,NNDVII,GNDVII,ENNDVII,SNDVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR ER IV-VII
+*
+ 684    CALL PARTDV(T,ANE,ZER,MERIV,NERIV,GERIV,ENERIV,SERIV,U)
+        GO TO 8888
+ 685    CALL PARTDV(T,ANE,ZER,MERV,NERV,GERV,ENERV,SERV,U)
+        GO TO 8888
+ 686    CALL PARTDV(T,ANE,ZER,MERVI,NERVI,GERVI,ENERVI,SERVI,U)
+        GO TO 8888
+ 687    CALL PARTDV(T,ANE,ZER,MERVII,NERVII,GERVII,ENERVII,SERVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR TM IV-VII
+*
+ 694    CALL PARTDV(T,ANE,ZTM,MTMIV,NTMIV,GTMIV,ENTMIV,STMIV,U)
+        GO TO 8888
+ 695    CALL PARTDV(T,ANE,ZTM,MTMV,NTMV,GTMV,ENTMV,STMV,U)
+        GO TO 8888
+ 696    CALL PARTDV(T,ANE,ZTM,MTMVI,NTMVI,GTMVI,ENTMVI,STMVI,U)
+        GO TO 8888
+ 697    CALL PARTDV(T,ANE,ZTM,MTMVII,NTMVII,GTMVII,ENTMVII,STMVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR YB IV-VII
+*
+ 704    CALL PARTDV(T,ANE,ZYB,MYBIV,NYBIV,GYBIV,ENYBIV,SYBIV,U)
+        GO TO 8888
+ 705    CALL PARTDV(T,ANE,ZYB,MYBV,NYBV,GYBV,ENYBV,SYBV,U)
+        GO TO 8888
+ 706    CALL PARTDV(T,ANE,ZYB,MYBVI,NYBVI,GYBVI,ENYBVI,SYBVI,U)
+        GO TO 8888
+ 707    CALL PARTDV(T,ANE,ZYB,MYBVII,NYBVII,GYBVII,ENYBVII,SYBVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR LU IV-VII
+*
+ 714    CALL PARTDV(T,ANE,ZLU,MLUIV,NLUIV,GLUIV,ENLUIV,SLUIV,U)
+        GO TO 8888
+ 715    CALL PARTDV(T,ANE,ZLU,MLUV,NLUV,GLUV,ENLUV,SLUV,U)
+        GO TO 8888
+ 716    CALL PARTDV(T,ANE,ZLU,MLUVI,NLUVI,GLUVI,ENLUVI,SLUVI,U)
+        GO TO 8888
+ 717    CALL PARTDV(T,ANE,ZLU,MLUVII,NLUVII,GLUVII,ENLUVII,SLUVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR HF IV-VII
+*
+ 724    CALL PARTDV(T,ANE,ZHF,MHFIV,NHFIV,GHFIV,ENHFIV,SHFIV,U)
+        GO TO 8888
+ 725    CALL PARTDV(T,ANE,ZHF,MHFV,NHFV,GHFV,ENHFV,SHFV,U)
+        GO TO 8888
+ 726    CALL PARTDV(T,ANE,ZHF,MHFVI,NHFVI,GHFVI,ENHFVI,SHFVI,U)
+        GO TO 8888
+ 727    CALL PARTDV(T,ANE,ZHF,MHFVII,NHFVII,GHFVII,ENHFVII,SHFVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR TA IV-VII
+*
+ 734    CALL PARTDV(T,ANE,ZTA,MTAIV,NTAIV,GTAIV,ENTAIV,STAIV,U)
+        GO TO 8888
+ 735    CALL PARTDV(T,ANE,ZTA,MTAV,NTAV,GTAV,ENTAV,STAV,U)
+        GO TO 8888
+ 736    CALL PARTDV(T,ANE,ZTA,MTAVI,NTAVI,GTAVI,ENTAVI,STAVI,U)
+        GO TO 8888
+ 737    CALL PARTDV(T,ANE,ZTA,MTAVII,NTAVII,GTAVII,ENTAVII,STAVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR W IV-VII
+*
+ 744    CALL PARTDV(T,ANE,ZW,MWIV,NWIV,GWIV,ENWIV,SWIV,U)
+        GO TO 8888
+ 745    CALL PARTDV(T,ANE,ZW,MWV,NWV,GWV,ENWV,SWV,U)
+        GO TO 8888
+ 746    CALL PARTDV(T,ANE,ZW,MWVI,NWVI,GWVI,ENWVI,SWVI,U)
+        GO TO 8888
+ 747    CALL PARTDV(T,ANE,ZW,MWVII,NWVII,GWVII,ENWVII,SWVII,U)
+        GO TO 8888
+ 748    CALL PARTDV(T,ANE,ZW,MWVIII,NWVIII,GWVIII,ENWVIII,SWVIII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR RE IV-VII
+*
+ 754    CALL PARTDV(T,ANE,ZRE,MREIV,NREIV,GREIV,ENREIV,SREIV,U)
+        GO TO 8888
+ 755    CALL PARTDV(T,ANE,ZRE,MREV,NREV,GREV,ENREV,SREV,U)
+        GO TO 8888
+ 756    CALL PARTDV(T,ANE,ZRE,MREVI,NREVI,GREVI,ENREVI,SREVI,U)
+        GO TO 8888
+ 757    CALL PARTDV(T,ANE,ZRE,MREVII,NREVII,GREVII,ENREVII,SREVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR OS IV-VII
+*
+ 764    CALL PARTDV(T,ANE,ZOS,MOSIV,NOSIV,GOSIV,ENOSIV,SOSIV,U)
+        GO TO 8888
+ 765    CALL PARTDV(T,ANE,ZOS,MOSV,NOSV,GOSV,ENOSV,SOSV,U)
+        GO TO 8888
+ 766    CALL PARTDV(T,ANE,ZOS,MOSVI,NOSVI,GOSVI,ENOSVI,SOSVI,U)
+        GO TO 8888
+ 767    CALL PARTDV(T,ANE,ZOS,MOSVII,NOSVII,GOSVII,ENOSVII,SOSVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR IR IV-VII
+*
+ 774    CALL PARTDV(T,ANE,ZIR,MIRIV,NIRIV,GIRIV,ENIRIV,SIRIV,U)
+        GO TO 8888
+ 775    CALL PARTDV(T,ANE,ZIR,MIRV,NIRV,GIRV,ENIRV,SIRV,U)
+        GO TO 8888
+ 776    CALL PARTDV(T,ANE,ZIR,MIRVI,NIRVI,GIRVI,ENIRVI,SIRVI,U)
+        GO TO 8888
+ 777    CALL PARTDV(T,ANE,ZIR,MIRVII,NIRVII,GIRVII,ENIRVII,SIRVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR PT IV-VII
+*
+ 784    CALL PARTDV(T,ANE,ZPT,MPTIV,NPTIV,GPTIV,ENPTIV,SPTIV,U)
+        GO TO 8888
+ 785    CALL PARTDV(T,ANE,ZPT,MPTV,NPTV,GPTV,ENPTV,SPTV,U)
+        GO TO 8888
+ 786    CALL PARTDV(T,ANE,ZPT,MPTVI,NPTVI,GPTVI,ENPTVI,SPTVI,U)
+        GO TO 8888
+ 787    CALL PARTDV(T,ANE,ZPT,MPTVII,NPTVII,GPTVII,ENPTVII,SPTVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR AU
+*
+*
+ 794    CALL PARTDV(T,ANE,ZAU,MAUIV,NAUIV,GAUIV,ENAUIV,SAUIV,U)
+        GO TO 8888
+ 795    CALL PARTDV(T,ANE,ZAU,MAUV,NAUV,GAUV,ENAUV,SAUV,U)
+        GO TO 8888
+ 796    CALL PARTDV(T,ANE,ZAU,MAUVI,NAUVI,GAUVI,ENAUVI,SAUVI,U)
+        GO TO 8888
+ 797    CALL PARTDV(T,ANE,ZAU,MAUVII,NAUVII,GAUVII,ENAUVII,SAUVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR HG
+*
+*
+ 804    CALL PARTDV(T,ANE,ZHG,MHGIV,NHGIV,GHGIV,ENHGIV,SHGIV,U)
+        GO TO 8888
+ 805    CALL PARTDV(T,ANE,ZHG,MHGV,NHGV,GHGV,ENHGV,SHGV,U)
+        GO TO 8888
+ 806    CALL PARTDV(T,ANE,ZHG,MHGVI,NHGVI,GHGVI,ENHGVI,SHGVI,U)
+        GO TO 8888
+ 807    CALL PARTDV(T,ANE,ZHG,MHGVII,NHGVII,GHGVII,ENHGVII,SHGVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR TL
+*
+ 814    CALL PARTDV(T,ANE,ZTL,MTLIV,NTLIV,GTLIV,ENTLIV,STLIV,U)
+        GO TO 8888
+ 815    CALL PARTDV(T,ANE,ZTL,MTLV,NTLV,GTLV,ENTLV,STLV,U)
+        GO TO 8888
+ 816    CALL PARTDV(T,ANE,ZTL,MTLVI,NTLVI,GTLVI,ENTLVI,STLVI,U)
+        GO TO 8888
+ 817    CALL PARTDV(T,ANE,ZTL,MTLVII,NTLVII,GTLVII,ENTLVII,STLVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR PB
+*
+ 824    CALL PARTDV(T,ANE,ZPB,MPBIV,NPBIV,GPBIV,ENPBIV,SPBIV,U)
+        GO TO 8888
+ 825    CALL PARTDV(T,ANE,ZPB,MPBV,NPBV,GPBV,ENPBV,SPBV,U)
+        GO TO 8888
+ 826    CALL PARTDV(T,ANE,ZPB,MPBVI,NPBVI,GPBVI,ENPBVI,SPBVI,U)
+        GO TO 8888
+ 827    CALL PARTDV(T,ANE,ZPB,MPBVII,NPBVII,GPBVII,ENPBVII,SPBVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR BI
+*
+ 834    CALL PARTDV(T,ANE,ZBI,MBIIV,NBIIV,GBIIV,ENBIIV,SBIIV,U)
+        GO TO 8888
+ 835    CALL PARTDV(T,ANE,ZBI,MBIV,NBIV,GBIV,ENBIV,SBIV,U)
+        GO TO 8888
+ 836    CALL PARTDV(T,ANE,ZBI,MBIVI,NBIVI,GBIVI,ENBIVI,SBIVI,U)
+        GO TO 8888
+ 837    CALL PARTDV(T,ANE,ZBI,MBIVII,NBIVII,GBIVII,ENBIVII,SBIVII,U)
+        GO TO 8888
+*
+*       CALCULATING PARTITION FUNCTIONS FOR THIV
+*
+ 904    CALL PARTDV(T,ANE,ZTH,MTHIV,NTHIV,GTHIV,ENTHIV,STHIV,U)
+        GO TO 8888
+ 905    CALL PARTDV(T,ANE,ZTH,MTHV,NTHV,GTHV,ENTHV,STHV,U)
+        GO TO 8888
+ 906    CALL PARTDV(T,ANE,ZTH,MTHVI,NTHVI,GTHVI,ENTHVI,STHVI,U)
+        GO TO 8888
+ 907    CALL PARTDV(T,ANE,ZTH,MTHVII,NTHVII,GTHVII,ENTHVII,STHVII,U)
+        GO TO 8888
+C 
+C       CALCULATING PARTITION FUNCTIONS FOR FE VI - FE IX
+C 
+C260    CALL PFFE(IZI,T,ANE,U)
 C
-      USE atomic_data_storage
-      IMPLICIT NONE
+ 8888   CONTINUE
+        RETURN
+ 9999   U=0
+        WRITE(*,*)
+        WRITE(*,*)'IND =',IND
+        WRITE(*,*)'PFSPEC 9999: SETTING U=0, THEN STOP'
+        WRITE(*,*)!! INVALID ATOM IN USER SUPPLIED ROUTINE PARTFUN !!
+        STOP
+        END
 C
-C     Arguments
-      INTEGER IAT, IZI
-      REAL*8 T, ANE, U
+C     **************************************************************
 C
-C     Local variables
-      INTEGER NLEV
-      INTEGER N_ARR(MAX_LEVELS)
-      REAL*8 G_ARR(MAX_LEVELS)
-      REAL*8 EN_ARR(MAX_LEVELS)
-      REAL*8 S_ARR(MAX_LEVELS)
-      REAL*8 Z_EFF
-      LOGICAL FOUND
-      INTEGER IERR
+C 
+        REAL(8) FUNCTION GET_EION(Z, ISTAGE)
+            IMPLICIT NONE
+            INTEGER, INTENT(IN) :: Z, ISTAGE
+            COMMON /IONPOT_DATA/ XIC(8,99)
+            REAL(8) XIC
+            IF(Z>=1 .AND. Z<=99 .AND. ISTAGE>=1 .AND. ISTAGE<=8)THEN
+                GET_EION = XIC(ISTAGE, Z)
+            ELSE
+                GET_EION = 0.0D0
+            END IF
+        END FUNCTION
 C
-C     First-call flag
-      LOGICAL FIRST_CALL
-      SAVE FIRST_CALL
-      DATA FIRST_CALL /.TRUE./
+C     **************************************************************
 C
-C     ----------------------------------------------------------------
-C     Initialize atomic data on first call
-C     ----------------------------------------------------------------
-      IF (FIRST_CALL) THEN
-          CALL init_atomic_data_from_file('DATA/atomic_data.dat', IERR)
-          IF (IERR .NE. 0) THEN
-              WRITE(*,*) 'PFSPEC: Error reading atomic_data.dat'
-              WRITE(*,*) 'PFSPEC: IERR = ', IERR
-              WRITE(*,*) 'PFSPEC: Returning U = 1.0'
-              U = 1.0D0
-              RETURN
-          END IF
-          FIRST_CALL = .FALSE.
-      END IF
 C
-C     ----------------------------------------------------------------
-C     Get ion data from storage module
-C     ----------------------------------------------------------------
-      CALL get_ion_level_data(IAT, IZI, NLEV, N_ARR, G_ARR, EN_ARR,
-     +                        S_ARR, Z_EFF, FOUND)
-C
-      IF (.NOT. FOUND) THEN
-C         Ion not in database - print warning and return default
-          WRITE(*,*) 'PFSPEC: Warning - no data for Z=', IAT,
-     +               ' ion=', IZI, ' using U=1.0'
-          U = 1.0D0
-          RETURN
-      END IF
-C
-C     ----------------------------------------------------------------
-C     Calculate partition function using PARTDV
-C     ----------------------------------------------------------------
-      CALL PARTDV(T, ANE, Z_EFF, NLEV, N_ARR, G_ARR, EN_ARR, S_ARR, U)
-C
-      RETURN
-      END
-C
+        SUBROUTINE EST_SCREEN(Z, ION_STAGE, NLEV, NE, ENRGY, S)
+            ! Screening estimation using ionization potentials
+            IMPLICIT NONE
+            INTEGER, INTENT(IN) :: Z, ION_STAGE, NLEV
+            INTEGER, INTENT(IN) :: NE(NLEV)
+            REAL(8), INTENT(IN) :: ENRGY(NLEV)
+            REAL(8), INTENT(OUT) :: S(NLEV)
+            INTEGER :: I
+            REAL(8) :: Z_EFF, E_RYD, SCORR, E_BIND, E_ION, DELTA
+            REAL(8) :: RELCORR, Z_CORE
+            REAL(8), PARAMETER :: RYD_EV = 13.6057D0
+            REAL(8), PARAMETER :: ALPHA = 1.0D0/137.0357D0  ! Fine structure constant
+            ! Declare the function
+            REAL(8), EXTERNAL :: GET_EION
+            ! Get actual ionization energy for this ion
+            IF (Z <= 99 .AND. ION_STAGE <= 8) THEN
+                E_ION = GET_EION(Z, ION_STAGE)
+            ELSE
+                ! Fallback to hydrogenic approximation
+                E_ION = RYD_EV * DBLE(ION_STAGE)**2
+            END IF
+            ! Core charge
+            Z_CORE = DBLE(ION_STAGE)
+            DO I = 1, NLEV
+                ! Convert excitation energy to binding energy
+                E_BIND = E_ION - ENRGY(I)
+                IF (E_BIND <= 0.0D0) THEN
+                    ! Unbound state - use asymptotic screening
+                    S(I) = DBLE(Z) - Z_CORE
+                ELSE
+                    ! Basic screening from binding energy
+                    E_RYD = E_BIND / RYD_EV
+                    ! Quantum defect method with relativistic SCORR for heavy elements
+                    IF (I <= 10) THEN
+                      ! Core states - use full calculation
+                      Z_EFF = SQRT(2.0D0 * E_RYD * DBLE(NE(I))**2)
+                      ! Relativistic SCORR for heavy elements
+                      IF (Z > 50) THEN
+                        RELCORR=1.D0+(ALPHA*Z_EFF)**2/DBLE(NE(I))**2
+                        Z_EFF = Z_EFF / SQRT(RELCORR)
+                      END IF
+                    ELSE
+                      ! Excited states - simpler formula
+                      Z_EFF=DBLE(NE(I))*SQRT(E_RYD/DBLE(NE(I))**2)
+                    END IF
+                    S(I) = DBLE(Z) - Z_EFF
+                    ! Penetration SCORRs - scale with Z for heavy elements
+                    SELECT CASE(NE(I))
+                    CASE(1)
+                        SCORR = 0.0D0
+                    CASE(2)
+                        SCORR = -0.1D0*(1.0D0 + 0.01D0*DBLE(Z-20))
+                    CASE(3)
+                        SCORR = -0.08D0*(1.0D0 + 0.01D0*DBLE(Z-30))
+                    CASE(4)
+                        ! d-electrons become important for heavy elements
+                        IF (Z >= 39) THEN  ! Y and beyond
+                            SCORR=-0.3D0*(1.D0+0.01D0 * DBLE(Z-39))
+                        ELSE IF (Z >= 31) THEN  ! Ga-Sr
+                            SCORR = -0.15D0
+                        ELSE
+                            SCORR = -0.06D0
+                        END IF
+                    CASE(5)
+                        ! f-electrons for lanthanides/actinides
+                        IF (Z >= 57) THEN  ! La and beyond
+                            SCORR = -0.25D0
+                        ELSE
+                            SCORR = -0.04D0
+                        END IF
+                    CASE(6:7)
+                        SCORR = -0.03D0
+                    CASE DEFAULT
+                        SCORR = -0.01D0 / SQRT(DBLE(NE(I)))
+                    END SELECT
+                    ! Scale SCORR with ionization stage
+                    SCORR = SCORR*(1.D0+0.1D0*DBLE(ION_STAGE - 1))
+                    S(I) = S(I) + SCORR
+                    ! Additional correction for very highly ionized states
+                    IF (ION_STAGE >= 6) THEN
+                        ! Account for reduced core polarization
+                        DELTA = 0.2D0*DBLE(ION_STAGE-5) / DBLE(NE(I))
+                        S(I) = S(I) - DELTA
+                    END IF
+                END IF
+                ! Physical bounds
+                S(I) = MAX(0.0D0, S(I))
+                ! restrictive upper bound would lead to w = 1 in PARTDV
+C                S(I) = MIN(S(I), DBLE(Z) - SQRT(Z_CORE))
+                S(I) = MIN(S(I), DBLE(Z) - 0.3)
+                ! Ensure monotonic behavior for highly excited states
+                IF (I > 1 .AND. NE(I) > NE(I-1)) THEN
+                    ! Higher n should have higher (or equal) screening
+                    S(I) = MAX(S(I), S(I-1))
+                END IF
+                ! Output (limit to first 50 levels)
+C                IF (I <= 50) THEN
+C                    WRITE(*,'(I5,I5,F12.4,F12.4,F12.6,F12.6)')
+C     .           I, NE(I), ENRGY(I), E_BIND, S(I), DBLE(Z) - S(I)
+C                END IF
+            END DO
+        END SUBROUTINE
 C
 C     **************************************************************
 C
