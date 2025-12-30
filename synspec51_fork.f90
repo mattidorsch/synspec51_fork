@@ -19849,6 +19849,8 @@ C     ******************************************************************
 C
 C
       subroutine readhe1_irrgang
+C     ==================
+C
 C     Read combined and updated HeI tables. These tables are based on
 C     the tables of Beauchamp+ (1997), but have been extended with 
 C     results for HeI 4471 from Gigosos+ (2009) and HeI 4922 from
@@ -19861,6 +19863,7 @@ C     because the central wavelengths were not properly sampled in the
 C     calculation. These points were replaced by extrapolation. 
 C     The table is read from DATA/beauchamp_irrgang.dat.
 C     The new tables were created by Andreas Irrgang.
+C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       character str*100
 c
@@ -20069,11 +20072,26 @@ C     -----------------------------------------------------------------
       if(idepth.eq.1)then
          tval = temp(id)
          ane  = elec(id)
-         t0   = max(the(1), min(tval, the(nthe)))
 C
-C        Quadratic Lagrange weights for 3 temperature points
+C        Clamp to extrapolation limits (8000-55000K)
+         t0  = max(8.d3, min(tval, 5.5d4))
          t0l = dlog10(t0)
-         call lagrange3_weights(thel(1),thel(2),thel(3),t0l,wt)
+C
+C        Quadratic Lagrange inside table, linear extrapolation outside
+         if(t0l.lt.thel(1))then
+C           Below grid: linear from points 1,2
+            wt(1) = (thel(2)-t0l) / (thel(2)-thel(1))
+            wt(2) = (t0l-thel(1)) / (thel(2)-thel(1))
+            wt(3) = 0.d0
+         elseif(t0l.gt.thel(3))then
+C           Above grid: linear from points 2,3
+            wt(1) = 0.d0
+            wt(2) = (thel(3)-t0l) / (thel(3)-thel(2))
+            wt(3) = (t0l-thel(2)) / (thel(3)-thel(2))
+         else
+C           Inside grid: quadratic using all 3 points
+            call lagrange3_weights(thel(1),thel(2),thel(3),t0l,wt)
+         endif
       endif
 C
 C     -----------------------------------------------------------------
@@ -20099,7 +20117,22 @@ C
          if(idetailed.eq.1)then
             nwavhe = nwhe(iline)
             ndenhe = ndhe(iline)
-            ane0l  = dlog10(ane0)
+C
+C           Clamp density to valid range
+C           iextrap_d=0: clamp to table bounds
+C           iextrap_d=1: allow minor extrapolation (10% of boundary values)
+            iextrap_d = 1
+            ane0l = dlog10(ane0)
+            if(iextrap_d.eq.1)then
+               dnel_lo = dhel(iline,1) - 0.1d0*dabs(dhel(iline,1))
+               dnel_hi = dhel(iline,ndenhe) +
+     *                   0.1d0*dabs(dhel(iline,ndenhe))
+               ane0l = max(dnel_lo, min(ane0l, dnel_hi))
+            else
+               ane0l = max(dhel(iline,1),
+     *                 min(ane0l, dhel(iline,ndenhe)))
+            endif
+C
             do i=1,ndenhe
                dhel0(i) = dhel(iline,i)
             enddo
