@@ -20015,358 +20015,454 @@ C
 C
 C
       subroutine absohe(id,fr,iline,il,abl,eml,wshiftm,fosc,gwlo,gwhi)
-C     =========================================
+C     ===============================================================
 C
-C     He I line profiles after Beauchamp et al. (1997).
-C     this routine is called to compute the absorption (ABL) and emission
-C     (EML) coefficients of the line at each frequency.
-C     Detailed profiles are interpolated to the correct temperature
-C     and electron density.
-C     If temperature or electron density are outside tabulated range
-C     no extrapolation, instead closest table, except if ne is
-C     below the grid, then isolated approx. using WTOT.
-C     Created by Antoine Bedard.
+C     He I Stark broadening profiles after Beauchamp et al. (1997).
+C     Original routine by Antoine Bedard
+C     Modified by Matti Dorsch and optimised using Claude Opus 4.5
+C
+C     Interpolation: Quadratic in T (exact), cubic spline in Ne,
+C                    quadratic in wavelength.
+C
+C     Optimized for on-demand evaluation with minimal table building.
 C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
       INCLUDE 'INCLUDE/LINDAT.FOR'
       intent(in)  :: id,fr,iline,il,wshiftm,fosc,gwlo,gwhi
       intent(out) :: abl,eml
-      parameter(cas=2.997925d18,pi=3.14159265359d0,os0=0.02654,
-     *          f13=1./3.,f43=4./3.,f49=4./9.,f89=8./9.)
-      dimension prft(mthe),prfd(mdhe),coeff(100)
-      common/hepars/ idold,ilold,fr000,t,ane,t0,ane0,abtra,emtra,f,
-     *               ws0,ds0,as0,nnnwhe,dwav0(mwhe),prof0(mwhe),
-     *               dhel0(mdhe)
 C
-      ilforb=1 ! use the detailed profiles if possible
-C      ilforb=0 ! always use the isolated line approximation
+C     Physical and numerical constants
+      parameter(cas=2.997925d18, pi=3.14159265359d0, os0=0.02654,
+     *          f13=1.d0/3.d0, f89=8.d0/9.d0,
+     *          aln10=2.302585092994046d0)
 C
-C     ifirst=1 -> first frequency for which this line is used
-      if(id.eq.idold.and.il.eq.ilold)then
-         ifirst=0
+C     Cached state for reuse across calls
+      common/hestate/ id0,il0,iline0,tval,t0,ane,ane0,ane0l,
+     *                abtra,emtra,fval,nwavhe,ndenhe,
+     *                wt(3),dhel0(mdhe),ws0,ds0,as0,
+     *                idetailed,kwav
+      integer id0,il0,iline0,nwavhe,ndenhe,kwav,idetailed
+      save /hestate/
+      data id0,il0,iline0 /-1,-1,-1/
+C
+C     Local arrays for spline interpolation
+      dimension prfd(mdhe),y2d(mdhe)
+C
+C     -----------------------------------------------------------------
+C     Determine what needs recomputation
+C     -----------------------------------------------------------------
+      if(id.ne.id0)then
+         idepth = 1
+         iline_new = 1
+      elseif(il.ne.il0 .or. iline.ne.iline0)then
+         idepth = 0
+         iline_new = 1
       else
-         ifirst=1
+         idepth = 0
+         iline_new = 0
       endif
-      idold=id
-      ilold=il
 C
-      if(ifirst.eq.1)then
-C         fr000 = freq0(il)
-         t = temp(id)
-         ane = elec(id)
-C        The actual temp. and electron densities are replaced by the 
-C        upper limits of the tables if they exceed them.
-C        ane0 is used as electron density from here on. 
-         t0 = dmax1(the(1),dmin1(t,the(nthe)))
-         ane0 = dmin1(ane, dhe(iline,ndhe(iline)))
-         i = ilowhe(iline) + nfirst(ielhe1) - 1
-         j = iuphe(iline) + nfirst(ielhe1) - 1
-         abtra = popul(i,id) * wop(j,id) ! occ. probab.
-         emtra = popul(j,id) * wop(i,id) * g(i)/g(j)
-     *        *dexp((enion(i)-enion(j))/bolk/t)
-C        this is not the fosc from beauchamp.dat
-         f=exp(gf0(il)+4.2014672)/g(i)
+C     -----------------------------------------------------------------
+C     Depth-level initialization: T interpolation weights
+C     -----------------------------------------------------------------
+      if(idepth.eq.1)then
+         tval = temp(id)
+         ane  = elec(id)
+         t0   = max(the(1), min(tval, the(nthe)))
+C
+C        Quadratic Lagrange weights for 3 temperature points
+         t0l = dlog10(t0)
+         call lagrange3_weights(thel(1),thel(2),thel(3),t0l,wt)
       endif
-C      if ((gwlo.gt.0).and.(gwhi.gt.0)) then
-C        emtra = popul(j,id) * wop(i,id) * gwlo/gwhi
-C     *          * dexp((enion(i)-enion(j))/bolk/t)
-C         f=exp(gf0(il)+4.2014672)/gwlo
-C      end if
-      if (fosc.gt.0) f = fosc
 C
-C     shift central freq. by wshiftm
-      fr000 = cas / (cas/freq0(il) + wshiftm)
-C     fr000 = freq0(il)
-C     correct ws for new freq.
-C     ws0 = ws00 * (fr000/freq0(il))**2.
-C     ws0 = ws00
-C     write(6,*) 'cas/fr000, ws0', cas/fr000, ws0
+C     -----------------------------------------------------------------
+C     Line-level initialization: populations, profile type, Ne grid
+C     -----------------------------------------------------------------
+      if(iline_new.eq.1)then
+         ane0 = min(ane, dhe(iline,ndhe(iline)))
+         ilow = ilowhe(iline) + nfirst(ielhe1) - 1
+         iup  = iuphe(iline)  + nfirst(ielhe1) - 1
+         abtra = popul(ilow,id) * wop(iup,id)
+         emtra = popul(iup,id) * wop(ilow,id) * g(ilow)/g(iup)
+     *           * dexp((enion(ilow)-enion(iup)) / (bolk*tval))
+         fval = exp(gf0(il) + 4.2014672) / g(ilow)
 C
-C     nwhe = number of wl points, d0he min. elec. -density
-C     defined d1he as max. d0he min. elec. -density
-C      if(ane0.gt.d1he(iline))then
-C         write(*,*) 'ne too high',d1he(iline),ane0,wavhe(iline)
-C      endif
-C      if(0.eq.0)then
-C      if(ilforb.eq.0.or.nwhe(iline).eq.0.or.ane0.lt.d0he(iline))then
-      if(ilforb.eq.0.or.nwhe(iline).eq.0.or.
-     *    ane0.lt.d0he(iline).or.ane0.gt.d1he(iline))then
+C        Select profile type
+         idetailed = 0
+         if(nwhe(iline).gt.0)then
+            if(ane0.ge.d0he(iline) .and. ane0.le.d1he(iline))then
+               idetailed = 1
+            endif
+         endif
 C
-C        Isolated profiles
-C
-         if(ifirst.eq.1)then
-            do itt=1,nthe
-               if(the(itt).ge.t0) go to 178
+         if(idetailed.eq.1)then
+            nwavhe = nwhe(iline)
+            ndenhe = ndhe(iline)
+            ane0l  = dlog10(ane0)
+            do i=1,ndenhe
+               dhel0(i) = dhel(iline,i)
             enddo
- 178        xxxt=(t0-the(itt-1))/(the(itt)-the(itt-1))
-C           ne/ne_table
-            xxxne=ane0/drefhe(iline)
-C           interpolation of
-C              w -> electron broad.
-C              d -> wl shift
-C              a -> ion brad.
-C           as well as scaling to correct ne
-            ws0=xxxne*(xxxt*wshe(iline,itt)+
-     *           (1.d0-xxxt)*wshe(iline,itt-1))
-            ds0=xxxt*dshe(iline,itt)+
-     *          (1.d0-xxxt)*dshe(iline,itt-1)
-            as0=xxxne**0.25*
-     *              (xxxt*ashe(iline,itt)+(1.d0-xxxt)*ashe(iline,itt-1))
-C           conversion of ws0 from lambda to omega
-C           2*pi*f*f/c = 2*pi*f/lambda = omega/lambda
-            factor=2.*pi*freq0(il)**2./cas
-            ws0=ws0*factor
-C           why invert sign?
-            ds0=-ds0
-         endif
-C
-C
-C        conversion from f to omega
-         afreq0=2.*pi*fr000
-         afreqi=2.*pi*fr
-C        distance from line center in omega
-         dafreq=afreqi-afreq0
-         if(as0.ne.0.d0)then
-            if(ds0.ge.0.d0)then
-               sign=1.
-            else
-               sign=-1.
-            endif
-C           similar to 1/v_av just above eq. 3.19 in Griem (1962)
-C           amplitude of the velocity distribution for a maxwell-boltzmann 
-C           distribution, and not the average velocity itself
-            vm=1.d0/dsqrt(16.*bolk*t0/pi/6.6464414d-24)
-            rhom=(3./4./pi/ane0)**f13
-            sigma=ws0*vm*rhom
-            x=as0**f89/sigma**f13
-C           normal formula from WTOT/Greim62
-C           not used; ilforb = 1 switch for detailed profiles
-            if(ilforb.eq.0)then
-               wcorr=1.36
-               scorr=2.36
-            elseif(ilforb.eq.1)then
-C              dynamical correction after BCS (1974, eq. 6.7)
-               xcorr=sign*(dafreq-ws0*ds0)/ws0
-               xcorr=1.03*sigma**f43*as0**f49*xcorr
-C              this overwrites wcorr and scorr
-               call dynhe(xcorr,wcorr,scorr)
-            endif
-C           disable dyn. correction because it doesn't
-C           improve general fit for He-sdOs
-            wcorr=1.36
-            scorr=2.36
-            wtot=ws0*(1.+wcorr*x)
-            if(ds0.ne.0.d0)then
-               dtot=ws0*ds0*(1+scorr*x/dabs(ds0))
-            else
-               dtot=0.d0
-            endif
          else
-            wtot=ws0
-            dtot=ws0*ds0
+            call init_isolated(iline,ane0,il,wt,ws0,ds0,as0)
          endif
-C        correct distance from center by shift
-         dtot0=dafreq-dtot
-         dop=sqrt(4.125d7*t)*afreq0/cl
-C        normally this is abs(wave), not dwave!
-         v=abs(dtot0)/dop
-         agam=wtot/dop
-C        should this really be divided by dop?
-C        voigthe is already divided by sqrt(pi)
-         phi = voigthe(agam,v) / dop
-C         ALAM=2.997925E18/FREQ
-C         DLAM=ALAM-WLAM0(ILINE)
-C         v1=abs(ALAM-4471.682)/dop
-C        use two components for HeI 4471
-C         IF(ILINE.EQ.1) PHE1=(8.*phi+voigthe(agam,v1))/9.
-         factor = 2.*pi
-         phi = phi*factor
-C         if(ifirst.eq.1) write(*,*) 'approx. phi', phi
+         kwav = 1
+      endif
 C
+      if(fosc.gt.0.d0) fval = fosc
+      id0    = id
+      il0    = il
+      iline0 = iline
+C
+C     -----------------------------------------------------------------
+C     Compute profile at this frequency
+C     -----------------------------------------------------------------
+      fr0 = cas / (cas/freq0(il) + wshiftm)
+C
+      if(idetailed.eq.1)then
+         call eval_detailed(fr,fr0,iline,nwavhe,ndenhe,wt,
+     *                      ane0l,dhel0,prfd,y2d,kwav,phi)
       else
-C
-C        Detailed profiles
-C
-         if(ifirst.eq.1)then
-            nnnwhe = nwhe(iline)
-C           for original tables: skip first two densities.
-            nnndhe = ndhe(iline)
-C           1d-array of electron densities for specific line
-            dhel0 = dhel(iline,:)
-C            write(*,*) 'dhel0', dhel0
-C            write(*,*) 'nnndhe', nnndhe
-            t0l = dlog10(t0)
-            ane0l = dlog10(ane0)
-            do itt=1,nthe
-               if(thel(itt).ge.t0l) go to 188
-            enddo
- 188        it0 = itt
-            xxxt = (t0l-thel(it0-1))/(thel(it0)-thel(it0-1))
-C            write(*,*) 'profhe(iline,1,1,:)', profhe(iline,1,1,:)
-            do iww=1,nnnwhe
-               dwav0(iww)=whe(iline,iww)
-               do idd=1,nnndhe
-C                 create list of intensities for line, density
-                  do itt=1,nthe
-                     prft(itt)=profhe(iline,itt,idd,iww)
-                  enddo
-C                 linear interpolation in temperature
-                  prfd(idd)=prft(it0-1)+xxxt*(prft(it0)-prft(it0-1))
-               enddo
-C              interpolate intensities in electron density
-               call spline(dhel0,prfd,nnndhe,coeff)
-               call splint(dhel0,prfd,coeff,
-     *                     nnndhe,ane0l,prof0(iww))
-            enddo
-         endif
-C
-C         if(abs(dwav).lt.1.d-4) write(*,*) 'prof0(:20)', prof0(:20)
-         wav0 = cas / fr000
-         wavi = cas / fr
-         dwav = wavi - wav0
-C         write(*,*) 'nnnwhe', nnnwhe
-C         write(*,*) 'dwav0', dwav0
-C         write(*,*) 'wavi_before', wavi
-C         write(*,*) 'wav0_before', wav0
-C         write(*,*) 'dwav_before', dwav
-         if(abs(dwav).lt.1.d-4) dwav=1.d-4
-C        phi is the interpolated intensity at the current wavelength
-C        above wavelength grid
-         if(dwav.ge.dwav0(nnnwhe))then
-            phi=2.5*dlog10(dwav0(nnnwhe)/dwav)+prof0(nnnwhe)
-C        below wavelength grid
-         elseif(dwav.le.dwav0(1))then
-            phi=2.5*dlog10(dwav0(1)/dwav)+prof0(1)
-         else
-C           interpolate intensity to current wavelength 
-C           (more coeff -> better interp.)
-C           spline interpolation does not work here
-C           changes value of wavi, wav0, dwav
-C           there must be error somewhere here.
-C           see here: https://stackoverflow.com/questions/17073496/fortran-variables-changing-on-their-own
-C           for now replaced by linear interpolation
-C           this is sufficient for the fine new He I tables
-C            call spline(dwav0,prof0,nnnwhe,coeff)
-C            call splint(dwav0,prof0,coeff,nnnwhe,dwav,phi)
-C           this interpolation is the run time "bottleneck"
-            phi = YLINTP(dwav,dwav0,prof0,nnnwhe,mwhe)
-C           this one produces a warning, is slow and less accurate
-C            CALL INTERP(dwav0,prof0,dwav,phi,nnnwhe,1,1,0,0)
-         endif
-C        wavi are WRONG! should be cwave in AA
-C         write(*,*) 'wavi_after', wavi
-C         write(*,*) 'wav0_after', wav0
-C         write(*,*) 'dwav_after', dwav
-C         wav0 = cas / fr000
-C         wavi = cas / fr
-C         dwav = wavi - wav0
-C         write(*,*) 'wavi_new', wavi
-C         write(*,*) 'wav0_new', wav0
-C         write(*,*) 'dwav_new', dwav
-C         write(*,*) 'phi', phi
-C         if(abs(dwav).lt.1.d-4) write(*,*) 'phil', phi
-         phi = 10.**phi
-C         if(abs(dwav).lt.1.d-4) write(*,*) 'phi', phi
-C        convert to freq.
-         factor = wavi**2. / cas
-         phi = phi * factor ! * 1.d-3
-C         if(ifirst.eq.1) write(*,*) 'phi', phi
-C
+         call eval_isolated(fr,fr0,tval,t0,ane0,ws0,ds0,as0,phi)
       endif
 C
-      sig = os0 * f * phi
-      xkf = dexp(-4.79928d-11 * fr / t) ! Boltzmann factor
-      xkfb = xkf * 1.4743d-2 * (fr/1.d15)**3.
-      abl = sig * (abtra-emtra*xkf)
-      eml = sig * emtra * xkfb
-      if ((gwlo.gt.0).and.(gwhi.gt.0)) then
-C        write(6,*) 'factor',
-C     *  factor
-        abl = sig * gwlo / factor
-        eml = sig * gwhi / factor
-      end if
+C     -----------------------------------------------------------------
+C     Compute absorption and emission
+C     -----------------------------------------------------------------
+      sig  = os0 * fval * phi
+      xkf  = dexp(-4.79928d-11 * fr / tval)
+      xkfb = xkf * 1.4743d-2 * (fr * 1.d-15)**3
+      abl  = sig * (abtra - emtra*xkf)
+      eml  = sig * emtra * xkfb
+C
+      if((gwlo.gt.0.d0) .and. (gwhi.gt.0.d0))then
+         wavi   = cas / fr
+         factor = wavi * wavi / cas
+         abl = sig * gwlo / factor
+         eml = sig * gwhi / factor
+      endif
 C
       return
       end
 C
 C
+C     =================================================================
+C     Utility subroutines
+C     =================================================================
 C
-      subroutine dynhe(xxk,ww,ss)
-C     ===========================
+      subroutine lagrange3_weights(x1,x2,x3,x,w)
+C     ==========================================
+C     Compute Lagrange interpolation weights for 3 points
+      implicit real*8 (a-h,o-z)
+      dimension w(3)
+      d12 = x1 - x2
+      d13 = x1 - x3
+      d23 = x2 - x3
+      w(1) = (x-x2)*(x-x3) / (d12*d13)
+      w(2) = (x-x1)*(x-x3) / ((-d12)*d23)
+      w(3) = (x-x1)*(x-x2) / ((-d13)*(-d23))
+      return
+      end
 C
-C     Dynamical correction to impact approx. after
-C     Barnard, Cooper & Smith (1974), Tab. 1
-C     Created by Antoine Bedard
+C
+      subroutine init_isolated(iline,ane0,il,wt,ws0,ds0,as0)
+C     =========================================================
+C     Initialize parameters for isolated (Voigt) profiles
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
+      parameter(pi=3.14159265359d0, cas=2.997925d18)
+      dimension wt(3)
+C
+      xxxne = ane0 / drefhe(iline)
+      ws0 = xxxne * (wt(1)*wshe(iline,1) + wt(2)*wshe(iline,2) +
+     *               wt(3)*wshe(iline,3))
+      ds0 = wt(1)*dshe(iline,1) + wt(2)*dshe(iline,2) +
+     *      wt(3)*dshe(iline,3)
+      as0 = xxxne**0.25d0 * (wt(1)*ashe(iline,1) + wt(2)*ashe(iline,2) +
+     *                       wt(3)*ashe(iline,3))
+      factor = 2.d0 * pi * freq0(il)**2 / cas
+      ws0 = ws0 * factor
+      ds0 = -ds0
+      return
+      end
 C
 C
-      implicit real*8(a-h,o-z)
-      dimension wiminus(18),wiplus(18),xk(18),sminus(18),
-     *          splus(18)
-      data nw/18/
-      data xk/0.00,0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.8,1.00,1.2,1.4,
-     *        1.6,1.8,2.,3.,4.,5./
-      data wiminus/1.36,1.32,1.22,1.01,.84,.72,.63,.55,.44,.36,.30,
-     *             .25,.20,.17,.14,.04,.01,0.00/
-      data wiplus/1.36,1.36,1.41,1.55,1.67,1.77,1.86,1.93,2.07,2.19,
-     *            2.31,2.41,2.51,2.61,2.69,3.05,3.31,3.50/
-      data sminus/2.35,2.35,2.35,2.35,2.36,2.47,2.57,2.68,2.86,
-     *            3.03,3.18,3.31,3.44,3.56,3.67,4.14,4.51,4.90/
-      data splus/2.35,2.35,2.35,2.35,2.35,2.35,2.39,2.42,2.48,2.53,
-     *           2.58,2.64,2.69,2.74,2.79,3.05,3.31,3.50/
-c
-      if(xxk.lt.0.)then
-         if(abs(xxk).ge.5.)then
-            ww=0.
-            ss=3.31*abs(xxk)**0.25
+      subroutine eval_isolated(fr,fr0,tval,t0,ane0,ws0,ds0,as0,phi)
+C     =============================================================
+C     Evaluate isolated profile using Voigt function
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      parameter(pi=3.14159265359d0, f13=1.d0/3.d0, f89=8.d0/9.d0)
+C
+      afreq0 = 2.d0*pi*fr0
+      dafreq = 2.d0*pi*fr - afreq0
+C
+      if(as0.ne.0.d0)then
+         vm    = 1.d0 / dsqrt(16.d0*bolk*t0/pi/6.6464414d-24)
+         rhom  = (0.75d0/pi/ane0)**f13
+         sigma = ws0 * vm * rhom
+         x     = as0**f89 / sigma**f13
+         wtot  = ws0 * (1.d0 + 1.36d0*x)
+         if(ds0.ne.0.d0)then
+            dtot = ws0 * ds0 * (1.d0 + 2.36d0*x/dabs(ds0))
          else
-            do jj=1,nw-1
-              if(abs(xxk).ge.xk(jj).and.abs(xxk).lt.xk(jj+1))then
-                  if(abs(xxk).ne.xk(jj))then
-                     ww=wiminus(jj)+(abs(xxk)-xk(jj))/(xk(jj+1)-xk(jj))*
-     *                    (wiminus(jj+1)-wiminus(jj))
-                     ss=sminus(jj)+(abs(xxk)-xk(jj))/(xk(jj+1)-xk(jj))*
-     *                    (sminus(jj+1)-sminus(jj))
-                  else
-                     ww=wiminus(jj)
-                     ss=sminus(jj)
-                  endif
-                  return
-              endif
-            enddo
+            dtot = 0.d0
          endif
       else
-         if(abs(xxk).ge.5.)then
-            ww=2.34*xxk**0.25
-            ss=2.34*xxk**0.25
-         else
-            do jj=1,nw-1
-               if(xxk.ge.xk(jj).and.xxk.lt.xk(jj+1))then
-          if(xxk.ne.xk(jj))then
-                     ww=wiplus(jj)+(xxk-xk(jj))/(xk(jj+1)-xk(jj))*
-     *                    (wiplus(jj+1)-wiplus(jj))
-                     ss=splus(jj)+(xxk-xk(jj))/(xk(jj+1)-xk(jj))*
-     *                    (splus(jj+1)-splus(jj))
-          else
-                     ww=wiplus(jj)
-                     ss=splus(jj)
-          endif
-          return
-               endif
-            enddo
+         wtot = ws0
+         dtot = ws0 * ds0
+      endif
+C
+      dop    = dsqrt(4.125d7*tval) * afreq0 / cl
+      dopinv = 1.d0 / dop
+      v      = dabs(dafreq - dtot) * dopinv
+      agam   = wtot * dopinv
+      phi    = voigthe(agam,v) * dopinv * 2.d0*pi
+      return
+      end
+C
+C
+      subroutine eval_detailed(fr,fr0,iline,nwavhe,ndenhe,wt,
+     *                         ane0l,dhel0,prfd,y2d,kwav,phi)
+C     =======================================================
+C     Evaluate detailed profile:
+C     - Quadratic (exact) temperature interpolation
+C     - Cubic spline density interpolation
+C     - Quadratic wavelength interpolation
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
+      parameter(cas=2.997925d18, aln10=2.302585092994046d0)
+      dimension wt(3),dhel0(ndenhe),prfd(ndenhe),y2d(ndenhe)
+C
+      wavi  = cas / fr
+      wav0  = cas / fr0
+      dwav  = wavi - wav0
+      if(dabs(dwav).lt.1.d-4) dwav = 1.d-4
+C
+      dwmin = whe(iline,1)
+      dwmax = whe(iline,nwavhe)
+C
+C     Handle extrapolation beyond grid
+      if(dwav.ge.dwmax)then
+         call interp_at_wav(iline,nwavhe,ndenhe,wt,ane0l,
+     *                      dhel0,prfd,y2d,phival)
+         phival = 2.5d0*dlog10(dwmax/dwav) + phival
+C
+      elseif(dwav.le.dwmin)then
+         call interp_at_wav(iline,1,ndenhe,wt,ane0l,
+     *                      dhel0,prfd,y2d,phival)
+         phival = 2.5d0*dlog10(dwmin/dwav) + phival
+C
+      else
+C        Find wavelength bracket
+         call hunt_whe(iline,nwavhe,dwav,klo,khi,kwav)
+C
+C        Select 3 points for quadratic interpolation
+         call select3(klo,khi,nwavhe,iw1,iw2,iw3)
+C
+C        Interpolate at 3 wavelength points
+         call interp_at_wav(iline,iw1,ndenhe,wt,ane0l,
+     *                      dhel0,prfd,y2d,p1)
+         call interp_at_wav(iline,iw2,ndenhe,wt,ane0l,
+     *                      dhel0,prfd,y2d,p2)
+         call interp_at_wav(iline,iw3,ndenhe,wt,ane0l,
+     *                      dhel0,prfd,y2d,p3)
+C
+C        Quadratic Lagrange in wavelength
+         x1 = whe(iline,iw1)
+         x2 = whe(iline,iw2)
+         x3 = whe(iline,iw3)
+         d1 = (x1-x2)*(x1-x3)
+         d2 = (x2-x1)*(x2-x3)
+         d3 = (x3-x1)*(x3-x2)
+         ww1 = (dwav-x2)*(dwav-x3) / d1
+         ww2 = (dwav-x1)*(dwav-x3) / d2
+         ww3 = (dwav-x1)*(dwav-x2) / d3
+         phival = ww1*p1 + ww2*p2 + ww3*p3
+      endif
+C
+      phi = dexp(phival*aln10) * wavi*wavi / cas
+      return
+      end
+C
+C
+      subroutine select3(klo,khi,n,i1,i2,i3)
+C     ======================================
+C     Select 3 points centered on bracket for quadratic interpolation
+      implicit real*8 (a-h,o-z)
+      if(klo.le.1)then
+         i1 = 1
+         i2 = 2
+         i3 = 3
+      elseif(khi.ge.n)then
+         i1 = n - 2
+         i2 = n - 1
+         i3 = n
+      else
+         i1 = klo - 1
+         i2 = klo
+         i3 = khi
+         if(i1.lt.1)then
+            i1 = klo
+            i2 = khi
+            i3 = khi + 1
          endif
       endif
+      return
+      end
+C
+C
+      subroutine interp_at_wav(iline,iwav,ndenhe,wt,ane0l,
+     *                         dhel0,prfd,y2d,prof)
+C     ====================================================
+C     Interpolate profile at wavelength index iwav:
+C     - Quadratic T interpolation (using precomputed weights)
+C     - Cubic spline Ne interpolation
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
+      dimension wt(3),dhel0(ndenhe),prfd(ndenhe),y2d(ndenhe)
+C
+C     Quadratic T interpolation at each density point
+      do i=1,ndenhe
+         prfd(i) = wt(1)*profhe(iline,1,i,iwav) +
+     *             wt(2)*profhe(iline,2,i,iwav) +
+     *             wt(3)*profhe(iline,3,i,iwav)
+      enddo
+C
+C     Cubic spline interpolation in density
+      call spline_nat(dhel0,prfd,ndenhe,y2d)
+      call spline_eval(dhel0,prfd,y2d,ndenhe,ane0l,prof)
+      return
+      end
+C
+C
+      subroutine spline_nat(x,y,n,y2)
+C     ===============================
+C     Natural cubic spline: compute second derivatives
+      implicit real*8 (a-h,o-z)
+      dimension x(n),y(n),y2(n),u(32)
+C
+      y2(1) = 0.d0
+      u(1)  = 0.d0
+      do i=2,n-1
+         sig   = (x(i)-x(i-1)) / (x(i+1)-x(i-1))
+         p     = sig*y2(i-1) + 2.d0
+         y2(i) = (sig-1.d0) / p
+         u(i)  = (6.d0*((y(i+1)-y(i))/(x(i+1)-x(i)) -
+     *                  (y(i)-y(i-1))/(x(i)-x(i-1))) /
+     *           (x(i+1)-x(i-1)) - sig*u(i-1)) / p
+      enddo
+      y2(n) = 0.d0
+      do k=n-1,1,-1
+         y2(k) = y2(k)*y2(k+1) + u(k)
+      enddo
+      return
+      end
+C
+C
+      subroutine spline_eval(xa,ya,y2a,n,x,y)
+C     =======================================
+C     Evaluate cubic spline at point x
+      implicit real*8 (a-h,o-z)
+      dimension xa(n),ya(n),y2a(n)
+C
+C     Binary search
+      klo = 1
+      khi = n
+      do while(khi-klo.gt.1)
+         k = (khi+klo)/2
+         if(xa(k).gt.x) then
+            khi = k
+         else
+            klo = k
+         endif
+      enddo
+C
+C     Evaluate
+      hh = xa(khi) - xa(klo)
+      a  = (xa(khi) - x) / hh
+      b  = (x - xa(klo)) / hh
+      y  = a*ya(klo) + b*ya(khi) +
+     *     ((a**3-a)*y2a(klo) + (b**3-b)*y2a(khi)) * hh*hh/6.d0
+      return
+      end
+C
+C
+      subroutine hunt_whe(iline,n,x,klo,khi,klast)
+C     ============================================
+C     Hunt search in whe(iline,:) array
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
+      integer klo,khi,klast,k,inc
+C
+      if(klast.lt.1 .or. klast.ge.n) klast = 1
+C
+C     Check cached interval and neighbors
+      if(x.ge.whe(iline,klast) .and. x.lt.whe(iline,klast+1))then
+         klo = klast
+         khi = klast + 1
+         return
+      endif
+      if(klast.lt.n-1)then
+         if(x.ge.whe(iline,klast+1) .and. x.lt.whe(iline,klast+2))then
+            klast = klast + 1
+            klo = klast
+            khi = klast + 1
+            return
+         endif
+      endif
+      if(klast.gt.1)then
+         if(x.ge.whe(iline,klast-1) .and. x.lt.whe(iline,klast))then
+            klast = klast - 1
+            klo = klast
+            khi = klast + 1
+            return
+         endif
+      endif
+C
+C     Hunt phase
+      if(x.ge.whe(iline,klast))then
+         klo = klast
+         inc = 1
+         khi = min(klast+inc, n)
+         do while(x.ge.whe(iline,khi) .and. khi.lt.n)
+            klo = khi
+            inc = inc + inc
+            khi = min(khi+inc, n)
+         enddo
+      else
+         khi = klast
+         inc = 1
+         klo = max(klast-inc, 1)
+         do while(x.lt.whe(iline,klo) .and. klo.gt.1)
+            khi = klo
+            inc = inc + inc
+            klo = max(klo-inc, 1)
+         enddo
+      endif
+C
+C     Bisection
+      do while(khi-klo.gt.1)
+         k = (khi+klo)/2
+         if(whe(iline,k).gt.x)then
+            khi = k
+         else
+            klo = k
+         endif
+      enddo
+      klast = klo
       return
       end
 C
 C
 C
       double precision function voigthe(aa,xx)
-c     ========================================
-c
-c     computes normalized voigt function for any x and any positive a.
+C     ========================================
+C
+C     computes normalized voigt function for any x and any positive a.
 C     Created by Antoine Bedard.
-c
+C
       implicit real*8(a-h,o-z)
       equivalence(z,zzz(1))
       dimension c(31),zzz(2)
@@ -20419,61 +20515,6 @@ c     initialization of array c
 C
 C
 C
-      subroutine spline(x,y,n,y2)
-C     ===========================
-C
-C     Created by Antoine Bedard
-C
-C
-      implicit real*8 (a-h,o-z)
-      dimension x(n),y(n),y2(n),u(100)
-      y2(1)=0.
-      u(1)=0.
-      do 11 i=2,n-1
-        sig=(x(i)-x(i-1))/(x(i+1)-x(i-1))
-        p=sig*y2(i-1)+2.
-        y2(i)=(sig-1.)/p
-        u(i)=(6.*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1))
-     *      /(x(i)-x(i-1)))/(x(i+1)-x(i-1))-sig*u(i-1))/p
-11    continue
-      qn=0.
-      un=0.
-      y2(n)=(un-qn*u(n-1))/(qn*y2(n-1)+1.)
-      do 12 k=n-1,1,-1
-12    y2(k)=y2(k)*y2(k+1)+u(k)
-      return
-      end
-C
-C
-C
-      subroutine splint(xa,ya,y2a,n,x,y)
-C     ==================================
-C
-C     Created by Antoine Bedard
-C
-C
-      implicit real*8 (a-h,o-z)
-      dimension xa(n),ya(n),y2a(n)
-      klo=1
-      khi=n
- 11   if (khi-klo.gt.1) then
-        k=(khi+klo)/2
-        if(xa(k).gt.x)then
-          khi=k
-        else
-          klo=k
-        endif
-      go to 11
-      endif
-      h=xa(khi)-xa(klo)
-      if (h.eq.0.) stop 'bad xa input.'
-      a=(xa(khi)-x)/h
-      b=(x-xa(klo))/h
-      y=a*ya(klo)+b*ya(khi)+
-     *      ((a**3-a)*y2a(klo)+(b**3-b)*y2a(khi))*(h**2)/6.
-      return
-      end
-
       subroutine hedif
 c     ================
 c
