@@ -1,9 +1,9 @@
 C===============================================================================
-C     MODULE: atomic_data_storage
+C     MODULE: pfspec_data_storage
 C     Purpose: Store atomic level data read from external file
 C     Place this at the very beginning of synspec51_fork.f90
 C===============================================================================
-      MODULE atomic_data_storage
+      MODULE pfspec_data_storage
       IMPLICIT NONE
       SAVE
 C
@@ -32,12 +32,12 @@ C     ion_stage: 1=neutral, 2=once ionized, etc.
       INTEGER :: ion_index(MAX_Z, MAX_ION_STAGE)
 C
 C     Initialization flag
-      LOGICAL :: atomic_data_initialized = .FALSE.
+      LOGICAL :: pfspec_data_initialized = .FALSE.
 C
       CONTAINS
 C
 C-----------------------------------------------------------------------
-      SUBROUTINE init_atomic_data_from_file(filename, ierr)
+      SUBROUTINE init_pfspec_data_from_file(filename, ierr)
 C-----------------------------------------------------------------------
 C     Read atomic data file and populate module storage
 C     Called once on first use of PFSPEC
@@ -62,7 +62,7 @@ C
 C
       ierr = 0
 C
-      IF (atomic_data_initialized) RETURN
+      IF (pfspec_data_initialized) RETURN
 C
 C     Initialize lookup table
       ion_index = 0
@@ -86,11 +86,11 @@ C     Open file
      +     ACTION='READ', IOSTAT=ios)
       IF (ios .NE. 0) THEN
           ierr = -1
-          WRITE(*,*) 'ATOMIC_DATA: Cannot open file: ', TRIM(filename)
+          WRITE(*,*) 'pfspec_data: Cannot open file: ', TRIM(filename)
           RETURN
       END IF
 C
-      WRITE(*,'(A,A)') ' ATOMIC_DATA: Reading from ', TRIM(filename)
+      WRITE(*,'(A,A)') ' pfspec_data: Reading from ', TRIM(filename)
 C
 C     Read file
       idx = 0
@@ -116,9 +116,9 @@ C             Format: symbol ion_stage num_levels ioniz_pot atomic_number
               READ(line, *, IOSTAT=ios) ion_symbol, ion_stage,
      +                                  num_levels, ion_pot, z_real
               IF (ios .NE. 0) THEN
-                  WRITE(*,*) 'ATOMIC_DATA: Error parsing header: ',
+                  WRITE(*,*) 'pfspec_data: Error parsing header: ',
      +                       TRIM(line)
-                  WRITE(*,*) 'ATOMIC_DATA: IOSTAT = ', ios
+                  WRITE(*,*) 'pfspec_data: IOSTAT = ', ios
                   GO TO 100
               END IF
 C
@@ -127,13 +127,13 @@ C             Convert z_real to integer for lookup
 C
 C             Debug output
               WRITE(*,'(A,A,A,I3,A,I2,A,I4)')
-     +            ' ATOMIC_DATA: Found ', TRIM(ion_symbol),
+     +            ' pfspec_data: Found ', TRIM(ion_symbol),
      +            ' Z=', z_int, ' ion=', ion_stage,
      +            ' levels=', num_levels
 C
 C             Check bounds
               IF (z_int .LT. 1 .OR. z_int .GT. MAX_Z) THEN
-                  WRITE(*,*) 'ATOMIC_DATA: Z out of range: ', z_int
+                  WRITE(*,*) 'pfspec_data: Z out of range: ', z_int
                   DO j = 1, num_levels
                       READ(iunit, '(A)', IOSTAT=ios) line
                       IF (ios .NE. 0) GO TO 200
@@ -142,7 +142,7 @@ C             Check bounds
               END IF
 C
               IF (ion_stage.LT.1 .OR. ion_stage.GT.MAX_ION_STAGE) THEN
-                  WRITE(*,*) 'ATOMIC_DATA: Ion stage out of range: ',
+                  WRITE(*,*) 'pfspec_data: Ion stage out of range: ',
      +                       ion_stage
                   DO j = 1, num_levels
                       READ(iunit, '(A)', IOSTAT=ios) line
@@ -152,7 +152,7 @@ C
               END IF
 C
               IF (num_levels .GT. MAX_LEVELS) THEN
-                  WRITE(*,*) 'ATOMIC_DATA: Too many levels for ',
+                  WRITE(*,*) 'pfspec_data: Too many levels for ',
      +                       TRIM(ion_symbol), ' truncating to ',
      +                       MAX_LEVELS
               END IF
@@ -160,7 +160,7 @@ C
 C             Store data
               idx = idx + 1
               IF (idx .GT. MAX_IONS) THEN
-                  WRITE(*,*) 'ATOMIC_DATA: MAX_IONS exceeded'
+                  WRITE(*,*) 'pfspec_data: MAX_IONS exceeded'
                   ierr = -2
                   GO TO 200
               END IF
@@ -172,7 +172,7 @@ C             Read energy levels (N G EN S)
               DO j = 1, num_levels
                   READ(iunit, '(A)', IOSTAT=ios) line
                   IF (ios .NE. 0) THEN
-                      WRITE(*,*) 'ATOMIC_DATA: EOF reading level ',
+                      WRITE(*,*) 'pfspec_data: EOF reading level ',
      +                           j, ' for ', TRIM(ion_symbol)
                       ion_data(idx)%num_levels = j - 1
                       GO TO 200
@@ -184,9 +184,9 @@ C
 C                 Parse level data: N G EN S
                   READ(line, *, IOSTAT=ios) n_val, g_val, en_val, s_val
                   IF (ios .NE. 0) THEN
-                      WRITE(*,*) 'ATOMIC_DATA: Error parsing level: ',
+                      WRITE(*,*) 'pfspec_data: Error parsing level: ',
      +                           TRIM(line)
-                      WRITE(*,*) 'ATOMIC_DATA: IOSTAT = ', ios
+                      WRITE(*,*) 'pfspec_data: IOSTAT = ', ios
                       ion_data(idx)%num_levels = j - 1
                       GO TO 100
                   END IF
@@ -209,13 +209,13 @@ C
       CLOSE(iunit)
 C
       num_ions_loaded = idx
-      atomic_data_initialized = .TRUE.
+      pfspec_data_initialized = .TRUE.
 C
-      WRITE(*,'(A,I4,A)') ' ATOMIC_DATA: Loaded ', num_ions_loaded,
+      WRITE(*,'(A,I4,A)') ' pfspec_data: Loaded ', num_ions_loaded,
      +                    ' ions'
 C
       RETURN
-      END SUBROUTINE init_atomic_data_from_file
+      END SUBROUTINE init_pfspec_data_from_file
 C
 C-----------------------------------------------------------------------
       SUBROUTINE get_ion_level_data(iat, izi, nlev, n_arr, g_arr,
@@ -257,7 +257,7 @@ C
           s_arr(j) = 1.0D0
       END DO
 C
-      IF (.NOT. atomic_data_initialized) RETURN
+      IF (.NOT. pfspec_data_initialized) RETURN
 C
       IF (iat .LT. 1 .OR. iat .GT. MAX_Z) RETURN
       IF (izi .LT. 1 .OR. izi .GT. MAX_ION_STAGE) RETURN
@@ -279,7 +279,7 @@ C
       RETURN
       END SUBROUTINE get_ion_level_data
 C
-      END MODULE atomic_data_storage
+      END MODULE pfspec_data_storage
 C     ==================
 C
 C     ==================
@@ -14761,7 +14761,7 @@ C
       SUBROUTINE PFSPEC(IAT,IZI,T,ANE,U)
 C     ==================================
 C     Non-standard evaluation of the partition function
-C     Modernized version - reads data from atomic_data.dat
+C     Modernized version - reads data from pfspec_data.dat
 C
 C     Input:
 C      IAT   - atomic number
@@ -14774,9 +14774,9 @@ C      U     - partition function
 C
 C     Original: M.A.Barstow - University of Leicester
 C     Modified: Matti Dorsch - added more ionised heavy elements
-C     Modernized: Data now read from external file atomic_data.dat
+C     Modernized: Data now read from external file pfspec_data.dat
 C
-      USE atomic_data_storage
+      USE pfspec_data_storage
       IMPLICIT NONE
 C
 C     Arguments
@@ -14802,9 +14802,9 @@ C     ----------------------------------------------------------------
 C     Initialize atomic data on first call
 C     ----------------------------------------------------------------
       IF (FIRST_CALL) THEN
-          CALL init_atomic_data_from_file('DATA/atomic_data.dat', IERR)
+          CALL init_pfspec_data_from_file('DATA/pfspec_data.dat', IERR)
           IF (IERR .NE. 0) THEN
-              WRITE(*,*) 'PFSPEC: Error reading atomic_data.dat'
+              WRITE(*,*) 'PFSPEC: Error reading pfspec_data.dat'
               WRITE(*,*) 'PFSPEC: IERR = ', IERR
               WRITE(*,*) 'PFSPEC: Returning U = 1.0'
               U = 1.0D0

@@ -1,4 +1,4 @@
-# Atomic data extracted from SYNSPEC
+# Energy level data for partition functions in PFSPEC
 # Format: ELEMENT ION_STAGE NLEVELS IONIZATION_POTENTIAL ATOMIC_NUMBER [*=estimated S]
 # Followed by: N G EN S (one line per level)
 #
