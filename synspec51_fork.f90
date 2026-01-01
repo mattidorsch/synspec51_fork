@@ -90,7 +90,7 @@ C     Open file
           RETURN
       END IF
 C
-      WRITE(*,'(A,A)') ' pfspec_data: Reading from ', TRIM(filename)
+C      WRITE(*,'(A,A)') ' pfspec_data: Reading from ', TRIM(filename)
 C
 C     Read file
       idx = 0
@@ -126,10 +126,10 @@ C             Convert z_real to integer for lookup
               z_int = NINT(z_real)
 C
 C             Debug output
-              WRITE(*,'(A,A,A,I3,A,I2,A,I4)')
-     +            ' pfspec_data: Found ', TRIM(ion_symbol),
-     +            ' Z=', z_int, ' ion=', ion_stage,
-     +            ' levels=', num_levels
+C              WRITE(*,'(A,A,A,I3,A,I2,A,I4)')
+C     +            ' pfspec_data: Found ', TRIM(ion_symbol),
+C     +            ' Z=', z_int, ' ion=', ion_stage,
+C     +            ' levels=', num_levels
 C
 C             Check bounds
               IF (z_int .LT. 1 .OR. z_int .GT. MAX_Z) THEN
@@ -211,8 +211,8 @@ C
       num_ions_loaded = idx
       pfspec_data_initialized = .TRUE.
 C
-      WRITE(*,'(A,I4,A)') ' pfspec_data: Loaded ', num_ions_loaded,
-     +                    ' ions'
+C      WRITE(*,'(A,I4,A)') ' pfspec_data: Loaded ', num_ions_loaded,
+C     +                    ' ions'
 C
       RETURN
       END SUBROUTINE init_pfspec_data_from_file
@@ -2116,7 +2116,7 @@ C
             XMAX=XMX*SQRT(X)
 C           I->IAT; J->IZI
             CALL PARTF(I,J,T,ANE,XMAX,U)
-            write(*,*) 'ION, I, J, U', ION, I, J, U
+C            write(*,*) 'ION, I, J, U', ION, I, J, U
             PFSTD(J,I)=U
             FI=EXP(FI)*U/UM/ANE
             FFI(J)=FI
@@ -13403,7 +13403,7 @@ C
       SUBROUTINE PARTF(IAT,IZI,T,ANE,XMAXN,U)
 C     =======================================
 C
-C     Partition functions 
+C     Partition functions
 C     The standard evaluation is for hydrogen through zinc, for
 C     neutrals and first four ionization degrees.
 C     Basically after Traving, Baschek, and Holweger, Abhand. Hamburg.
@@ -13412,7 +13412,7 @@ C
 C     For higher atomic numbers  modified Kurucz routine PFSAHA,
 C     called PFHEAV here is used. The routine was provided by
 C     Charles Proffitt.
-C     
+C
 C     The routine calls special procedures for Fe and Ni; or
 C     the values based on the tabulated Opacity Project ionization
 C     fractions
@@ -14174,6 +14174,9 @@ c
       IF((IAT.EQ.26.or.iat.eq.28)
      *  .AND.IZI.GE.4.AND.IZI.LE.9) GO TO 70
       IF(IAT.GT.30.AND.IZI.LE.3) GO TO 80
+C     otherwise pfspec is not used for stages > 5
+C     igle is ground state only, and not for all heavy ions
+      IF(IAT.GT.30.AND.IZI.GT.3.AND.IZI.LE.10) GO TO 50
       IF(IAT.GT.8 .AND. IZI.GT.5) then
          u=igle(iat-izi+1)
          return
@@ -14835,6 +14838,7 @@ C         Ion not in database - print warning and return default
           RETURN
       END IF
 
+C      write(*,*) 'IAT, IZI', IAT, IZI
 C     Calculate partition function using PARTDV
       CALL PARTDV(T, ANE, Z_EFF, NLEV, N_ARR, G_ARR, EN_ARR, S_ARR, U)
 C
@@ -14907,6 +14911,15 @@ C
                 END IF
                 ! If ARG >= EXP_CUTOFF, contribution is negligible
             END DO
+C            WRITE(*,'(A,ES12.4)') 'TEMP = ', TEMP
+C            WRITE(*,'(A,ES12.4)') 'ET = ', ET
+C            WRITE(*,'(A,ES12.4)') 'DNE = ', DNE
+C            DO I = 1, NLEV
+C                ARG = ENRGY(I) / ET
+C                WRITE(*,'(I3,4ES12.4)') I, ENRGY(I),
+C     +                                  GEE(I), W, EXP(-ARG)
+C            END DO
+C            WRITE(*,'(A,ES15.6)') 'Final U = ', U
             RETURN
         END SUBROUTINE PARTDV
 
