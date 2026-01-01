@@ -683,6 +683,7 @@ C     =================
 C
 C     driver for input and initializations - "new" routine
 C
+      USE pfspec_data_storage
       IMPLICIT LOGICAL (L)
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
@@ -771,6 +772,14 @@ C ----------------------------------------------------
 C
 C     Input parameters are read by procedure STATE
 C     (see description there)
+C
+C     STATE0 requires pfspec data for setting max ion stage
+      CALL init_pfspec_data_from_file('DATA/pfspec_data.dat', IERR)
+      IF (IERR .NE. 0) THEN
+          WRITE(*,*) 'PFSPEC: Error reading pfspec_data.dat'
+          WRITE(*,*) 'PFSPEC: IERR = ', IERR
+          WRITE(*,*) 'PFSPEC: Returning U = 1.0'
+      END IF
 C
       CALL STATE0(1)
       ID=1
@@ -1471,9 +1480,14 @@ C
 C     Initialization of the basic parameters for the Saha equation
 C     Enable more ions here for PFSPEC!
 C
+      use pfspec_data_storage
       INCLUDE 'INCLUDE/PARAMS.FOR'
       parameter (enhe1=24.5799,enhe2=54.3999)
       character*4 DYP
+      LOGICAL ion_found
+      INTEGER :: nlev, n_arr(MAX_LEVELS), iat, izi
+      REAL*8 :: g_arr(MAX_LEVELS), en_arr(MAX_LEVELS)
+      REAL*8 :: s_arr(MAX_LEVELS), z_eff
 
       ! Add COMMON block for XI
       COMMON /IONPOT_DATA/ XIC(8,99)
@@ -1607,6 +1621,21 @@ C                                     ionization stage
      *       251.0 ,   1.00000000e-24  ,  3.,  
      *       254.0 ,   1.00000000e-24  ,  3./
 C
+C     Auto-detect highest ion stage for Z>30
+      DO iat = 31, MATOM
+          D(3,iat) = 3.
+          DO izi = 4, MAX_ION_STAGE
+              CALL get_ion_level_data(iat, izi, nlev, n_arr, g_arr,
+     +                                en_arr, s_arr, z_eff, ion_found)
+              IF (ion_found) THEN
+                  D(3,iat) = izi
+              END IF
+          END DO
+      END DO
+C      DO iat = 31, MATOM
+C          WRITE(*,'(A,I3,F10.3,ES12.3,F6.0)') 'STATE0: Z=', iat,
+C     +                             D(1,iat), D(2,iat), D(3,iat)
+C      END DO
 C
 C     Ionization potentials for first 99 species:
       DATA XI/
@@ -2085,7 +2114,9 @@ C
             FI=36.113+TLN-THL*ENEV(I,J1)+DCHT
             X=J
             XMAX=XMX*SQRT(X)
+C           I->IAT; J->IZI
             CALL PARTF(I,J,T,ANE,XMAX,U)
+            write(*,*) 'ION, I, J, U', ION, I, J, U
             PFSTD(J,I)=U
             FI=EXP(FI)*U/UM/ANE
             FFI(J)=FI
@@ -14791,31 +14822,8 @@ C     Local variables
       REAL*8 S_ARR(MAX_LEVELS)
       REAL*8 Z_EFF
       LOGICAL FOUND
-      INTEGER IERR
-C
-C     First-call flag
-      LOGICAL FIRST_CALL
-      SAVE FIRST_CALL
-      DATA FIRST_CALL /.TRUE./
-C
-C     ----------------------------------------------------------------
-C     Initialize atomic data on first call
-C     ----------------------------------------------------------------
-      IF (FIRST_CALL) THEN
-          CALL init_pfspec_data_from_file('DATA/pfspec_data.dat', IERR)
-          IF (IERR .NE. 0) THEN
-              WRITE(*,*) 'PFSPEC: Error reading pfspec_data.dat'
-              WRITE(*,*) 'PFSPEC: IERR = ', IERR
-              WRITE(*,*) 'PFSPEC: Returning U = 1.0'
-              U = 1.0D0
-              RETURN
-          END IF
-          FIRST_CALL = .FALSE.
-      END IF
-C
-C     ----------------------------------------------------------------
+
 C     Get ion data from storage module
-C     ----------------------------------------------------------------
       CALL get_ion_level_data(IAT, IZI, NLEV, N_ARR, G_ARR, EN_ARR,
      +                        S_ARR, Z_EFF, FOUND)
 C
@@ -14826,10 +14834,8 @@ C         Ion not in database - print warning and return default
           U = 1.0D0
           RETURN
       END IF
-C
-C     ----------------------------------------------------------------
+
 C     Calculate partition function using PARTDV
-C     ----------------------------------------------------------------
       CALL PARTDV(T, ANE, Z_EFF, NLEV, N_ARR, G_ARR, EN_ARR, S_ARR, U)
 C
       RETURN
