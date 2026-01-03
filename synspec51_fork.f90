@@ -3247,8 +3247,10 @@ C
       K1=0
       EQW=0.
       EQWP=0.
-      IF(IBLANK.EQ.1) EQWT=0.
-      IF(IBLANK.EQ.1) EQWTP=0.
+C      IF(IBLANK.EQ.1) EQWT=0.
+C      IF(IBLANK.EQ.1) EQWTP=0.
+      EQWT=0.
+      EQWTP=0.
       XX=UN/(FREQ(2)-FREQ(1))
       XXX=UN/(FREQ(1)+FREQ(2))/(FREQ(1)+FREQ(2))
       if(ifwin.le.0) then
