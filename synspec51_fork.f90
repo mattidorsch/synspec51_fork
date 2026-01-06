@@ -774,7 +774,8 @@ C     Input parameters are read by procedure STATE
 C     (see description there)
 C
 C     STATE0 requires pfspec data for setting max ion stage
-      CALL init_pfspec_data_from_file('DATA/pfspec_data.dat', IERR)
+      CALL init_pfspec_data_from_file('./data_syn/pfspec_data.dat',
+     *                                IERR)
       IF (IERR .NE. 0) THEN
           WRITE(*,*) 'PFSPEC: Error reading pfspec_data.dat'
           WRITE(*,*) 'PFSPEC: IERR = ', IERR
@@ -9897,7 +9898,7 @@ C     First-call flag
 
 C     Initialize quantum data for zeeman on first call only
       if (FIRST_CALL) then
-          call init_zeeman_data('DATA/zeeman_data.dat')
+          call init_zeeman_data('./data_syn/zeeman_data.dat')
           FIRST_CALL = .false.
       end if
 
@@ -19888,7 +19889,7 @@ C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       character str*100
 c
-      open(25,file='./DATA/beauchamp_irrgang.dat',status='old')
+      open(25,file='./data_syn/beauchamp_irrgang.dat',status='old')
       write(6,600) ihe1pr
  600  format(' -----------'/
      *       ' Reading Beauchamp-Gigosos-Lara tables; ihe1pr =',i2,/
@@ -19959,82 +19960,7 @@ C              convert all intensities to log10 if not given as log10
 c
       return
       end
-C
-C
-C     ******************************************************************
-C
-C
-C      subroutine readhe1
-C     ==================
-C
-C     Read updated Beauchamp (1997) tables
-C     from DATA/beauchamp.dat
-C     Created by Antoine Bedard
-C
-C
-C      INCLUDE 'INCLUDE/PARAMS.FOR'
-C      character str*100
-C
-C      open(25,file='./DATA/beauchamp.dat',status='old')
-C      write(6,600) ihe1pr
-C 600  format(' -----------'/
-C     *       ' Reading Beauchamp tables; ihe1pr =',i2,/
-C     *       ' -----------')
-C      read(25,*) nlhe !number of tables
-C      read(25,*) nthe !number of temperatures
-C      read(25,*) (the(i),i=1,nthe) !temperatures
-C      read(25,*) ndhe !number of nes
-C      read(25,*) (dhe(i),i=1,ndhe) !nes
-C      do itt=1,nthe
-C         thel(itt)=dlog10(the(itt))
-C      enddo
-C      do idd=1,ndhe-2
-C         dhel(idd)=dlog10(dhe(idd+2))
-C      enddo
-C     iterate over all tables
-C      do ill=1,nlhe
-C         read(25,'(a)') str !line with LAMBDA
-C        number of wl points, skip5, min.ne, skip1, max.ne
-C         read(str,'(i2,5x,e12.5)') nwhe(ill),d0he(ill)
-C         read(str,'(i2,5x,e12.5,1x,e12.5)')
-C     *        nwhe(ill),d0he(ill),d1he(ill)
-C         write(*,*) 'd0he(ill)',d0he(ill)
-C         write(*,*) 'd1he(ill)',d1he(ill)
-C
-C         read(25,*) ilowhe(ill),iuphe(ill),fhe(ill),wavhe(ill)
-C         read(25,*) (wshe(ill,itt),itt=1,nthe) !e impact half-width
-C         read(25,*) (dshe(ill,itt),itt=1,nthe) !shifts
-C         read(25,*) (ashe(ill,itt),itt=1,nthe) !ion broadening param
-C         read(25,*) drefhe(ill) !reference ne
-C         read(25,*)
-C         read(25,*)
-C         write(*,*) 'wavhe(ill)',wavhe(ill)
-C         if(nwhe(ill).gt.0)then
-C            if(wavhe(ill).gt.1000)then
-C               read(25,'(9f7.2)') (whe(ill,iww),iww=1,nwhe(ill))
-C            else
-C               read(25,'(9f8.2)') (whe(ill,iww),iww=1,nwhe(ill))
-C            endif
-C            do idd=1,ndhe
-C               do itt=1,nthe
-C                  read(25,'(6e12.5)')
-C     .                 (profhe(ill,itt,idd,iww),iww=1,nwhe(ill))
-C               enddo
-C               if(profhe(ill,1,idd,1).gt.0.)then
-C                  do itt=1,nthe
-C                     do iww=1,nwhe(ill)
-C                        profhe(ill,itt,idd,iww)=
-C     .                       dlog10(profhe(ill,itt,idd,iww))
-C                     enddo
-C                  enddo
-C               endif
-C            enddo
-C         endif
-C      enddo
-C      close(25)
-C
-C      return
-C      end
+
 C
 C
 C
