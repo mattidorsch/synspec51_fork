@@ -5306,7 +5306,7 @@ C
       IF(M1.LT.I+1) M1=I+1
       IF(M2.GT.40) M2=40
 C     MD removed print-out
-      if(id.eq.1) write(6,666) i,m1,m2
+      if(id.eq.1.and.iprin.ge.2) write(6,666) i,m1,m2
   666 format(/' hydrogen lines contribute - ilow=',i2,', iup from ',i3,
      *       ' to',i3/)
 C
@@ -5871,7 +5871,9 @@ C     ionization freq of lower level
       IF(FRION.GT.FREQ(2)) MHE10=int(SQRT(FR1/(FRION-FREQ(2))))
       IF(FRION.GT.FREQ(1)) MHE20=int(SQRT(FR1/(FRION-FREQ(1))) )
 C     MD removed print-out
-      WRITE(6,601) ILWHE2,MHE20+1
+      if(iprin.ge.2) then
+        WRITE(6,601) ILWHE2,MHE20+1
+      end if
   601 FORMAT(1H0/ ' *** HE II LINES CONTRIBUTE'/
      * '     THE NEAREST LINE ON THE SHORT-WAVELENGTH SIDE IS',
      * I3,'  TO ',I3/)
@@ -9042,10 +9044,10 @@ C
       ALM1=2.997925D18/FREQ(2)
       if(ifwin.gt.0) ALM0=2.997925D18/FRQOBS(1)
       if(ifwin.gt.0) ALM1=2.997925D18/FRQOBS(NFREQ)
-      IF(IMODE.GE.0) WRITE(6,601) IBLANK,ALM0,ALM1
+      IF(IMODE.GE.0.and.iprin.ge.2) WRITE(6,601) IBLANK,ALM0,ALM1
       IF(IPRIN.LE.-2) RETURN
       if(iprin.ge.2) then
-      IF(IMODE.GE.0.OR.(IMODE.EQ.-1.AND.IBLANK.EQ.1)) WRITE(6,602)
+        IF(IMODE.GE.0.OR.(IMODE.EQ.-1.AND.IBLANK.EQ.1)) WRITE(6,602)
       end if
 C
       DO 20 IL0=1,NLIN
@@ -9148,9 +9150,9 @@ C
       HKF=HK*XX
 c      IF(IMODE.GE.0) WRITE(6,601) IBLANK,ALM0,ALM1
       IF(IPRIN.LE.-2) RETURN
-      if(iprin.ge.2) then
+C      if(iprin.ge.2) then
 c      IF(IMODE.GE.0.OR.(IMODE.EQ.-1.AND.IBLANK.EQ.1)) WRITE(6,602)
-      end if
+C      end if
 C
       IF(IHYL.LT.0) go to 200
       IAT=1
@@ -16599,8 +16601,8 @@ C
       if(ifwin.gt.0) ALM1=2.997925D18/FREQ(NFREQ)
       IF(IPRIN.LE.-2) RETURN
       if(iprin.ge.2) then
-      IF(IMODE.GE.0) WRITE(6,601) IBLANK,ALM0,ALM1
-      IF(IMODE.GE.0.OR.(IMODE.EQ.-1.AND.IBLANK.EQ.1)) WRITE(6,602)
+        IF(IMODE.GE.0) WRITE(6,601) IBLANK,ALM0,ALM1
+        IF(IMODE.GE.0.OR.(IMODE.EQ.-1.AND.IBLANK.EQ.1)) WRITE(6,602)
       end if
 C
       DO 100 ILIST=1,NMLIST

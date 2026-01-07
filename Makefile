@@ -1,16 +1,10 @@
 SHELL:=/bin/bash
 
 all:
-	gfortran -std=legacy -fno-automatic -fno-align-commons -ffixed-form -fcheck=mem -O3 -Wall -o synspec51_fork synspec51_fork.f90
-
-cluster:
-	module load gcc/6.5.0 && gfortran -fno-automatic -fno-align-commons -ffixed-form -g -fcheck=all,no-bounds -O3 -Wall -Wl,--rpath=/software/Ubuntu-20.04/Programming/gcc/6.5.0/lib64 -Wl,--disable-new-dtags -o synspec51_fork synspec51_fork.f90
-
-g5:
-	gfortran-5 -fno-automatic -fno-align-commons -ffixed-form -fcheck=mem -O3 -Wall -o synspec51_fork_g5 synspec51_fork.f90
+	gfortran -fno-automatic -fno-align-commons -ffixed-form -fcheck=mem -O3 -Wall -o synspec51_fork synspec51_fork.f90
 
 g6:
-	gfortran-6 -fno-automatic -fno-align-commons -ffixed-form -fcheck=mem -O3 -Wall -o synspec51_fork_g6 synspec51_fork.f90
+	/home/pyxis/mdorsch/local/gcc-6.5.0/bin/gfortran -fno-automatic -fno-align-commons -ffixed-form -fcheck=mem -O3 -Wall -o synspec51_fork_g6 synspec51_fork.f90
 
 g7:
 	gfortran-7 -fno-automatic -fno-align-commons -ffixed-form -fcheck=mem -O3 -Wall -o synspec51_fork_g7 synspec51_fork.f90
