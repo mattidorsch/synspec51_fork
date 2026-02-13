@@ -1,0 +1,36 @@
+!!!
+! compile with gfortran-5 or gfortran-6 (not >=7!)
+! otherwise strength (or broadening?)
+! of heavy metal lines will be wrong (too weak)!
+! maybe only for lines that don't have GammaStark provided?
+! only Z>30 affected -> maybe something in that subroutine?
+! some Sr, YIII, Zr, Sn, Pb lines def. affected, both in UV and optical.
+! effect is worse in UV!
+!!!
+
+module load gcc/5.5.0 
+gfortran -fno-automatic -O3 -Wall -o binary/synspec51_v3_HeI_addantoine_final_addNb_pscont_gf5 synspec51_v3_HeI_addantoine_final_addNb_pscont.f
+# add libgfortran.so.4 path to the binary itself, such that it is found also when the module gcc/5.5.0 is not loaded
+gfortran -fno-automatic -O3 -Wall -Wl,--rpath=/software/Ubuntu-20.04/Programming/gcc/5.5.0/lib64 -Wl,--disable-new-dtags -o binary/synspec51_v3_HeI_addantoine_final_addNb_pscont_gf5 synspec51_v3_HeI_addantoine_final_addNb_pscont.f
+# if gfortran-6 is available
+gfortran-6 -fno-automatic -fno-align-commons -O3 -Wall -o synspec51_fork synspec51_fork.f
+
+--
+- spring 2020:
+--
+changed SUBROUTINE DWNFR1
+
+
+---
+
+To add new heavy metals, modify:
+
+- STATE0: increase max. std. ionisation
+- PFSPEC: add new atomic data
+          don't forget to add:
+            Z
+            N()
+            G()
+            EN()
+            S()
+            gotos
