@@ -4,3 +4,7 @@ SYNSPEC 51 fork, including treatment of heavy metals, cleaned Beauchamp+1997 tab
 
 - to enable the Beauchamp tables, set ihe1pr=2 in fort.55
 - to set Zeeman splitting, set imode=3, followd by two numbers in a new line: bfield (in kG), bangle (in degrees; 10 to 90)
+
+For a general manual on Synspec51, see Hubeny & Lanz (2017a):
+
+https://arxiv.org/abs/1706.01859
