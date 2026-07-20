@@ -17,7 +17,7 @@ If `ihe1pr=2` is set in `fort.55`, the table stored in `data_syn/beachamp_irrgan
 
 #### Heavy-metal ionization data
 
-Support for heavy metals (`Z > 30`) has been extended to ionization stages beyond III, typically up to VII. For background and methodology, see [Dorsch et al. (2019)](https://ui.adsabs.harvard.edu/abs/2019A%26A...630A.130D/abstract).
+Support for heavy metals (`Z > 30`) has been extended to ionization stages beyond III, typically up to VII. See [Dorsch et al. (2019)](https://ui.adsabs.harvard.edu/abs/2019A%26A...630A.130D/abstract) for the basic implementation and initial atomic data sources. A major extension of the line list is described in [Dorsch et al. (2026)](https://ui.adsabs.harvard.edu/abs/2026A%26A...711A..63D/abstract). 
 
 In summary:
 
