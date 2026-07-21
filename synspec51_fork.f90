@@ -18850,19 +18850,26 @@ C     Determination of the macroscopic velocity as a function of depth
 C
 C     Input:  
 C
-C     RSTAR   - stellar radius (in solar radii or in cm)
-C     RMAX    - maximum radial extent (in stellar radii)
+C     RSTAR   - photospheric stellar radius, anchored at r(T=Teff)
+C               in solar radii or in cm
+C     RMAX    - maximum radial extent (in units of RSTAR)
 C     AMLOSS  - mass loss rate ( in solar masses per year)
-C     VELMAX  - maximum velocity (= V_infinity) - in km/s
+C     VINF    - maximum velocity (= V_infinity) - in km/s
 C     BETA    - beta exponent in the beta-law for velocity
 C     NDRAD   - Number of layers
 C     NRCORE  - Number of core rays
 C
+C     optional (same record):
+C     DCLMAX  - maximum clumping density contrast D = 1/f_vol
+C               (default 1 = smooth wind)
+C     VCLM    - onset velocity (km/s) of the clumping law
+C               D(v) = 1 + (DCLMAX-1)*exp(-VCLM/v);
+C               VCLM = 0 gives depth-independent D = DCLMAX
 C
-c      parameter (un=1.,two=2.)
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
       INCLUDE 'INCLUDE/WINCOM.FOR'
+      character*200 linew
       dimension zz(mdepth),vel0(mdepth),rrel(mdepth),
 c     *          dvel0(mdepth),vel1(mdepth),hstt(mdepth),
      *          den0(mdepth),vel00(mdepth),ind(mdepth),
@@ -18871,33 +18878,57 @@ c     *          dvel0(mdepth),vel1(mdepth),hstt(mdepth),
 c
       un=1
       two=2.
-      read(55,*,err=100,end=100) rstar,rmax,amloss,vinf,beta,
+      read(55,'(a)',err=100,end=100) linew
+      read(linew,*,err=100,end=100) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda
+c     optional trailing clumping parameters
+      read(linew,*,err=11,end=11) rstar,rmax,amloss,vinf,beta,
+     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm
+      go to 12
+   11 dclmax=1.
+      vclm=0.
+   12 continue
   604 format(//' rstar  rmax amloss  vinf    beta'/,
      *         ' ndrad nrcore nfiry ndf nda'/,
      *        2f6.2, 2e8.1, f5.2 / 5i3 /)
       write(6,604) rstar,rmax,amloss,vinf,beta,
      *             ndrad,nrcore,nfiry,ndf,nda
+      if(dclmax.ne.1.) write(6,607) dclmax,vclm
+  607 format(' clumping: DCLMAX =',f7.2,'   VCLM =',f7.2,' km/s'/)
 
       rstr=rstar
       if(rstar.lt.1.e5) rstr=rstar*6.9598e10
       amdot=amloss*6.3029e25
-      RCORE=RSTR
       XMDOT=amdot
       BETAV=beta
       con=amdot/12.566e5
       conr=con/rstr/rstr
       nrext0=ndrad-nd
       zz(nd+nrext0)=0.
-      rd(nd+nrext0)=rstr
-      rrel(nd+nrext0)=1.
       do iid=1,nd-1
          id=nd-iid
          zz(id+nrext0)=zz(id+1+nrext0)+2.*(dm(id+1)-dm(id))/
      *                 (dens(id+1)+dens(id))
-         rd(id+nrext0)=rstr+zz(id+nrext0)
+      end do
+c
+c     anchor the radius scale at the photosphere: r(T=Teff) = RSTAR
+c     (zteff = height of the T=Teff crossing above the deepest layer)
+c
+      zteff=0.
+      do id=1,nd-1
+         if(temp(id).le.teff.and.temp(id+1).gt.teff) then
+            x=log(teff/temp(id))/log(temp(id+1)/temp(id))
+            zteff=zz(id+nrext0)+x*(zz(id+1+nrext0)-zz(id+nrext0))
+         end if
+      end do
+      write(6,608) zteff
+  608 format(' VELSET: r=RSTAR anchored at T=Teff,',1pe10.3,
+     *       ' cm above the deepest layer'/)
+      do id=1,nd
+         rd(id+nrext0)=rstr+zz(id+nrext0)-zteff
          rrel(id+nrext0)=rd(id+nrext0)/rstr
       end do
+      RCORE=RD(ND+NREXT0)
 C
       do id=1+nrext0,nd+nrext0
          vel0(id)=con/rd(id)**2/dens(id-nrext0)
@@ -19019,6 +19050,25 @@ c
 C
       ND=NDRAD
       if(ndf.eq.0) ndf=nd
+c     apply the fort.55 turbulent velocity (not done in INIBL0 for wind)
+c     and the clumping law D(v) = 1 + (DCLMAX-1)*exp(-VCLM/v);
+c     as in SETWIN, DENS/ELEC/POPUL become in-clump values (D * mean)
+      do id=1,nd
+         if(vtb.ge.0.) vturb(id)=vtb*vtb*1.e10
+         denscon(id)=un
+         if(dclmax.ne.1.) then
+            if(vclm.le.0.) then
+               denscon(id)=dclmax
+            else if(vel0(id).gt.1.e-3) then
+               denscon(id)=un+(dclmax-un)*exp(-vclm/vel0(id))
+            end if
+         end if
+         dens(id)=dens(id)*denscon(id)
+         elec(id)=elec(id)*denscon(id)
+         do i=1,nlevel
+            popul(i,id)=popul(i,id)*denscon(id)
+         end do
+      end do
       do id=1,nd
          write(6,601) id,dm(id),temp(id),elec(id),dens(id),rd(id),
      *                rrel(id),vel0(id)
