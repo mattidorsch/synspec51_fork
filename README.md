@@ -1,6 +1,6 @@
 ## synspec51_fork
 
-A fork of Synspec 51, the stellar spectrum synthesis code by Ivan Hubeny & Thierry Lanz ([Hubeny & Lanz 2011](https://www.ascl.net/1109.022)). Synspec is not my work; this fork only includes small additions, mostly  treatment of ionised heavy metals, updated He I broadening tables, linear Zeeman splitting, and some minor improvements.
+A fork of Synspec 51, the stellar spectrum synthesis code by Ivan Hubeny & Thierry Lanz ([Hubeny & Lanz 2011](https://www.ascl.net/1109.022)). Synspec is not my work; this fork only includes small additions, mostly treatment of ionised heavy metals, updated He I broadening tables, linear Zeeman splitting, and some minor improvements and bug fixes.
 
 For a general manual on Synspec 51, see [Hubeny & Lanz (2017)](https://arxiv.org/abs/1706.01859).
 
@@ -17,12 +17,12 @@ If `ihe1pr=2` is set in `fort.55`, the table stored in `data_syn/beachamp_irrgan
 
 #### Heavy-metal ionization data
 
-Support for heavy metals (`Z > 30`) has been extended to ionization stages beyond III, typically up to VII. See [Dorsch et al. (2019)](https://ui.adsabs.harvard.edu/abs/2019A%26A...630A.130D/abstract) for the basic implementation and initial atomic data sources. A major extension of the line list is described in [Dorsch et al. (2026)](https://ui.adsabs.harvard.edu/abs/2026A%26A...711A..63D/abstract). 
+Support for heavy metals (`Z > 30`) has been extended to ionisation stages beyond III, typically up to VII. See [Dorsch et al. (2019)](https://ui.adsabs.harvard.edu/abs/2019A%26A...630A.130D/abstract) for the basic implementation and initial atomic data sources. A major extension of the line list is described in [Dorsch et al. (2026)](https://ui.adsabs.harvard.edu/abs/2026A%26A...711A..63D/abstract). 
 
 In summary:
 
 * Partition functions are computed using a modified version of `PFSPEC`, using `PARTDV`. 
-* Existing energy-level data were extracted from the original source code and moved to the external file `data_syn/pfspec_data.dat`.
+* Existing energy-level data were extracted from the original synspec51 source code and moved to the external file `data_syn/pfspec_data.dat`.
 * Energy levels for newly added ions are primarily sourced from NIST ([Atomic Spectra Database](https://physics.nist.gov/PhysRefData/ASD/levels_form.html)) or, where necessary, from individual publications.
 
 The file `data_syn/pfspec_data.dat` is read by the `pfspec_data_storage` module.
@@ -34,9 +34,9 @@ For each ion, the file contains:
    ELEMENT ION_STAGE NLEVELS IONIZATION_POTENTIAL ATOMIC_NUMBER
    ```
    * `ELEMENT` - chemical element symbol
-   * `ION_STAGE` - ionization stage
+   * `ION_STAGE` - ionisation stage
    * `NLEVELS` - number of energy levels listed for the ion
-   * `IONIZATION_POTENTIAL` - ionization potential in **eV**
+   * `IONIZATION_POTENTIAL` - ionisation potential in **eV**
    * `ATOMIC_NUMBER` - atomic number of the element
 
 2. Followed by `NLEVELS` entries of the form:
@@ -52,7 +52,7 @@ This structure allows new ions and energy levels to be added without modifying t
 
 #### Updated line list
 The updated line list `data_syn/linelist.dat.gz` is based on R. Kurucz's line list ([Kurucz 2018](https://ui.adsabs.harvard.edu/abs/2018ASPC..515...47K/abstract)) `gfall08oct17.dat`, as available on [Kurucz's website](http://kurucz.harvard.edu/linelists/gfnew/gfall08oct17.dat). 
-The list provided here includes many more transitions for ionised heavy metals, as well as updated line positions mostly for lines seen in UV and optical spectra of He-sdO stars. Some references are described by [Dorsch et al. (2019)](https://ui.adsabs.harvard.edu/abs/2019A%26A...630A.130D/abstract), further updated by Dorsch et al. (2026, submitted). See `AAREADME_linelist.txt` for a poorly formatted summary.  
+The list provided here includes many more transitions for ionised heavy metals, as well as updated line positions mostly for lines seen in UV and optical spectra of He-sdO/B stars. Some references are described by [Dorsch et al. (2019)](https://ui.adsabs.harvard.edu/abs/2019A%26A...630A.130D/abstract); the list was significantly extended by [Dorsch et al. (2026)](https://ui.adsabs.harvard.edu/abs/2026A%26A...711A..63D/abstract). See `AAREADME_linelist.txt` for a poorly formatted summary.  
 
 #### Linear Zeeman splitting
 To enable linear Zeeman splitting ([Dorsch et al. 2022](https://ui.adsabs.harvard.edu/abs/2022A%26A...658L...9D/abstract)), set `imode=3` in `fort.55`, followed by two numbers on a new line:
