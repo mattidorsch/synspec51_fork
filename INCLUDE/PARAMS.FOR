@@ -23,7 +23,7 @@ C
      *           MION0 = 9,
      *           MMOLEC= 340,
      *           MPHOT = 10,
-     *           MZZ   =  2,
+     *           MZZ   = 30,
      *           MMER  =  2,
      *           NLMX  = 80,
      *           MI1   = MION0,
