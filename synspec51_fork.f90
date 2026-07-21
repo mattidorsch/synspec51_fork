@@ -3288,7 +3288,7 @@ C      IF(IBLANK.EQ.1) EQWTP=0.
          FLX(K1)=LOG10(FLAM)
          ALX(K1)=WLAM(IJ)
          REL(K1)=RE0
-         IF(K1.EQ.3.OR.IJ.EQ.NFREQ) THEN
+         IF(K1.EQ.3.OR.IJ.EQ.NFROBS) THEN
             WRITE(6,602) (ALX(I),FLX(I),REL(I),I=1,K1)
             K1=0
          END IF
@@ -8049,6 +8049,10 @@ C
          IJCTR(I)=0
    10 CONTINUE
 C
+C     in wind mode, reserve room for the padded opacity grid (RESOLW)
+      NFRW=MFREQ
+      IF(IFWIN.GT.0) NFRW=MFREQ-2*MPADW
+C
       IL0=0
       IPRSET=0
       NLIN=0
@@ -8068,7 +8072,7 @@ C
       IF(ALAMC.GT.0.) SPACE=SPACE0*ALAM0/ALAMC
       IF(SPACE0.LT.0.) SPACE=-SPACE0
       IF(IMODE.EQ.2) THEN
-         NFRP=MFREQ+1
+         NFRP=NFRW+1
          W0=SPACE
          GO TO 105
       END IF
@@ -8131,7 +8135,7 @@ C
       FREQ(IJ0)=FRM
    45 CONTINUE
       IF(ALAM.LT.ALAM0-CUTOFF) GO TO 20
-      IF(IJ.LT.MFREQ+1) GO TO 50
+      IF(IJ.LT.NFRW+1) GO TO 50
       IF(ALAM.GT.ALAM1+CUTOFF) GO TO 210
 C
 C     SECOND SELECTION : FOR LINE STRENGTHS
@@ -8150,7 +8154,7 @@ C
          ISTR=1
          frmav=frmax
          if(ifwin.gt.0) frmav=frmav*(1.-vinf/2.997925e10)
-         IF(IJ.GE.MFREQ+1.AND.FRMAv-FR0.GT.EXT+SPAC) GO TO 20
+         IF(IJ.GE.NFRW+1.AND.FRMAv-FR0.GT.EXT+SPAC) GO TO 20
       END IF
 C
       NLIN=NLIN+1
@@ -8160,7 +8164,7 @@ C
 C
 C     FREQUENCY POINTS AND WEIGHTS
 C
-      IF(IJ.GE.MFREQ+1) GO TO 20
+      IF(IJ.GE.NFRW+1) GO TO 20
       IF(FR0.GT.FRMIN) GO TO 20
   100 DELT=ABS(FRM-FR0)
       IF(DELT.LT.DISTA0.AND.IMODE.NE.1) GO TO 20
@@ -8178,7 +8182,7 @@ C
          IF(IMODE.GE.1.OR.NFRP.EQ.2) GO TO 107
          IF(FRACT.LT.FRLIM.AND.FRACT.GT.FR0+EXT+SPAC) GO TO 110
   107    IJ=IJ+1
-         IF(IJ.GT.MFREQ) GO TO 130
+         IF(IJ.GT.NFRW) GO TO 130
          FREQ(IJ)=CNM/ALACT
          W(IJ)=W(IJ)+(FREQ(IJ-1)-FREQ(IJ))*0.5
          W(IJ-1)=W(IJ-1)+(FREQ(IJ-1)-FREQ(IJ))*0.5
@@ -8190,15 +8194,15 @@ C        IF(FREQ(IJ).LT.FRLAST) GO TO 220
       DISTA0=DISTAN
       GO TO 20
 C
-  130 FRMAX=FREQ(MFREQ)
+  130 FRMAX=FREQ(NFRW)
       ALAM1=CNM/FRMAX
-      NFREQ=MFREQ
+      NFREQ=NFRW
       IF(IMODE.EQ.2) GO TO 210
       IF(IMOD1L.EQ.1) GO TO 210
       GO TO 20
 C
   140 IJMAX=IJ
-      IJMAX=MIN(IJMAX,MFREQ)
+      IJMAX=MIN(IJMAX,NFRW)
       NFREQ=IJMAX
       IF(IL0.LT.NLIN0) THEN
          NBLANK=IBLANK+1
@@ -8208,9 +8212,9 @@ C
       GO TO 240
 C
   210 NBLANK=IBLANK+1
-      IF(IJ.GE.MFREQ+1) GO TO 230
+      IF(IJ.GE.NFRW+1) GO TO 230
       IJMAX=IJ
-      IJMAX=MIN(IJMAX,MFREQ)
+      IJMAX=MIN(IJMAX,NFRW)
       NFREQ=IJMAX
       IF(IMODE.NE.1) GO TO 240
       IF(IMOD1L.EQ.1) GO TO 240
@@ -8220,8 +8224,8 @@ C     FR0=MAX(CNM/(ALAM+CUTOFF),FRLAST*0.99999999D0)
       IMOD1L=1
       GO TO 100
 C
-  230 IJMAX=MFREQ
-      NFREQ=MFREQ
+  230 IJMAX=NFRW
+      NFREQ=NFRW
   240 IF(FREQ(IJMAX).LE.FRLAST) NBLANK=IBLANK
       if(ifwin.le.0) then
         FREQ(1)=FREQ(3)
@@ -8296,7 +8300,9 @@ c
             ijc0=ijc
             dfr0=freq(ijc0)-fr0
   252       ijc0=ijc0+1
-            dfr=abs(freq(ijc0)-fr0)
+c           keep the walk inside the grid
+            dfr=dfr0
+            if(ijc0.le.nfreq) dfr=abs(freq(ijc0)-fr0)
             if(dfr.lt.dfr0) then
                ijc=ijc0
                ijc0=ijc0+1
@@ -8307,7 +8313,8 @@ c
             ijc0=ijc
             dfr0=fr0-freq(ijc0)
   254       ijc0=ijc0-1
-            dfr=abs(freq(ijc0)-fr0)
+            dfr=dfr0
+            if(ijc0.ge.1) dfr=abs(freq(ijc0)-fr0)
             if(dfr.lt.dfr0) then
                ijc=ijc0
                ijc0=ijc0-1
@@ -9043,7 +9050,7 @@ C
       ALM0=2.997925D18/FREQ(1)
       ALM1=2.997925D18/FREQ(2)
       if(ifwin.gt.0) ALM0=2.997925D18/FRQOBS(1)
-      if(ifwin.gt.0) ALM1=2.997925D18/FRQOBS(NFREQ)
+      if(ifwin.gt.0) ALM1=2.997925D18/FRQOBS(NFROBS)
       IF(IMODE.GE.0.and.iprin.ge.2) WRITE(6,601) IBLANK,ALM0,ALM1
       IF(IPRIN.LE.-2) RETURN
       if(iprin.ge.2) then
@@ -10526,7 +10533,9 @@ c
             ijc0=ijc
             dfr0=freq(ijc0)-fr0
   252       ijc0=ijc0+1
-            dfr=abs(freq(ijc0)-fr0)
+c           keep the walk inside the (non-uniform) padded grid
+            dfr=dfr0
+            if(ijc0.le.nopac) dfr=abs(freq(ijc0)-fr0)
             if(dfr.lt.dfr0) then
                ijc=ijc0
                ijc0=ijc0+1
@@ -10537,7 +10546,8 @@ c
             ijc0=ijc
             dfr0=fr0-freq(ijc0)
   254       ijc0=ijc0-1
-            dfr=abs(freq(ijc0)-fr0)
+            dfr=dfr0
+            if(ijc0.ge.1) dfr=abs(freq(ijc0)-fr0)
             if(dfr.lt.dfr0) then
                ijc=ijc0
                ijc0=ijc0-1
@@ -18129,28 +18139,54 @@ C
 C
 C  Setup fine grid of frequencies
 C
+C     the static-frame opacity table covers the observer grid plus
+C     pads of +-VINF/c on both sides, so that the comoving-wavelength
+C     lookup in RTEWIN never falls outside the table.
+C     Pad spacing continues the local grid spacing (bounded by the
+C     SPACE-equivalent step VXS); pad size is capped at MPADW points.
+C
       CLV=UN/2.997925E10
       FQ1=FREQ(1)*(UN+VINF*CLV)
       FQ2=FREQ(NFREQ)*(UN-VINF*CLV)
-      VXD=SQRT(0.3e7*TSTD)*FREQ(1)*CLV
       VXS=SPACE0*FREQ(1)*FREQ(1)*CLV*1.e-7
-c     DVX=MAX(VXD,VXS)
-      DVX=VXS
-      NOPAC=int((FQ1-FQ2)/DVX)+1
-      DVX=(FQ1-FQ2)/DFLOAT(NOPAC)
-      NOPAC=NOPAC+3
-      nopac=nfreq
+      NPADW1=0
+      NPADW2=0
+      IF(NFREQ.GE.2) THEN
+         DVX1=FREQ(1)-FREQ(2)
+         IF(DVX1.LE.0..OR.DVX1.GT.VXS) DVX1=VXS
+         XNP=(FQ1-FREQ(1))/DVX1
+         NPADW1=MPADW
+         IF(XNP.LT.DFLOAT(MPADW-1)) NPADW1=int(XNP)+1
+         DVX1=(FQ1-FREQ(1))/DFLOAT(NPADW1)
+         DVX2=FREQ(NFREQ-1)-FREQ(NFREQ)
+         IF(DVX2.LE.0..OR.DVX2.GT.VXS) DVX2=VXS
+         XNP=(FREQ(NFREQ)-FQ2)/DVX2
+         NPADW2=MPADW
+         IF(XNP.LT.DFLOAT(MPADW-1)) NPADW2=int(XNP)+1
+         DVX2=(FREQ(NFREQ)-FQ2)/DFLOAT(NPADW2)
+         DO IJ=NFREQ,1,-1
+            FREQ(IJ+NPADW1)=FREQ(IJ)
+         END DO
+         DO IJ=1,NPADW1
+            FREQ(IJ)=FQ1-DFLOAT(IJ-1)*DVX1
+         END DO
+         DO IJ=1,NPADW2
+            FREQ(NPADW1+NFREQ+IJ)=FREQ(NPADW1+NFREQ)-DFLOAT(IJ)*DVX2
+         END DO
+      END IF
+      NOPAC=NFREQ+NPADW1+NPADW2
       WRITE(6,600) NOPAC,NDF
       IF(NOPAC.GT.MOPAC) CALL quit('Too many freqs in fine grid')
+      IJC=1
       DO IJ=1,NOPAC
-         FFQ(ij)=FQ1-DFLOAT(ij-1)*DVX
-c         freq(ij)=ffq(ij)
-c         wlam(ij)=2.997925e18/freq(ij)
+         FFQ(ij)=freq(ij)
+         wlam(ij)=2.997925d18/freq(ij)
          fr=freq(ij)*1.d-15
          BNUE(IJ)=BN*fr*fr*fr
          DO IJCI=IJC,NFREQC-1
             IF(WLAM(IJ).LE.WLAMC(IJCI)) GO TO 248
          END DO
+         IJCI=NFREQC
   248    CONTINUE
          IJC=IJCI
          IJCINT(IJ)=MAX(IJC-1,1)
@@ -18165,6 +18201,13 @@ c  681 format(2i5,2f10.3,1p2e11.3)
         FFQV(JI)=UN/(FFQ(JI)-FFQ(JI+1))
       END DO
       FFQV(NOPAC)=UN
+c
+c     re-select H and He II line switches on the padded grid
+c
+      do ij=1,nopac
+         call hylsew(ij)
+         call he2sew(ij)
+      end do
 c
 c     the continuum opacities and radiation field - done only once
 c
@@ -18577,7 +18620,8 @@ C
       IUD=NUDF(IU)
       IF(IU.LE.NREXT) IUD=2*NUDF(IU)-1
       IF(IUD.EQ.1) RETURN
-      IF(NFREQ.GT.1) dlama0=(wlobs(nfrobs)-wlobs(1))/(nfrobs-1)
+c     mean spacing of the (padded) opacity-table grid, for index guess
+      IF(NFREQ.GT.1) dlama0=(wlam(nfreq)-wlam(1))/(nfreq-1)
 C
 C     overall loop over frequencies (observer's frame)
 C
@@ -18595,7 +18639,7 @@ C
          YDR1=UN-YDR
          dwlcom=wl0*DFRQF(IU,ID)
          wlcom=wl0+dwlcom
-         if(wlcom.le.wlam(3)) then
+         if(wlcom.le.wlam(1)) then
             abd1=ab(1,ky-1)
             std1=sth(1,ky-1)
             abd0=ab(1,ky)
@@ -18608,7 +18652,7 @@ C
             std0=sth(nfreq,ky)
             ij1=nfreq
           else
-            xijap=(wlcom-wlam(3))/dlama0
+            xijap=(wlcom-wlam(1))/dlama0+1.
             ijap=int(xijap)
             ijap=max(ijap,1)
             ijap=min(ijap,nfreq)
