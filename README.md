@@ -56,9 +56,33 @@ The list provided here includes many more transitions for ionised heavy metals, 
 
 #### Linear Zeeman splitting
 To enable linear Zeeman splitting ([Dorsch et al. 2022](https://ui.adsabs.harvard.edu/abs/2022A%26A...658L...9D/abstract)), set `imode=3` in `fort.55`, followed by two numbers on a new line:
-- `bfield` — magnetic field strength in kG
-- `bangle` — angle between field and line of sight in degrees (10 to 90)
+- `bfield` - magnetic field strength in kG
+- `bangle` - angle between field and line of sight in degrees (10 to 90)
 
 Zeeman splitting requires knowledge of the L, S quantum numbers for the lower and upper energy level. This is currently implemented by matching the level energy for a specific ion and using data stored in `data_syn/zeeman_data.dat`. In principle it would be better to have this information directly in the line list. 
 
 Note that the `DATA` folder was renamed to `data` for and an additional `data_syn` folder was added. The latter contains data necessary to compute the partition functions for heavy metals, the updated He I broadening tables, and atomic data for Zeeman splitting.
+
+#### Wind mode
+Synspec includes a wind mode that solves the transfer equation in the observer's frame along impact-parameter rays through a spherically expanding envelope, producing asymmetric (blue-shifted) line profiles. It was used by [Lanz et al. (1997)](https://ui.adsabs.harvard.edu/abs/1997ApJ...485..843L/abstract) to measure the weak wind of BD+75 325. The only changes here are small fixes, like the frequency handling (opacity table padded by +-vinf/c).
+
+Enable it by subtracting 100 from `imode` (e.g. `imode=-100` for a normal spectrum) and appending two records at the end of `fort.55`:
+```text
+velmax itrad nltoff iemoff
+rstar rmax amloss vinf beta ndrad nrcore nfiry ndf nda [dclmax vclm]
+```
+- `velmax` - velocity (km/s) above which LTE background lines are rejected; if negative, the structure is instead read from the end of `fort.8` (`SETWIN` path: per-depth `r, v, vturb, denscon`)
+- `itrad` - 1: excitation/ionization of the LTE background from radiation temperatures ([Schmutz 1991](https://ui.adsabs.harvard.edu/abs/1991sabc.conf..191S/abstract)); 0: strict LTE
+- `nltoff`, `iemoff` - also reject NLTE lines / only line emissivity above `velmax` (normally 0 0)
+- `rstar` - photospheric radius in R⊙, anchored at r(T=Teff), i.e. the SED-fit radius
+- `rmax` - outer boundary in units of `rstar`
+- `amloss`, `vinf`, `beta` - mass-loss rate (M⊙/yr) and β-law parameters v = v∞(1−r₀/r)^β; the velocity follows the continuity equation v = Ṁ/4πr²ρ in the hydrostatic part and transitions smoothly to the β law
+- `ndrad` - total radial layers (model ND + added wind layers); `nrcore` - core rays; `nfiry` - outermost rays with a velocity-resolved fine grid; `ndf` - fine density grid for the opacity table (0 = ndrad); `nda` - diagnostic print only
+- `dclmax`, `vclm` (optional) - clumping law D(v) = 1 + (D_max−1)·exp(−v_cl/v), density contrast D = 1/f_vol; omit for a smooth wind
+
+Typical sdO settings (following [Krticka et al. 2016](https://ui.adsabs.harvard.edu/abs/2016A%26A...593A.101K/abstract), Mdot = 1e-12 - 1e-9 Msun / yr, vinf = 500 - 1800 km/s depending on radius and Teff):
+```text
+300. 1 0 0
+0.2 1.2 1e-10 1000. 1.0 90 20 10 0 0
+```
+with `ndrad` = model ND + 20. For most sdO/Bs, winds are not detectable (Mdot < 1e-12) and the wind mode is not needed. Also, at low mass-loss rates the profiles are insensitive to `vinf`.
