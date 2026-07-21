@@ -14192,8 +14192,13 @@ c
 C     otherwise pfspec is not used for stages > 5
 C     igle is ground state only, and not for all heavy ions
       IF(IAT.GT.30.AND.IZI.GT.3.AND.IZI.LE.10) GO TO 50
-      IF(IAT.GT.8 .AND. IZI.GT.5) then
-         u=igle(iat-izi+1)
+c     tables (INDEX0) only cover izi=1..5; higher stages get the
+c     ground-state degeneracy of their isoelectronic sequence
+c     (u=1 for bare ions)
+      IF(IZI.GT.5) then
+         u=un
+         if(iat-izi+1.ge.1 .and. iat-izi+1.le.28)
+     *      u=igle(iat-izi+1)
          return
       end if
 c     edit 18.09.2018 (not req. bc of next line):
