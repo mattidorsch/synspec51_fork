@@ -5350,7 +5350,6 @@ C          mhimax = J-1
           ndiff = (mhimax-mlomax)*1.D0
           nlo = mlomax
           rintsum = 0.
-          rintsum = sumzee
           do mlo=-mlomax,mlomax
            do mhi=-mhimax,mhimax
             mdiff = mhi-mlo
@@ -5483,8 +5482,8 @@ C
                SG=STARKA(BETA,AD,DIV,fac)*FID
                if(iophli.eq.2.and.i.eq.1.and.j.eq.2) 
      *               sg=sg*feautr(fr,id)
-               ABSO(IJ)=ABSO(IJ)+SG*ABTRA / fint
-               EMIS(IJ)=EMIS(IJ)+SG*EMTRA / fint
+               ABSO(IJ)=ABSO(IJ)+SG*ABTRA * fint
+               EMIS(IJ)=EMIS(IJ)+SG*EMTRA * fint
             END DO
 C
               end if
