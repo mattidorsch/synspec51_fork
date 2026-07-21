@@ -74,11 +74,11 @@ rstar rmax amloss vinf beta ndrad nrcore nfiry ndf nda [dclmax vclm]
 - `velmax` - velocity (km/s) above which LTE background lines are rejected; if negative, the structure is instead read from the end of `fort.8` (`SETWIN` path: per-depth `r, v, vturb, denscon`)
 - `itrad` - 1: excitation/ionization of the LTE background from radiation temperatures ([Schmutz 1991](https://ui.adsabs.harvard.edu/abs/1991sabc.conf..191S/abstract)); 0: strict LTE
 - `nltoff`, `iemoff` - also reject NLTE lines / only line emissivity above `velmax` (normally 0 0)
-- `rstar` - photospheric radius in R⊙, anchored at r(T=Teff), i.e. the SED-fit radius
+- `rstar` - photospheric radius in solar radii, anchored at `r(T=Teff)`, i.e. the SED-fit radius
 - `rmax` - outer boundary in units of `rstar`
-- `amloss`, `vinf`, `beta` - mass-loss rate (M⊙/yr) and β-law parameters v = v∞(1−r₀/r)^β; the velocity follows the continuity equation v = Ṁ/4πr²ρ in the hydrostatic part and transitions smoothly to the β law
+- `amloss`, `vinf`, `beta` - mass-loss rate (Msun/yr) and beta-law parameters `v = vinf*(1-r0/r)**beta`; the velocity follows the continuity equation `v = Mdot/(4 pi r**2 rho)` in the hydrostatic part and transitions smoothly to the beta law
 - `ndrad` - total radial layers (model ND + added wind layers); `nrcore` - core rays; `nfiry` - outermost rays with a velocity-resolved fine grid; `ndf` - fine density grid for the opacity table (0 = ndrad); `nda` - diagnostic print only
-- `dclmax`, `vclm` (optional) - clumping law D(v) = 1 + (D_max−1)·exp(−v_cl/v), density contrast D = 1/f_vol; omit for a smooth wind
+- `dclmax`, `vclm` (optional) - clumping law `D(v) = 1 + (dclmax-1)*exp(-vclm/v)`, density contrast `D = 1/f_vol`; omit for a smooth wind
 
 Typical sdO settings (following [Krticka et al. 2016](https://ui.adsabs.harvard.edu/abs/2016A%26A...593A.101K/abstract), Mdot = 1e-12 - 1e-9 Msun / yr, vinf = 500 - 1800 km/s depending on radius and Teff):
 ```text
