@@ -2337,6 +2337,8 @@ C
       nltoff=0
       iemoff=0
       itrad=0
+      twfloor=0.
+      nrxw=0
       do id=1,nd
         wdil(id)=un
       end do
@@ -10490,7 +10492,10 @@ C
          ABLINN(IJ)=0.
          EMLIN(IJ)=0.
    10 CONTINUE
-      wdil(id)=1.
+c     source-function dilution: in the diluted-wind mode (twfloor>0)
+c     keep the geometric dilution from RADTEM; otherwise reset to 1
+c     (historical undiluted behavior)
+      if(twfloor.le.0.) wdil(id)=1.
       plw=plan(id)*wdil(id)
 c      plw=xjcon(id)
 C
@@ -10586,6 +10591,10 @@ C        LPR = .FALSE. -> special HeI broadening
           ELSE IF(INNLT.GT.0) THEN
             AB0=ABCENT(INNLT,ID)
             SL0=SLIN(INNLT,ID)
+c           diluted mode: wind-layer populations are frozen-in
+c           photospheric ones, so the scattering-dominated source
+c           function is diluted geometrically, S ~ W * S_phot
+            if(twfloor.gt.0.) sl0=sl0*wdil(id)
           ELSE
             ILW=ILOWN(IL)
             IUN=IUPN(IL)
@@ -10611,6 +10620,7 @@ C        LPR = .FALSE. -> special HeI broadening
             end if
             IF(X.EQ.UN) X=EXP(4.79928E-11*FREQ0(IL)*TEM1)
             SL0=BNUL(IL)/(X-UN)
+            if(twfloor.gt.0.) sl0=sl0*wdil(id)
             ab0=0.
             if(pi.gt.0.) AB0=PI*(UN-UN/X)*EXP(GF0(IL))*DOP1
          END IF
@@ -18912,13 +18922,25 @@ c
       read(55,'(a)',err=100,end=100) linew
       read(linew,*,err=100,end=100) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda
-c     optional trailing clumping parameters
+c     optional trailing parameters: clumping and wind temperature
+c     twind > 0: wind layers get the diluted radiative-equilibrium
+c     temperature T = T_s * Wn^(1/4) (Wn = dilution normalized to 1 at
+c     the photosphere, i.e. the (2W)^(1/4) law), floored at twind*T_s;
+c     the NLTE line source function is diluted by Wn as well.
+c     twind <= 0 or absent: isothermal wind, no dilution (default)
+      twfloor=0.
       read(linew,*,err=11,end=11) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm
+      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
+     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind
+      twfloor=twind
       go to 12
    11 dclmax=1.
       vclm=0.
    12 continue
+      if(twfloor.gt.0.) write(6,609) twfloor
+  609 format(' wind temperature: T = T_s * Wn^(1/4), floor =',
+     *       f6.2,' * T_s; NLTE source function diluted'/)
   604 format(//' rstar  rmax amloss  vinf    beta'/,
      *         ' ndrad nrcore nfiry ndf nda'/,
      *        2f6.2, 2e8.1, f5.2 / 5i3 /)
@@ -18935,6 +18957,7 @@ c     optional trailing clumping parameters
       con=amdot/12.566e5
       conr=con/rstr/rstr
       nrext0=ndrad-nd
+      nrxw=nrext0
       zz(nd+nrext0)=0.
       do iid=1,nd-1
          id=nd-iid
@@ -19068,7 +19091,17 @@ c
       end do
 C
       do id=1,nrext0
+c        wind-layer temperature in the diluted mode (twfloor>0):
+c        T = T_s * Wn^(1/4) with Wn = 1-sqrt(1-(R*/r)^2) (normalized
+c        to 1 at the photosphere), floored at twfloor*T_s
          TEMP(ID)=T1
+         if(twfloor.gt.0.) then
+            rx2=un/(rrel(id)*rrel(id))
+            if(rx2.gt.un) rx2=un
+            wn=un-sqrt(un-rx2)
+            tdil=t1*wn**0.25d0
+            temp(id)=max(tdil,twfloor*t1)
+         end if
          DM(ID)=DM(NREXT0+1)
          do i=1,mmer
             gmer(i,id)=gmer(i,nrext0+1)
@@ -19194,6 +19227,22 @@ C
 c        WDIL(ID)=0.5*(1.-sqrt(1.-rx*rx))
          wdil(id)=un-sqrt(un-rx*rx)
       END DO
+c
+c     diluted-wind mode: dilution acts only on the added wind layers
+c     (ID <= NRXW), whose frozen-in populations carry no radiation-field
+c     information; the hydrostatic layers keep their solved NLTE state
+c     (WDIL=1). Renormalized to 1 at the graft for continuity.
+c
+      if(twfloor.gt.0.) then
+         w0=wdil(min(nrxw+1,nd))
+         do id=1,nd
+            if(id.le.nrxw) then
+               wdil(id)=min(wdil(id)/w0,un)
+            else
+               wdil(id)=un
+            end if
+         end do
+      end if
       DO ITRD=1,NTERAD
          if(itrad.eq.0) then
          do id=1,nd
@@ -19210,15 +19259,26 @@ c        WDIL(ID)=0.5*(1.-sqrt(1.-rx*rx))
 c           IF(II.GT.100000) THEN
               AA=POPUL(JJ,ID)/POPUL(II,ID)*ELEC(ID)*CON
               AA=AA*G(II)/G(JJ)/WDIL(ID)/SQRT(TEMP(ID))
+c             in the diluted-temperature mode the frozen-in populations
+c             are photospheric but the local T is cool: exp(ENION/kT)
+c             overflows and the Newton iteration diverges. Start from a
+c             hot guess and damp the steps (default mode: unchanged).
               TR=TEMP(ID)
+              IF(TWFLOOR.GT.0.) TR=MAX(TEMP(ID),TEMP(ND))
               ITER=0
    10         ITER=ITER+1
               XX=ENION(II)/BOLK/TR
+              IF(XX.GT.500.) XX=500.
               DTR=(AA*EXP(XX)-TR)/(1.+XX)
               DTRR=DTR/TR
+              IF(TWFLOOR.GT.0.) THEN
+                IF(DTR.GT.TR) DTR=TR
+                IF(DTR.LT.-0.5*TR) DTR=-0.5*TR
+              END IF
               TR=TR+DTR
               IF(ABS(DTRR).GT.1.E-3.AND.ITER.LT.100) GO TO 10
               TRAD(ITRD,ID)=TR
+              IF(TR.NE.TR.OR.TR.LE.0.) TRAD(ITRD,ID)=TEMP(ID)
             END IF
          END DO
          end if
