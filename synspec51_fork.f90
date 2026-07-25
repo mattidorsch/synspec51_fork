@@ -17769,8 +17769,8 @@ C
       INCLUDE 'INCLUDE/WINCOM.FOR'
       PARAMETER (PI4=4.*3.141592654)
       PARAMETER (UN=1., TWO=2., HALF=0.5)
-      DIMENSION RS(MDEPF ),RDX(MDEPF )
-      DIMENSION ZIU(MDEPTH),VIU(MDEPTH),ZIUF(MDEPF ),VIUF(MDEPF )
+      DIMENSION RS(MRPF ),RDX(MRPF )
+      DIMENSION ZIU(MDEPTH),VIU(MDEPTH),ZIUF(MRPF ),VIUF(MRPF )
       DIMENSION DENSMF(MDEPF )
 C
 C     Fine radial grid
@@ -17846,123 +17846,108 @@ C   velocity steps DVD(ID)
 C
       XMD4=XMDOT/PI4
       CLV=UN/CL
+c     velocity step of the fine along-ray grids: resolve the thermal
+c     width of the heaviest common metals (A~28, e.g. Si) - the
+c     narrowest lines; relevant e.g. for H-poor (He/metal) models
       DO ID=1,ND
-        DVD(ID)=SQRT(1.6D7*TEMP(ID)+VTURB(ID)) * 0.3
-c        DVD(ID)=SQRT(1.6D7*TEMP(ID))
+        DVD(ID)=SQRT(1.65D8*TEMP(ID)/28.D0+VTURB(ID)) * 0.3
+c        DVD(ID)=SQRT(1.6D7*TEMP(ID)+VTURB(ID)) * 0.3
       END DO
 c
-c     the fine along-ray grid uses the projected velocity as its
-c     coordinate, which degenerates (duplicate abscissae) where the
-c     tangent layer is quasi-static; restrict NFIRY to rays tangent
-c     to layers still moving faster than the local velocity step DVD
+c     layer -> fine-density-table mapping template (used for the
+c     depth assignment of rays without a fine grid)
 c
+      KLAY(1)=2
+      DLAY(1)=0.
+      IDK=1
+      DO ID=2,ND
+        RHOM=DENS(ID)/DENSCON(ID)
+        DO WHILE (RHOM.GE.DENSMF(IDK).and.idk.le.ndf)
+          IDK=IDK+1
+        END DO
+        IF(IDK.GT.NDF) IDK=NDF
+        KLAY(ID)=IDK
+        DLAY(ID)=(RHOM-DENSMF(IDK-1))/(DENSMF(IDK)-DENSMF(IDK-1))
+        IF(DLAY(ID).LT.0.) DLAY(ID)=0.
+        IF(DLAY(ID).GT.1.) DLAY(ID)=1.
+      END DO
+c
+c     rays with a fine velocity-resolved grid:
+c     the first NFIRY tangent rays, and ALL core rays (they carry the
+c     absorption against the stellar disk - i.e. the line troughs)
+c
+      DO IU=1,KMU
+        IFINE(IU)=0
+      END DO
       NFIR0=MIN(NFIRY,NREXT)
       DO IU=2,NFIR0
-        IF(VEL(NUD(IU)).LE.DVD(NUD(IU))) THEN
-          NFIRY=IU-1
-          WRITE(6,*) 'SETRAY: NFIRY reduced to',NFIRY,
-     *               ' (deeper tangent rays are quasi-static)'
-          GO TO 5
-        END IF
+        IFINE(IU)=1
       END DO
-    5 CONTINUE
+      DO IU=NREXT+1,KMU
+        IFINE(IU)=1
+      END DO
+c
+c     fine grid by segment-wise insertion: all layer points are kept,
+c     and each inter-layer segment is subdivided (linearly in z, with
+c     the projected velocity and log density interpolated linearly)
+c     wherever the projected-velocity jump exceeds the local DVD.
+c     Static segments get no extra points, so the scheme never
+c     degenerates and costs nothing in the hydrostatic part.
+c
       NUDX=ND
-      DO IU=2,NFIRY
-        IF(PIM(IU).GT.0.) THEN
-          DO ID=1,NUD(IU)
-            IID=NUD(IU)-ID+1
-            ZIU(ID)=VEL(IID)
-            VIU(ID)=DFRQ(IU,IID)*CL
-          ENDDO
-        ELSE
-          DO ID=1,NUD(IU)
-            IID=NUD(IU)-ID+1
-            ZIU(ID)=RD(IID)
-            VIU(ID)=DFRQ(IU,IID)*CL
-          ENDDO
-        ENDIF
-        NUDF(IU)=1
-        VIUF(1)=DFRQ(IU,1)*CL
-        DO ID=1,NUD(IU)-1
-          VZ1=DFRQ(IU,ID)*CL
-          VZ2=DFRQ(IU,ID+1)*CL
-          NFG=int((VZ1-VZ2)/DVD(ID))+1
-          XFG=(VZ1-VZ2)/DFLOAT(NFG)
-          IV0=NUDF(IU)
-          DO IV=1,NFG
-            VIUF(IV0+IV)=VZ1-DFLOAT(IV)*XFG
-          ENDDO
-          NUDF(IU)=NUDF(IU)+NFG
-          IF(NUDF(IU).GT.MDEPF )
-     +      CALL quit('Too many points in fine grid - SETRAY')
-        END DO
-        IF(NUDF(IU).GT.NUDX) NUDX=NUDF(IU)
-        INRP=2
-        IF(IU.GT.8) INRP=4
-        CALL INTERP(VIU,ZIU,VIUF,ZIUF,NUD(IU),NUDF(IU),INRP,0,0)
-c
-c       guard against interpolation overshoot where the velocity
-c       coordinate degenerates (quasi-static tangent region):
-c       keep v within the ray's actual range and require |mu| < 1
-c
-        ZMN=ZIU(1)
-        ZMX=ZIU(1)
-        DO ID=2,NUD(IU)
-          IF(ZIU(ID).LT.ZMN) ZMN=ZIU(ID)
-          IF(ZIU(ID).GT.ZMX) ZMX=ZIU(ID)
-        END DO
-        IF(PIM(IU).GT.0.) THEN
-          DO ID=1,NUDF(IU)
-            IF(ZIUF(ID).LT.ZMN) ZIUF(ID)=ZMN
-            IF(ZIUF(ID).GT.ZMX) ZIUF(ID)=ZMX
-            DMU=VIUF(ID)/ZIUF(ID)
-            IF(DMU.GT. 0.999999D0) DMU= 0.999999D0
-            IF(DMU.LT.-0.999999D0) DMU=-0.999999D0
-            RS(ID)=PIM(IU)/SQRT(UN-DMU*DMU)
-            DFRQF(IU,ID)=VIUF(ID)*CLV
-            VELF(IU,ID)=ZIUF(ID)
-            RDX(ID)=XMD4/(RS(ID)*RS(ID)*VELF(IU,ID))
-            ZIUF(ID)=DMU*RS(ID)
+      DO 40 IU=2,KMU
+        IF(IFINE(IU).EQ.0) GO TO 40
+        IUD0=NUD(IU)
+        IP=1
+        ZIUF(1)=BMU(IU,1)*RD(1)
+        VIUF(1)=DFRQ(IU,1)
+        RDX(1)=DENS(1)/DENSCON(1)
+        DO ID=1,IUD0-1
+          Z1=BMU(IU,ID)*RD(ID)
+          Z2=BMU(IU,ID+1)*RD(ID+1)
+          V1=DFRQ(IU,ID)
+          V2=DFRQ(IU,ID+1)
+          RL1=LOG(DENS(ID)/DENSCON(ID))
+          RL2=LOG(DENS(ID+1)/DENSCON(ID+1))
+          DVKM=ABS(V1-V2)*CL
+          DVDLOC=MIN(DVD(ID),DVD(ID+1))
+          NFG=int(DVKM/DVDLOC)+1
+          IF(IP+NFG.GT.MRPF)
+     *      CALL quit('Too many points in fine grid - SETRAY')
+          DO K=1,NFG
+            TT=DFLOAT(K)/DFLOAT(NFG)
+            IP=IP+1
+            ZIUF(IP)=Z1+TT*(Z2-Z1)
+            VIUF(IP)=V1+TT*(V2-V1)
+            RDX(IP)=EXP(RL1+TT*(RL2-RL1))
           END DO
-        ELSE
-          DO ID=1,NUDF(IU)
-            IF(ZIUF(ID).LT.ZMN) ZIUF(ID)=ZMN
-            IF(ZIUF(ID).GT.ZMX) ZIUF(ID)=ZMX
-            RS(ID)=ZIUF(ID)
-            DFRQF(IU,ID)=VIUF(ID)*CLV
-            VELF(IU,ID)=VIUF(ID)
-            RDX(ID)=XMD4/(RS(ID)*RS(ID)*VELF(IU,ID))
-          END DO
-        END IF
-c
-c       the mean density along the ray must increase monotonically
-c       inward (guards the depth-assignment and the log-interpolation
-c       in RTESCA against duplicate/inverted values)
-c
-        DO ID=2,NUDF(IU)
-          IF(RDX(ID).LE.RDX(ID-1)) RDX(ID)=RDX(ID-1)*(UN+1.D-6)
+        END DO
+        NUDF(IU)=IP
+        IF(IP.GT.NUDX) NUDX=IP
+        DO ID=1,IP
+          DFRQF(IU,ID)=VIUF(ID)
+          VELF(IU,ID)=VIUF(ID)*CL
         END DO
         IF(IU.LE.NREXT) THEN
-          DO ID=1,NUDF(IU)
-            JD=2*NUDF(IU)-ID
+          DO ID=1,IP
+            JD=2*IP-ID
             DFRQF(IU,JD)=-DFRQF(IU,ID)
           END DO
         END IF
-        DO ID=1,NUDF(IU)-1
+        DO ID=1,IP-1
           DELZF(IU,ID)=ZIUF(ID)-ZIUF(ID+1)
         END DO
-        DELZF(IU,NUDF(IU))=DELZF(IU,NUDF(IU)-1)
+        DELZF(IU,IP)=DELZF(IU,IP-1)
 C
 C   Assign depth index
 C
         KRAY(IU,1)=2
         DRAY(IU,1)=0.
         IDK=1
-        DO ID=2,NUDF(IU)
+        DO ID=2,IP
           DO WHILE (RDX(ID).GE.DENSMF(IDK).and.idk.le.ndf)
             IDK=IDK+1
           END DO
-c          IDK=IDK+1
           IF(IDK.GT.NDF) IDK=NDF
           KRAY(IU,ID)=IDK
           DRAY(IU,ID)=(RDX(ID)-DENSMF(IDK-1))/
@@ -17971,47 +17956,35 @@ c          IDK=IDK+1
           IF(DRAY(IU,ID).GT.1.) DRAY(IU,ID)=1.
         END DO
         IF(IU.LE.NREXT) THEN
-          DO ID=1,NUDF(IU)
-            JD=2*NUDF(IU)-ID
+          DO ID=1,IP
+            JD=2*IP-ID
             KRAY(IU,JD)=KRAY(IU,ID)
             DRAY(IU,JD)=DRAY(IU,ID)
           END DO
         END IF
-      END DO
+   40 CONTINUE
 C
-C    remaining rays (without finer grid)
+C    remaining rays (without finer grid): layer-based mapping
 C
-      IF(NFIRY.LT.KMU) THEN
-        IU=KMU
-        KRAY(IU,1)=2
-        DRAY(IU,1)=0.
-        IDK=1
-        DO ID=2,NUDF(IU)
-          DO WHILE (DENS(ID).GE.DENSF(IDK).and.idk.le.ndf)
-            IDK=IDK+1
+      DO IU=2,KMU
+        IF(IFINE(IU).EQ.1) GO TO 50
+        NUDF(IU)=NUD(IU)
+        DO ID=1,NUD(IU)
+          KRAY(IU,ID)=KLAY(ID)
+          DRAY(IU,ID)=DLAY(ID)
+          DFRQF(IU,ID)=DFRQ(IU,ID)
+          DELZF(IU,ID)=DELZ(IU,ID)
+        ENDDO
+        IF(IU.LE.NREXT) THEN
+          DO ID=1,NUD(IU)
+            JD=2*NUD(IU)-ID
+            KRAY(IU,JD)=KRAY(IU,ID)
+            DRAY(IU,JD)=DRAY(IU,ID)
+            DFRQF(IU,JD)=-DFRQF(IU,ID)
           END DO
-c          IDK=IDK+1
-          IF(IDK.GT.NDF) IDK=NDF
-          KRAY(IU,ID)=IDK
-          DRAY(IU,ID)=(DENS(ID)-DENSF(IDK-1))/(DENSF(IDK)-DENSF(IDK-1))
-        END DO
-        DO IU=NFIRY+1,KMU
-          DO ID=1,NUDF(IU)
-            KRAY(IU,ID)=KRAY(KMU,ID)
-            DRAY(IU,ID)=DRAY(KMU,ID)
-            DFRQF(IU,ID)=DFRQ(IU,ID)
-            DELZF(IU,ID)=DELZ(IU,ID)
-          ENDDO
-          IF(IU.LE.NREXT) THEN
-            DO ID=1,NUDF(IU)
-              JD=2*NUDF(IU)-ID
-              KRAY(IU,JD)=KRAY(IU,ID)
-              DRAY(IU,JD)=DRAY(IU,ID)
-              DFRQF(IU,JD)=-DFRQF(IU,ID)
-            END DO
-          END IF
-        END DO
-      END IF
+        END IF
+   50   CONTINUE
+      END DO
 C
       NFTOT=0
       DO IU=2,KMU
@@ -18426,12 +18399,12 @@ C
      *              SCC(MFREQC,MDEPTH)
       COMMON/EMFLUX/FLUX(MFREQ),FLUXC(MFREQC)
       COMMON/CONSCV/SCCF(MFREQC,mdepf)
-      DIMENSION ST0(mdepf ),RAD00(mdepf ),AB0(mdepf ),ALI1(mdepf ),
-     *          rip(mdepf ),rim(mdepf ),riin(mdepf ),riup(mdepf ),
-     *          aip(mdepf ),aim(mdepf ),aiin(mdepf ),aiup(mdepf )
-      dimension dt(mdepf ),dtau(mdepf ),RDX(mdepf ),PTX(mdepf )
-      dimension uf(mdepf ),af(mdepf ),ss0(mdepf ),scx(mdepth)
-      dimension densr(mdepf),rdy(mdepf),
+      DIMENSION ST0(mrpf ),RAD00(mrpf ),AB0(mrpf ),ALI1(mrpf ),
+     *          rip(mrpf ),rim(mrpf ),riin(mrpf ),riup(mrpf ),
+     *          aip(mrpf ),aim(mrpf ),aiin(mrpf ),aiup(mrpf )
+      dimension dt(mrpf ),dtau(mrpf ),RDX(mdepf ),PTX(mrpf )
+      dimension uf(mrpf ),af(mrpf ),ss0(mrpf ),scx(mdepth)
+      dimension densr(mrpf),rdy(mrpf),
      *          abc0(mdepf),abc1(mdepf),stc0(mdepf),stc1(mdepf),
      *          scc0(mdepf),scc01(mdepf)
       COMMON/COPAC/AB(MOPAC,MDEPF),STH(MOPAC,MDEPF),SCH(MFREQC,MDEPF)
@@ -18486,7 +18459,7 @@ C
       end if
       DO 100 IU=1,KMU
         iud=nud(iu)
-        IF(IU.LE.NFIRY) IUD=NUDF(IU)
+        IF(IFINE(IU).EQ.1) IUD=NUDF(IU)
         if(iud.le.1) goto 100
         DO ID=1,IUD
           KY=KRAY(IU,ID)
@@ -18500,7 +18473,7 @@ C
           SS0(ID)=SC0/AB0(ID)
           ST0(ID)=ST0(ID)+SS0(ID)*RDY(ID)
         END DO
-        IF(IU.LE.NFIRY) THEN
+        IF(IFINE(IU).EQ.1) THEN
           DO ID=1,IUD-1
             DTAU(ID)=HALF*(AB0(ID)+AB0(ID+1))*DELZF(IU,ID)
           END DO
@@ -18584,7 +18557,7 @@ C
           uf(id)=(riup(id)+riin(id))
           af(id)=(aiup(id)+aiin(id))
         end do
-        if(iu.le.nfiry) then
+        if(ifine(iu).eq.1) then
           inrp=min(nud(iu),4)
           call interp(densr,uf,dens,ptx,iud,nud(iu),inrp,1,0)
           do id=1,nud(iu)
@@ -18671,10 +18644,10 @@ C
       INCLUDE 'INCLUDE/WINCOM.FOR'
       PARAMETER (UN=1., TWO=2., HALF=0.5)
       PARAMETER (TAUREF = 0.6666666666667)
-      DIMENSION ST0(2*MDEPF ),TAU(2*MDEPF ),AB0(2*MDEPF ),
-     *          rip(2*MDEPF ),rim(2*MDEPF )
-c     dimension sc0(2*mdepf)
-      dimension sctd(2*mdepf)
+      DIMENSION ST0(2*MRPF ),TAU(2*MRPF ),AB0(2*MRPF ),
+     *          rip(2*MRPF ),rim(2*MRPF )
+c     dimension sc0(2*mrpf)
+      dimension sctd(2*mrpf)
       COMMON/COPAC/AB(MOPAC,MDEPF),STH(MOPAC,MDEPF),SCH(MFREQC,MDEPF)
       COMMON/EMFLUX/FLUX(MFREQ),FLUXC(MFREQC)
       COMMON/CONSCV/SCCF(MFREQC,mdepf)
@@ -18760,7 +18733,7 @@ C    Optical depth scale
 C
       TAU(1)=0.
       IREF=1
-      IF(IU.LE.NFIRY) THEN
+      IF(IFINE(IU).EQ.1) THEN
          DO ID=1,IUD-1
             JD=ID
             IF(ID.GT.NUDF(IU)) JD=2*NUDF(IU)-ID-1
@@ -19008,20 +18981,56 @@ C
       end if
 c
 c
-c     graft the beta-law onto the hydrostatic continuity velocity:
-c     r0 is fixed by continuity at the outermost hydrostatic layer,
-c     v_beta(r_s) = v_cont(r_s), so that v(r) - and with it the
-c     continuity density rho = Mdot/(4 pi r^2 v) - stays monotonic
-c     across the graft (a non-monotonic density breaks the
-c     density-coordinate interpolations downstream)
+c     graft the beta-law onto the hydrostatic continuity velocity.
+c     The hydrostatic model keeps v = Mdot/(4 pi r^2 rho) (LHH97);
+c     the added layers follow the user beta-law anchored by value at
+c     the seam r_s (outermost hydrostatic layer),
+c        r0 = r_s (1 - (v_s/vinf)^(1/beta)).
+c     A smooth (C1) transition is obtained with a monotone cubic
+c     Hermite in (r, ln v) over the first few scale heights of the
+c     added region, matching value and slope of both regimes; slopes
+c     are clamped (Fritsch & Carlson 1980) to keep v(r) monotone,
+c     which keeps the continuity density monotonic as required by the
+c     density-coordinate interpolations downstream.
 c
       is=nrext0+1
       vs=vel0(is)
-      if(vs.ge.vinf) vs=0.999*vinf
-      r0=rrel(is)*(un-(vs/vinf)**(un/beta))
-      do id=1,nrext0
-         vel0(id)=vinf*(un-r0/rrel(id))**beta
-      end do
+      r0=0.
+      if(nrext0.gt.0.and.vs.lt.vinf) then
+c        log-slope of v_cont at the seam (in 1/rrel), one-sided inward
+         sl=log(vel0(is)/vel0(is+2))/(rrel(is)-rrel(is+2))
+         r0=rrel(is)*(un-(vs/vinf)**(un/beta))
+c        handover to the pure beta-law a few scale heights out,
+c        at most halfway to the outer boundary
+         rh=rrel(is)+4./max(sl,1.d-30)
+         rhmax=0.5*(rrel(is)+rrel(1))
+         if(rh.gt.rhmax) rh=rhmax
+         vh=vinf*(un-r0/rh)**beta
+         slh=beta*(r0/(rh*rh))/(un-r0/rh)
+         dlt=log(vh/vs)
+         xm0=sl*(rh-rrel(is))
+         xm1=slh*(rh-rrel(is))
+         if(xm0.gt.3.*dlt) xm0=3.*dlt
+         if(xm1.gt.3.*dlt) xm1=3.*dlt
+         do id=1,nrext0
+            if(rrel(id).ge.rh) then
+               vel0(id)=vinf*(un-r0/rrel(id))**beta
+            else
+               tt=(rrel(id)-rrel(is))/(rh-rrel(is))
+               t2=tt*tt
+               t3=t2*tt
+               vel0(id)=exp(log(vs)*(2.*t3-3.*t2+un)
+     *                     +xm0*(t3-2.*t2+tt)
+     *                     +log(vh)*(3.*t2-2.*t3)
+     *                     +xm1*(t3-t2))
+            end if
+         end do
+      else if(nrext0.gt.0) then
+c        seam already at/above vinf: added layers stay at vinf
+         do id=1,nrext0
+            vel0(id)=vinf
+         end do
+      end if
 c
 c     enforce an outward-increasing velocity, capped at vinf
 c
@@ -19030,8 +19039,8 @@ c
          if(vel0(id).gt.vel0(id-1)) vel0(id)=vel0(id-1)
       end do
       write(6,602) rrel(is),vs,r0,vel0(1)
-  602 format(' beta-law graft:   Rrel_s       v_s        r0',
-     *       '   v(rmax)'/,15x,4f10.4 /)
+  602 format(' beta-law graft (C1):   Rrel_s       v_s        r0',
+     *       '   v(rmax)'/,20x,4f10.4 /)
 c
       t1=temp(1)
       erel=elec(1)/dens(1)
