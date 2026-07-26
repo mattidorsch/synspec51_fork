@@ -2341,6 +2341,8 @@ C
       nrxw=0
       iwneb=0
       iwabs=0
+      fcovw=1.
+      fshld=1.
       do id=1,nd
         wdil(id)=un
       end do
@@ -10609,8 +10611,16 @@ c              the pure scattering limit (1-eps)*Jc + eps*B
                epsw=eps(temp(id),elec(id),2.997925e18/fr0,ion,0)
 c              pumping continuum shielded by the line-thick slow
 c              layers between this point and the photosphere
-               q2=wesck2(id,ab0)
+               q2=wesck2(id,ab0,tauc)
+               if(fshld.ne.1.) q2=xk2dop(fshld*tauc)
                sl0=(un-epsw)*q2*xjc+epsw*pla
+c              partial coverage (picket fence): scale the opacity so
+c              the coupled column saturates at exp(-tau_eff) =
+c              (1-fcov) + fcov*exp(-tau); weak lines scale by fcov
+               if(fcovw.lt.un.and.tauc.gt.0.) then
+                  xte=fcovw*exp(-min(tauc,3.d2))+(un-fcovw)
+                  ab0=ab0*(-log(xte))/tauc
+               end if
             else if(twfloor.gt.0.) then
 c           diluted mode: wind-layer populations are frozen-in
 c           photospheric ones, so the scattering-dominated source
@@ -10642,9 +10652,9 @@ c           function is diluted geometrically, S ~ W * S_phot
             end if
             IF(X.EQ.UN) X=EXP(4.79928E-11*FREQ0(IL)*TEM1)
             SL0=BNUL(IL)/(X-UN)
+            ab0=0.
+            if(pi.gt.0.) AB0=PI*(UN-UN/X)*EXP(GF0(IL))*DOP1
             if(iwneb.gt.0.and.id.le.nrxw) then
-               ab0=0.
-               if(pi.gt.0.) AB0=PI*(UN-UN/X)*EXP(GF0(IL))*DOP1
                ky=klay(id)
                ydr=dlay(id)
                ijc=ijcont(il)
@@ -10654,13 +10664,19 @@ c           function is diluted geometrically, S ~ W * S_phot
                epsw=eps(temp(id),elec(id),2.997925e18/fr0,ion,0)
 c              pumping continuum shielded by the line-thick slow
 c              layers between this point and the photosphere
-               q2=wesck2(id,ab0)
+               q2=wesck2(id,ab0,tauc)
+               if(fshld.ne.1.) q2=xk2dop(fshld*tauc)
                sl0=(un-epsw)*q2*xjc+epsw*pla
+c              partial coverage (picket fence): scale the opacity so
+c              the coupled column saturates at exp(-tau_eff) =
+c              (1-fcov) + fcov*exp(-tau); weak lines scale by fcov
+               if(fcovw.lt.un.and.tauc.gt.0.) then
+                  xte=fcovw*exp(-min(tauc,3.d2))+(un-fcovw)
+                  ab0=ab0*(-log(xte))/tauc
+               end if
             else if(twfloor.gt.0.) then
                sl0=sl0*wdil(id)
             end if
-            ab0=0.
-            if(pi.gt.0.) AB0=PI*(UN-UN/X)*EXP(GF0(IL))*DOP1
          END IF
          if(ab0.le.0.and.lasdel) go to 100
 C
@@ -11009,8 +11025,8 @@ C
 C
 C ********************************************************************
 C
-      FUNCTION WESCK2(ID,ABC0)
-C     ========================
+      FUNCTION WESCK2(ID,ABC0,TAUC)
+C     =============================
 C
 C     shielding factor K2(tau) for the pumping continuum in the wind
 C     two-level source function. tau is the line-center optical depth
@@ -11030,6 +11046,7 @@ C
       PARAMETER (UN=1.)
 C
       WESCK2=UN
+      TAUC=0.
       IF(ABC0.LE.0.) RETURN
 c     coupling width: thermal (A~14, CNO-metal average) + turbulence
       DV=SQRT(1.65D8*TEMP(ID)/14.D0+VTURB(ID))
@@ -11062,6 +11079,7 @@ c        the hydrostatic photosphere is opaque anyway - stop early
          IF(TAU.GT.1.D3) GO TO 10
       END DO
    10 CONTINUE
+      TAUC=TAU
       WESCK2=XK2DOP(TAU)
       RETURN
       END
@@ -19046,6 +19064,9 @@ c     frozen model ionization and the nebular balance (default 10)
       vblnd=10.
       vplat=0.
       rplat=0.
+      fcovw=1.
+      fshld=1.
+      bspan=4.
       read(linew,*,err=11,end=11) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm
       read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
@@ -19062,6 +19083,21 @@ c     frozen model ionization and the nebular balance (default 10)
       read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
      *           vtwind,vblnd,vplat,rplat
+      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
+     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
+     *           vtwind,vblnd,vplat,rplat,fcov
+      fcovw=fcov
+      if(fcovw.le.0..or.fcovw.gt.1.) fcovw=1.
+      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
+     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
+     *           vtwind,vblnd,vplat,rplat,fcov,fshl
+      fshld=fshl
+      if(fshld.le.0.) fshld=1.
+      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
+     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
+     *           vtwind,vblnd,vplat,rplat,fcov,fshl,bspn
+      bspan=bspn
+      if(bspan.le.0.) bspan=4.
       go to 12
    11 dclmax=1.
       vclm=0.
@@ -19073,6 +19109,14 @@ c     frozen model ionization and the nebular balance (default 10)
       if(iwneb.gt.0) write(6,610)
   610 format(' wind NLTE: nebular ionization balance +',
      *       ' two-level scattering source function'/)
+      if(bspan.ne.4.) write(6,616) bspan
+  616 format(' bridge span: bspan =',f6.2,' (default 4)'/)
+      if(fshld.ne.1.) write(6,615) fshld
+  615 format(' shielding scale: fshld =',f6.3,
+     *       ' (tau_shield multiplied; <1 = leakier slow zone)'/)
+      if(fcovw.lt.1.) write(6,614) fcovw
+  614 format(' partial coverage: fcov =',f6.3,
+     *       ' (saturated wind cores floor at 1-fcov)'/)
       if(vtwind.gt.0.) write(6,612) vtwind
   612 format(' wind microturbulence: v_turb = max(vtb,',f6.3,
      *       ' * v(r)) in the wind layers'/)
@@ -19197,9 +19241,10 @@ c           the beta-law graft continues from the plateau end
      *             f8.3/)
          end if
          r0=rsm*(un-(vsm/vinf)**(un/beta))
-c        handover to the pure beta-law a few scale heights out,
-c        at most halfway to the outer boundary
-         rh=rsm+4./max(sl,1.d-30)
+c        handover to the pure beta-law bspan "slope lengths" out,
+c        at most halfway to the outer boundary (bspan small = short
+c        bridge = the beta-law owns more of the velocity range)
+         rh=rsm+bspan/max(sl,1.d-30)
          rhmax=0.5*(rsm+rrel(1))
          if(rh.gt.rhmax) rh=rhmax
          if(rh.le.rsm) rh=rsm+0.05d0*(rrel(1)-rsm)
