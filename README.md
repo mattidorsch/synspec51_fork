@@ -69,7 +69,7 @@ Synspec includes a wind mode that solves the transfer equation in the observer's
 Enable it by subtracting 100 from `imode` (e.g. `imode=-100` for a normal spectrum) and appending two records at the end of `fort.55`:
 ```text
 velmax itrad nltoff iemoff
-rstar rmax amloss vinf beta ndrad nrcore nfiry ndf nda [dclmax vclm [twind]]
+rstar rmax amloss vinf beta ndrad nrcore nfiry ndf nda [dclmax vclm [twind [iwneb]]]
 ```
 - `velmax` - velocity (km/s) above which LTE background lines are rejected; if negative, the structure is instead read from the end of `fort.8` (`SETWIN` path: per-depth `r, v, vturb, denscon`)
 - `itrad` - 1: excitation/ionization of the LTE background from radiation temperatures ([Schmutz 1991](https://ui.adsabs.harvard.edu/abs/1991sabc.conf..191S/abstract)); 0: strict LTE
@@ -80,8 +80,12 @@ rstar rmax amloss vinf beta ndrad nrcore nfiry ndf nda [dclmax vclm [twind]]
 - `ndrad` - total radial layers (model ND + added wind layers); `nrcore` - core rays; `nfiry` - outermost rays with a velocity-resolved fine grid; `ndf` - fine density grid for the opacity table (0 = ndrad); `nda` - diagnostic print only
 - `dclmax`, `vclm` (optional) - clumping law `D(v) = 1 + (dclmax-1)*exp(-vclm/v)`, density contrast `D = 1/f_vol`; omit for a smooth wind
 - `twind` (optional) - if > 0, the added wind layers get the diluted radiative-equilibrium temperature `T = T_s * Wn^(1/4)` (`Wn` = geometric dilution, `T_s` = outermost model temperature), floored at `twind*T_s` (typical 0.4), and the NLTE line source function in those layers is diluted by `Wn` (normalized to 1 at the graft; hydrostatic layers keep their solved NLTE state). Omit or 0 for an isothermal, undiluted wind. Recommended for `rmax` > a few: the isothermal wind is too hot far out and overestimates the P Cygni emission humps
+- `iwneb` (optional) - wind NLTE mode. In the added wind layers, (a) the ionization balance is recomputed per layer (element totals preserved), and (b) NLTE lines get a two-level scattering source function `S = (1-eps)*J_cont + eps*B(T)` with the continuum mean intensity from the scattering transfer solution and Kastner's collisional `eps`. Prevents saturated black troughs and removes excess low-velocity absorption of the dominant ion stage; recommended together with `twind`; quantitative work should still use PoWR/CMFGEN/FASTWIND instead. Values:
+  - `1` - absolute nebular balance, `n(k+1)/n(k) = W*Gamma_k/(ne*alpha_k)`: photoionization rates `Gamma_k` from the TLUSTY SED (**requires `fort.13.tlusty`**, the TLUSTY unit-13 spectrum `freq[Hz] H_nu`, in the run directory) and RR+DR recombination fits from `data_syn/wind_recomb.dat` (Badnell RR + Shull & Van Steenberg 1982 DR).
+  - `2` - as 1, but ions missing from `wind_recomb.dat` use hydrogenic Seaton recombination instead of stopping.
+  - `3` - differential scaling, no SED or atomic data needed: stage ratios scaled by `q = (W/W_s)*(ne_s/ne)*(T/T_s)^0.8` relative to the graft layer `s`.
 
-Typical sdO settings (following [Krticka et al. 2016](https://ui.adsabs.harvard.edu/abs/2016A%26A...593A.101K/abstract), Mdot = 1e-12 - 1e-9 Msun / yr, vinf = 500 - 1800 km/s depending on radius and Teff):
+Typical luminous sdO settings (following [Krticka et al. 2016](https://ui.adsabs.harvard.edu/abs/2016A%26A...593A.101K/abstract), Mdot = 1e-12 - 1e-9 Msun / yr, vinf = 500 - 1800 km/s depending on radius and Teff):
 ```text
 300. 1 0 0
 0.2 1.2 1e-10 1000. 1.0 90 20 10 0 0

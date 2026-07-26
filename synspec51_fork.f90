@@ -2339,6 +2339,8 @@ C
       itrad=0
       twfloor=0.
       nrxw=0
+      iwneb=0
+      iwabs=0
       do id=1,nd
         wdil(id)=un
       end do
@@ -10591,10 +10593,24 @@ C        LPR = .FALSE. -> special HeI broadening
           ELSE IF(INNLT.GT.0) THEN
             AB0=ABCENT(INNLT,ID)
             SL0=SLIN(INNLT,ID)
+            if(iwneb.gt.0.and.id.le.nrxw) then
+c              wind NLTE: two-level scattering source function,
+c              S = (1-eps)*Jbar_cont + eps*B(T), with the continuum
+c              mean intensity from RTESCA and Kastner's epsilon
+               ky=klay(id)
+               ydr=dlay(id)
+               ijc=ijcont(il)
+               xjc=(un-ydr)*xjcon(ijc,ky-1)+ydr*xjcon(ijc,ky)
+               xx=exp(-hkt*fr0)
+               pla=1.4743e-2*(fr0*1.e-15)**3*xx/(1.-xx)
+               epsw=eps(temp(id),elec(id),2.997925e18/fr0,ion,0)
+               sl0=(un-epsw)*xjc+epsw*pla
+            else if(twfloor.gt.0.) then
 c           diluted mode: wind-layer populations are frozen-in
 c           photospheric ones, so the scattering-dominated source
 c           function is diluted geometrically, S ~ W * S_phot
-            if(twfloor.gt.0.) sl0=sl0*wdil(id)
+               sl0=sl0*wdil(id)
+            end if
           ELSE
             ILW=ILOWN(IL)
             IUN=IUPN(IL)
@@ -10620,7 +10636,18 @@ c           function is diluted geometrically, S ~ W * S_phot
             end if
             IF(X.EQ.UN) X=EXP(4.79928E-11*FREQ0(IL)*TEM1)
             SL0=BNUL(IL)/(X-UN)
-            if(twfloor.gt.0.) sl0=sl0*wdil(id)
+            if(iwneb.gt.0.and.id.le.nrxw) then
+               ky=klay(id)
+               ydr=dlay(id)
+               ijc=ijcont(il)
+               xjc=(un-ydr)*xjcon(ijc,ky-1)+ydr*xjcon(ijc,ky)
+               xx=exp(-hkt*fr0)
+               pla=1.4743e-2*(fr0*1.e-15)**3*xx/(1.-xx)
+               epsw=eps(temp(id),elec(id),2.997925e18/fr0,ion,0)
+               sl0=(un-epsw)*xjc+epsw*pla
+            else if(twfloor.gt.0.) then
+               sl0=sl0*wdil(id)
+            end if
             ab0=0.
             if(pi.gt.0.) AB0=PI*(UN-UN/X)*EXP(GF0(IL))*DOP1
          END IF
@@ -18619,6 +18646,9 @@ C
       CALL INTERP(DENS,RAD00,DENSF,RDX,ND,NDF,4,1,0)
       do id=1,ndf
         sccf(ij,id)=scc0(ID)*RDX(ID)
+c       store the converged continuum mean intensity (fine grid);
+c       used by the two-level wind source function (iwneb=1)
+        xjcon(ij,id)=RDX(ID)
       enddo
       fluxc(ij)=fluxc(ij)*2.997925e18/wlamc(ij)**2*0.5
 C
@@ -18922,18 +18952,28 @@ c
       read(55,'(a)',err=100,end=100) linew
       read(linew,*,err=100,end=100) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda
-c     optional trailing parameters: clumping and wind temperature
+c     optional trailing parameters: clumping, wind temperature,
+c     and wind NLTE mode
 c     twind > 0: wind layers get the diluted radiative-equilibrium
 c     temperature T = T_s * Wn^(1/4) (Wn = dilution normalized to 1 at
 c     the photosphere, i.e. the (2W)^(1/4) law), floored at twind*T_s;
 c     the NLTE line source function is diluted by Wn as well.
 c     twind <= 0 or absent: isothermal wind, no dilution (default)
+c     iwneb = 1: wind NLTE mode - nebular ionization balance in the
+c     added wind layers (ion ratios scaled by the local ionization
+c     parameter W/ne relative to the graft point) and a two-level
+c     scattering source function for NLTE lines,
+c     S = (1-eps)*Jbar_cont + eps*B(T), with Jbar from the continuum
+c     transfer solution (overrides the simple Wn dilution of S)
       twfloor=0.
+      iwneb=0
       read(linew,*,err=11,end=11) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm
       read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind
       twfloor=twind
+      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
+     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb
       go to 12
    11 dclmax=1.
       vclm=0.
@@ -18941,6 +18981,9 @@ c     twind <= 0 or absent: isothermal wind, no dilution (default)
       if(twfloor.gt.0.) write(6,609) twfloor
   609 format(' wind temperature: T = T_s * Wn^(1/4), floor =',
      *       f6.2,' * T_s; NLTE source function diluted'/)
+      if(iwneb.gt.0) write(6,610)
+  610 format(' wind NLTE: nebular ionization balance +',
+     *       ' two-level scattering source function'/)
   604 format(//' rstar  rmax amloss  vinf    beta'/,
      *         ' ndrad nrcore nfiry ndf nda'/,
      *        2f6.2, 2e8.1, f5.2 / 5i3 /)
@@ -19163,6 +19206,46 @@ c     as in SETWIN, DENS/ELEC/POPUL become in-clump values (D * mean)
             popul(i,id)=popul(i,id)*denscon(id)
          end do
       end do
+c
+c     nebular ionization balance in the added wind layers (iwneb=1):
+c     successive-stage ratios scale with the local ionization
+c     parameter relative to the graft layer s,
+c        q = (W/W_s)*(ne_s/ne)*(T/T_s)^0.8
+c     (photoionization ~ W, radiative recombination ~ ne*T^-0.8);
+c     level populations within each stage keep their frozen-in shape,
+c     the element total per layer is preserved, ne is kept fixed
+c
+      if(iwneb.gt.0.and.nrext0.gt.0) then
+c        iwneb=1: absolute nebular balance (TLUSTY SED + RR/DR table),
+c                 strict - stops if the SED or any needed recombination
+c                 datum is missing
+c        iwneb=2: absolute, hydrogenic Seaton fallback allowed for ions
+c                 missing from the recombination table
+c        iwneb=3: differential q-scaling (no SED needed; WP3 behavior)
+         iwabs=0
+         if(iwneb.le.2) then
+            call winsed(ierr)
+            if(ierr.ne.0) then
+               write(6,611)
+  611          format(/' wind NLTE (iwneb=1/2): fort.13.tlusty not',
+     *          ' found or unreadable.'/
+     *          ' Provide the TLUSTY SED (unit-13 spectrum: freq[Hz],',
+     *          ' H_nu) in the run directory,'/
+     *          ' or set iwneb=3 for the differential ionization',
+     *          ' scaling (no SED needed).'/)
+               call quit('missing fort.13.tlusty for iwneb=1/2')
+            end if
+            call rectab
+            if(iwneb.eq.1) call reccheck
+            iwabs=iwneb
+         end if
+         call winneb(nrext0,rrel,vel0)
+      end if
+c
+c     recompute the approximate-NLTE ion populations PNLT for the
+c     final (shifted, scaled, rebalanced) structure
+c
+      call pnltw
       do id=1,nd
          write(6,601) id,dm(id),temp(id),elec(id),dens(id),rd(id),
      *                rrel(id),vel0(id)
@@ -19203,6 +19286,398 @@ C
       continue
       return
       end
+C
+C
+C ***********************************************************************
+C
+C
+      SUBROUTINE WINNEB(NRX,RREL,VEL0)
+C     ================================
+C
+C     Nebular ionization balance in the added wind layers.
+C
+C     Absolute mode (IWABS=1, requires fort.13.tlusty):
+C        n(k+1)/n(k) = W(r) * GAMPH(k) / (ne * alpha_k(T)),
+C     with GAMPH the photoionization rate of the ground configuration
+C     of stage k under the UNdiluted photospheric SED (from WINSED)
+C     and alpha_k = RR+DR recombination (ALPREC; Badnell RR fits +
+C     Shull & Van Steenberg DR, hydrogenic Seaton fallback).
+C     The absolute ratio is blended with the frozen-in TLUSTY ratio
+C     across the sonic region (weight = v/(v+v_blend), v_blend=10 km/s)
+C     so the balance goes over smoothly to the model at the base.
+C
+C     Differential mode (IWABS=0, fallback):
+C     ratios of successive stages rescaled relative to the graft layer,
+C        n(k+1)/n(k) -> [n(k+1)/n(k)]_s * q(id),
+C        q = (W/W_s) * (ne_s/ne) * (T/T_s)^0.8.
+C
+C     In both modes the level-population shape within each stage and
+C     the element total per layer are preserved; ne is kept frozen.
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
+      DIMENSION RREL(MDEPTH),VEL0(MDEPTH)
+      DIMENSION SION(MIOEX),QF(MIOEX)
+      PARAMETER (UN=1.,VBLEND=10.)
+C
+      IS=NRX+1
+      RX2S=UN/(RREL(IS)*RREL(IS))
+      IF(RX2S.GT.UN) RX2S=UN
+      WS=UN-SQRT(UN-RX2S)
+      ELS=ELEC(IS)
+      TS=TEMP(IS)
+C
+      DO 100 ID=1,NRX
+         RX2=UN/(RREL(ID)*RREL(ID))
+         IF(RX2.GT.UN) RX2=UN
+         W=(UN-SQRT(UN-RX2))*0.5d0
+         WD=W/(WS*0.5d0)
+         Q=WD*(ELS/ELEC(ID))*(TEMP(ID)/TS)**0.8d0
+c        guard against absurd factors in nearly-static layers
+         IF(Q.GT.1.D8) Q=1.D8
+         IF(Q.LT.1.D-8) Q=1.D-8
+c        blend weight: nebular in the wind, frozen at the base
+         BLW=VEL0(ID)/(VEL0(ID)+VBLEND)
+C
+C        loop over explicit elements: collect stage sums, rebalance
+C
+         DO 90 IATX=1,NATOM
+            IF(N0A(IATX).LE.0) GO TO 90
+c           stage populations of this element in this layer
+            NIO1=0
+            NION0=0
+            TOT=0.
+            DO IONE=1,NION
+               IF(NUMAT(IATM(NFIRST(IONE))).NE.IATX) CYCLE
+               IF(NIO1.EQ.0) NIO1=IONE
+               NION0=IONE
+               S=0.
+               DO II=NFIRST(IONE),NLAST(IONE)
+                  S=S+POPUL(II,ID)
+               END DO
+               SION(IONE)=S
+               TOT=TOT+S
+            END DO
+            IF(NIO1.EQ.0.OR.NION0.EQ.NIO1) GO TO 90
+c           the highest ion (NNEXT of the last stage) belongs to the
+c           element total as well
+            NKI=NNEXT(NION0)
+            TOT=TOT+POPUL(NKI,ID)
+            IF(TOT.LE.0.) GO TO 90
+c           new relative stage weights
+            QF(NIO1)=UN
+            QNORM=UN
+            DO IONE=NIO1+1,NION0
+               RAT=0.
+               IF(SION(IONE-1).GT.0.) RAT=SION(IONE)/SION(IONE-1)
+               RATNEW=RAT*Q
+               IF(IWABS.GE.1.AND.GAMPH(IONE-1).GT.0.) THEN
+c                 absolute nebular ratio for stage (IONE-1 -> IONE)
+                  IZR=IZ(IONE-1)+1
+                  ALP=ALPREC(NUMAT(IATM(NFIRST(IONE-1))),IZR,TEMP(ID))
+                  RATABS=W*GAMPH(IONE-1)/(ELEC(ID)*ALP)
+                  IF(RATABS.GT.1.D12) RATABS=1.D12
+c                 blend in log space between frozen and absolute
+                  IF(RAT.GT.0.) THEN
+                     RATNEW=EXP((UN-BLW)*LOG(RAT)+BLW*LOG(RATABS))
+                  ELSE
+                     RATNEW=RATABS*BLW
+                  END IF
+               END IF
+               QF(IONE)=QF(IONE-1)*RATNEW
+               QNORM=QNORM+QF(IONE)
+            END DO
+c           top pair: last explicit stage <-> NNEXT continuum ion
+c           (for C IV, N V etc. this IS the observable balance)
+            RATK=0.
+            IF(SION(NION0).GT.0.) RATK=POPUL(NKI,ID)/SION(NION0)
+            RATKN=RATK*Q
+            IF(IWABS.GE.1.AND.GAMPH(NION0).GT.0.) THEN
+               IZR=IZ(NION0)+1
+               ALP=ALPREC(NUMAT(IATM(NFIRST(NION0))),IZR,TEMP(ID))
+               RATABS=W*GAMPH(NION0)/(ELEC(ID)*ALP)
+               IF(RATABS.GT.1.D12) RATABS=1.D12
+               IF(RATK.GT.0.) THEN
+                  RATKN=EXP((UN-BLW)*LOG(RATK)+BLW*LOG(RATABS))
+               ELSE
+                  RATKN=RATABS*BLW
+               END IF
+            END IF
+            QFK=QF(NION0)*RATKN
+            QNORM=QNORM+QFK
+c           rescale each stage (and the top continuum level) so the
+c           element total is unchanged
+            DO IONE=NIO1,NION0
+               IF(SION(IONE).LE.0.) CYCLE
+               FAC=(QF(IONE)/QNORM)*TOT/SION(IONE)
+               DO II=NFIRST(IONE),NLAST(IONE)
+                  POPUL(II,ID)=POPUL(II,ID)*FAC
+               END DO
+            END DO
+            IF(POPUL(NKI,ID).GT.0.)
+     *         POPUL(NKI,ID)=QFK/QNORM*TOT
+   90    CONTINUE
+  100 CONTINUE
+      RETURN
+      END
+C
+C
+C ***********************************************************************
+C
+C
+      SUBROUTINE WINSED(IERR)
+C     =======================
+C
+C     Photoionization rates for the wind nebular balance from the
+C     TLUSTY SED.
+C
+C     Reads 'fort.13.tlusty' (TLUSTY unit-13 spectrum: freq [Hz],
+C     Eddington flux H_nu [erg/cm2/s/Hz], third column ignored) and
+C     computes, for the ground configuration of every explicit ion,
+C        GAMPH = 4 pi Int  sigma(nu) J*_nu / (h nu)  dnu,
+C     with J*_nu = 2 H_nu the UNdiluted mean intensity at the surface
+C     (so that W(r)*GAMPH is the local rate with the standard dilution
+C     factor W = 0.5(1-sqrt(1-(R/r)^2)) ).
+C     sigma(nu) from the code's own cross sections (SIGK).
+C
+C     IERR = 0 on success; = 1 if the file is missing/unreadable
+C     (caller falls back to the differential scaling).
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
+      PARAMETER (MSED=200000)
+      DIMENSION FRS(MSED),HNS(MSED)
+      LOGICAL LEX
+      PARAMETER (PI4W=12.566371)
+C
+      IERR=1
+      DO IONE=1,MIOEX
+         GAMPH(IONE)=0.
+      END DO
+      INQUIRE(FILE='./fort.13.tlusty',EXIST=LEX)
+      IF(.NOT.LEX) RETURN
+      OPEN(UNIT=83,FILE='./fort.13.tlusty',STATUS='OLD',ERR=900)
+      NS=0
+   10 CONTINUE
+         READ(83,*,END=20,ERR=20) FR1,HN1
+         IF(NS.GE.MSED) GO TO 20
+         NS=NS+1
+         FRS(NS)=FR1
+         HNS(NS)=HN1
+      GO TO 10
+   20 CLOSE(83)
+      IF(NS.LT.10) RETURN
+c     ensure increasing frequency order
+      IF(FRS(1).GT.FRS(NS)) THEN
+         DO I=1,NS/2
+            X=FRS(I)
+            FRS(I)=FRS(NS+1-I)
+            FRS(NS+1-I)=X
+            X=HNS(I)
+            HNS(I)=HNS(NS+1-I)
+            HNS(NS+1-I)=X
+         END DO
+      END IF
+C
+C     rate integral per explicit ion (ground level of each stage);
+C     trapezoidal over the SED grid from the ground-state edge up
+C
+      DO 100 IONE=1,NION
+         II=NFIRST(IONE)
+         FREDG=ENION(II)/H
+         IF(FREDG.LE.0.) GO TO 100
+         IF(FREDG.GE.FRS(NS)) GO TO 100
+         GSUM=0.
+         SGM=0.
+         FRM=0.
+         DO 50 I=1,NS
+            IF(FRS(I).LT.FREDG) GO TO 50
+            SG=SIGK(FRS(I),II,0)
+            GI=SG*2.*HNS(I)/(H*FRS(I))
+            IF(FRM.GT.0.)
+     *         GSUM=GSUM+0.5*(GI+SGM)*(FRS(I)-FRM)
+            SGM=GI
+            FRM=FRS(I)
+   50    CONTINUE
+         GAMPH(IONE)=PI4W*GSUM
+  100 CONTINUE
+      IERR=0
+      WRITE(6,600) NS
+  600 FORMAT(' WINSED: photoionization rates from fort.13.tlusty (',
+     *       I6,' SED points)'/)
+      RETURN
+  900 CONTINUE
+      RETURN
+      END
+C
+C
+C ***********************************************************************
+C
+C
+      SUBROUTINE RECTAB
+C     =================
+C
+C     read the RR+DR recombination-rate fit table
+C     (data_syn/wind_recomb.dat); missing file or ions simply fall
+C     back to the hydrogenic Seaton formula in ALPREC
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
+      CHARACTER*300 LINE
+      LOGICAL LEX
+C
+      NRECTB=0
+      INQUIRE(FILE='./data_syn/wind_recomb.dat',EXIST=LEX)
+      IF(.NOT.LEX) THEN
+         WRITE(6,601)
+  601    FORMAT(/' wind NLTE: data_syn/wind_recomb.dat not found -',
+     *          ' hydrogenic Seaton rates only'/)
+         RETURN
+      END IF
+      OPEN(UNIT=83,FILE='./data_syn/wind_recomb.dat',STATUS='OLD',
+     *     ERR=900)
+   10 CONTINUE
+         READ(83,'(A)',END=20,ERR=20) LINE
+         IF(LINE(1:1).EQ.'*'.OR.LINE.EQ.' ') GO TO 10
+         IF(NRECTB.GE.MREC) GO TO 20
+         NRECTB=NRECTB+1
+         READ(LINE,*,ERR=15) IATREC(NRECTB),IZREC(NRECTB),
+     *      (RRCF(J,NRECTB),J=1,6),(DRC(J,NRECTB),J=1,4)
+         GO TO 10
+   15    NRECTB=NRECTB-1
+      GO TO 10
+   20 CLOSE(83)
+      IF(NRECTB.GT.0) WRITE(6,600) NRECTB
+  600 FORMAT(' RECTAB:',I4,' RR/DR recombination fits read'/)
+      RETURN
+  900 CONTINUE
+      RETURN
+      END
+C
+C
+C ***********************************************************************
+C
+C
+      FUNCTION ALPREC(IAT,IZR,T)
+C     ==========================
+C
+C     total (RR+DR) recombination coefficient [cm3/s] for the
+C     recombining ion of atomic number IAT, spectroscopic stage IZR,
+C     at temperature T.
+C     Tabulated ions: Badnell RR fit + Shull & Van Steenberg DR.
+C     Others: hydrogenic Seaton (1959) RR with effective charge
+C     (reached only with iwneb=2; iwneb=1 stops in RECCHECK first).
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
+      PARAMETER (UN=1.)
+C
+      DO 10 I=1,NRECTB
+         IF(IATREC(I).NE.IAT.OR.IZREC(I).NE.IZR) GO TO 10
+c        Badnell RR
+         B=RRCF(2,I)
+         IF(RRCF(5,I).GT.0.) B=B+RRCF(5,I)*EXP(-RRCF(6,I)/T)
+         ST0=SQRT(T/RRCF(3,I))
+         ST1=SQRT(T/RRCF(4,I))
+         ALRR=RRCF(1,I)/(ST0*(UN+ST0)**(UN-B)*(UN+ST1)**(UN+B))
+c        Shull & Van Steenberg DR
+         ALDR=0.
+         IF(DRC(1,I).GT.0.) THEN
+            X0=DRC(3,I)/T
+            IF(X0.LT.300.) THEN
+               ALDR=DRC(1,I)*T**(-1.5d0)*EXP(-X0)*
+     *              (UN+DRC(2,I)*EXP(-DRC(4,I)/T))
+            END IF
+         END IF
+         ALPREC=ALRR+ALDR
+         RETURN
+   10 CONTINUE
+c     hydrogenic fallback (Seaton 1959), z = charge of recombining ion
+      Z=IZR-1
+      IF(Z.LT.UN) Z=UN
+      XLM=157890.*Z*Z/T
+      ALPREC=5.197D-14*Z*SQRT(XLM)*
+     *       (0.4288+0.5*LOG(XLM)+0.469*XLM**(-UN/3.))
+      RETURN
+      END
+C
+C
+C ***********************************************************************
+C
+C
+      SUBROUTINE RECCHECK
+C     ===================
+C
+C     strict mode (iwneb=1): verify that every ion pair entering the
+C     absolute nebular balance (i.e. every explicit ion with a nonzero
+C     photoionization rate) has a tabulated recombination fit; stop
+C     with a clear message otherwise. iwneb=2 skips this check and
+C     uses the hydrogenic Seaton formula for missing ions.
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
+      LOGICAL LFOUND,LMISS
+C
+      LMISS=.FALSE.
+      DO 20 IONE=1,NION
+         IF(GAMPH(IONE).LE.0.) GO TO 20
+         IAT=NUMAT(IATM(NFIRST(IONE)))
+         IZR=IZ(IONE)+1
+         LFOUND=.FALSE.
+         DO I=1,NRECTB
+            IF(IATREC(I).EQ.IAT.AND.IZREC(I).EQ.IZR) LFOUND=.TRUE.
+         END DO
+         IF(.NOT.LFOUND) THEN
+            IF(.NOT.LMISS) WRITE(6,600)
+            LMISS=.TRUE.
+            WRITE(6,601) IAT,IZR
+         END IF
+   20 CONTINUE
+      IF(LMISS) THEN
+         WRITE(6,602)
+         CALL quit('missing recombination data for iwneb=1')
+      END IF
+      RETURN
+  600 FORMAT(/' wind NLTE (iwneb=1): missing recombination fits in',
+     *       ' data_syn/wind_recomb.dat for:'/
+     *       '   IAT  IZ(recombining)')
+  601 FORMAT(2I6)
+  602 FORMAT(/' Add the missing ions to data_syn/wind_recomb.dat,'/
+     *       ' or set iwneb=2 (hydrogenic Seaton rates for missing',
+     *       ' ions),'/
+     *       ' or set iwneb=3 (differential scaling, no atomic data',
+     *       ' needed).'/)
+      END
+C
+C
+C ***********************************************************************
+C
+C
+      SUBROUTINE PNLTW
+C     ================
+C
+C     recompute the approximate-NLTE total ion populations PNLT
+C     (used for lines with INDNLT<0 and by LINOPW) for the final
+C     wind structure - INPMOD computed them before VELSET shifted,
+C     rescaled, and rebalanced the populations
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      COMMON/NLTPOP/PNLT(MATOM,MION,MDEPTH)
+C
+      DO 100 ID=1,ND
+         BCON=ELEC(ID)/TEMP(ID)/SQRT(TEMP(ID))*2.0706E-16
+         DO 100 IONE=1,NION
+            ION=IZ(IONE)
+            IAT=NUMAT(IATM(NFIRST(IONE)))
+            NKI=NNEXT(IONE)
+            IF(ION.GT.0) PNLT(IAT,ION,ID)=POPUL(NKI,ID)/G(NKI)*BCON
+  100 CONTINUE
+      RETURN
+      END
 C
 C
 C ***********************************************************************
