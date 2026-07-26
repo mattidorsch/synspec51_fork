@@ -10594,9 +10594,12 @@ C        LPR = .FALSE. -> special HeI broadening
             AB0=ABCENT(INNLT,ID)
             SL0=SLIN(INNLT,ID)
             if(iwneb.gt.0.and.id.le.nrxw) then
-c              wind NLTE: two-level scattering source function,
-c              S = (1-eps)*Jbar_cont + eps*B(T), with the continuum
-c              mean intensity from RTESCA and Kastner's epsilon
+c              wind NLTE: two-level source function with escape-
+c              probability damping of the scattering term,
+c              S = ((1-eps)*K2*Jc + eps*B) / ((1-eps)*K2 + eps):
+c              optically thick velocity-coupled (slow) layers
+c              thermalize toward B, thin/accelerating layers keep
+c              the pure scattering limit (1-eps)*Jc + eps*B
                ky=klay(id)
                ydr=dlay(id)
                ijc=ijcont(il)
@@ -10604,7 +10607,10 @@ c              mean intensity from RTESCA and Kastner's epsilon
                xx=exp(-hkt*fr0)
                pla=1.4743e-2*(fr0*1.e-15)**3*xx/(1.-xx)
                epsw=eps(temp(id),elec(id),2.997925e18/fr0,ion,0)
-               sl0=(un-epsw)*xjc+epsw*pla
+c              pumping continuum shielded by the line-thick slow
+c              layers between this point and the photosphere
+               q2=wesck2(id,ab0)
+               sl0=(un-epsw)*q2*xjc+epsw*pla
             else if(twfloor.gt.0.) then
 c           diluted mode: wind-layer populations are frozen-in
 c           photospheric ones, so the scattering-dominated source
@@ -10637,6 +10643,8 @@ c           function is diluted geometrically, S ~ W * S_phot
             IF(X.EQ.UN) X=EXP(4.79928E-11*FREQ0(IL)*TEM1)
             SL0=BNUL(IL)/(X-UN)
             if(iwneb.gt.0.and.id.le.nrxw) then
+               ab0=0.
+               if(pi.gt.0.) AB0=PI*(UN-UN/X)*EXP(GF0(IL))*DOP1
                ky=klay(id)
                ydr=dlay(id)
                ijc=ijcont(il)
@@ -10644,7 +10652,10 @@ c           function is diluted geometrically, S ~ W * S_phot
                xx=exp(-hkt*fr0)
                pla=1.4743e-2*(fr0*1.e-15)**3*xx/(1.-xx)
                epsw=eps(temp(id),elec(id),2.997925e18/fr0,ion,0)
-               sl0=(un-epsw)*xjc+epsw*pla
+c              pumping continuum shielded by the line-thick slow
+c              layers between this point and the photosphere
+               q2=wesck2(id,ab0)
+               sl0=(un-epsw)*q2*xjc+epsw*pla
             else if(twfloor.gt.0.) then
                sl0=sl0*wdil(id)
             end if
@@ -10993,6 +11004,65 @@ C
       GO TO 20
    10 C=2.16/T/SQRT(T)/X**1.68*ANE
    20 EPS=C/(C+A)
+      RETURN
+      END
+C
+C ********************************************************************
+C
+      FUNCTION WESCK2(ID,ABC0)
+C     ========================
+C
+C     shielding factor K2(tau) for the pumping continuum in the wind
+C     two-level source function. tau is the line-center optical depth
+C     between layer ID and the photosphere (inward), accumulated only
+C     over layers that are velocity-coupled to ID
+C     (|v(id2)-v(ID)| < local Doppler width): slow optically thick
+C     regions (wind base, velocity plateaus) shield themselves from
+C     the continuum radiation and become near-pure absorbers, while
+C     accelerating beta-law layers Doppler-decouple after a short
+C     path and keep K2 ~ 1 (full scattering source function).
+C     The opacity run is approximated by the local line-center
+C     opacity ABC0 scaled with the density profile.
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
+      PARAMETER (UN=1.)
+C
+      WESCK2=UN
+      IF(ABC0.LE.0.) RETURN
+c     coupling width: thermal (A~14, CNO-metal average) + turbulence
+      DV=SQRT(1.65D8*TEMP(ID)/14.D0+VTURB(ID))
+c     half of the local layer
+      IF(ID.EQ.1) THEN
+         DZ=RD(1)-RD(2)
+      ELSE IF(ID.LT.ND) THEN
+         DZ=0.5D0*(RD(ID-1)-RD(ID+1))
+      ELSE
+         DZ=RD(ND-1)-RD(ND)
+      END IF
+      TAU=0.5D0*ABC0*DZ
+c     inward accumulation (toward the star); leakage through the
+c     internal velocity gradient: a shifted layer absorbs at this
+c     layer's line frequency only in its profile wing, weight
+c     ~ exp(-(dv/vD)^2) with the mean coupling width of the pair
+      DO ID2=ID+1,ND
+         DV2=SQRT(1.65D8*TEMP(ID2)/14.D0+VTURB(ID2))
+         DVM=0.5D0*(DV+DV2)
+         X=(VEL(ID2)-VEL(ID))/DVM
+         X2=X*X
+         IF(X2.GT.25.D0) GO TO 10
+         IF(ID2.EQ.ND) THEN
+            DZ=RD(ND-1)-RD(ND)
+         ELSE
+            DZ=0.5D0*(RD(ID2-1)-RD(ID2+1))
+         END IF
+         TAU=TAU+ABC0*(DENS(ID2)/DENS(ID))*DZ*EXP(-X2)
+c        the hydrostatic photosphere is opaque anyway - stop early
+         IF(TAU.GT.1.D3) GO TO 10
+      END DO
+   10 CONTINUE
+      WESCK2=XK2DOP(TAU)
       RETURN
       END
 C
@@ -18965,8 +19035,17 @@ c     parameter W/ne relative to the graft point) and a two-level
 c     scattering source function for NLTE lines,
 c     S = (1-eps)*Jbar_cont + eps*B(T), with Jbar from the continuum
 c     transfer solution (overrides the simple Wn dilution of S)
+c     vtwind > 0: wind microturbulence - in the added layers
+c     v_turb = max(vtb, vtwind*v(r)) (FASTWIND-like; typical 0.1);
+c     hydrostatic layers keep the photospheric vtb.
+c     vblnd > 0: velocity scale (km/s) of the sonic blend between the
+c     frozen model ionization and the nebular balance (default 10)
       twfloor=0.
       iwneb=0
+      vtwind=0.
+      vblnd=10.
+      vplat=0.
+      rplat=0.
       read(linew,*,err=11,end=11) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm
       read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
@@ -18974,16 +19053,29 @@ c     transfer solution (overrides the simple Wn dilution of S)
       twfloor=twind
       read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb
+      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
+     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
+     *           vtwind
+      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
+     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
+     *           vtwind,vblnd
+      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
+     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
+     *           vtwind,vblnd,vplat,rplat
       go to 12
    11 dclmax=1.
       vclm=0.
    12 continue
+      if(vblnd.le.0.) vblnd=10.
       if(twfloor.gt.0.) write(6,609) twfloor
   609 format(' wind temperature: T = T_s * Wn^(1/4), floor =',
      *       f6.2,' * T_s; NLTE source function diluted'/)
       if(iwneb.gt.0) write(6,610)
   610 format(' wind NLTE: nebular ionization balance +',
      *       ' two-level scattering source function'/)
+      if(vtwind.gt.0.) write(6,612) vtwind
+  612 format(' wind microturbulence: v_turb = max(vtb,',f6.3,
+     *       ' * v(r)) in the wind layers'/)
   604 format(//' rstar  rmax amloss  vinf    beta'/,
      *         ' ndrad nrcore nfiry ndf nda'/,
      *        2f6.2, 2e8.1, f5.2 / 5i3 /)
@@ -19059,33 +19151,74 @@ c     are clamped (Fritsch & Carlson 1980) to keep v(r) monotone,
 c     which keeps the continuity density monotonic as required by the
 c     density-coordinate interpolations downstream.
 c
+c     optional slow dense base zone (vplat/rplat): between the seam
+c     and rplat the velocity rises only slowly toward vplat (a
+c     "filled-in" transition zone; density from continuity is then
+c     ~v_beta/vplat times higher there than in the pure beta-law).
+c     The beta-law (with its own C1 Hermite bridge) starts at rplat.
+c
       is=nrext0+1
       vs=vel0(is)
       r0=0.
       if(nrext0.gt.0.and.vs.lt.vinf) then
 c        log-slope of v_cont at the seam (in 1/rrel), one-sided inward
          sl=log(vel0(is)/vel0(is+2))/(rrel(is)-rrel(is+2))
-         r0=rrel(is)*(un-(vs/vinf)**(un/beta))
+         rsm=rrel(is)
+         vsm=vs
+         if(vplat.gt.0..and.rplat.gt.rrel(is)) then
+c           plateau: monotone Hermite in (r, ln v) from (r_s, v_s)
+c           to (rplat, vplat), flat slope at the plateau end
+            vpl=vplat
+            if(vpl.le.vs) vpl=vs*1.02d0
+            if(vpl.ge.vinf) vpl=0.9d0*vinf
+            rpe=min(rplat,0.9d0*rrel(1))
+            dlt=log(vpl/vs)
+            xm0=sl*(rpe-rrel(is))
+            if(xm0.gt.3.*dlt) xm0=3.*dlt
+            xm1=0.2d0*dlt
+            do id=1,nrext0
+               if(rrel(id).le.rpe) then
+                  tt=(rrel(id)-rrel(is))/(rpe-rrel(is))
+                  t2=tt*tt
+                  t3=t2*tt
+                  vel0(id)=exp(log(vs)*(2.*t3-3.*t2+un)
+     *                        +xm0*(t3-2.*t2+tt)
+     *                        +log(vpl)*(3.*t2-2.*t3)
+     *                        +xm1*(t3-t2))
+               end if
+            end do
+c           the beta-law graft continues from the plateau end
+            rsm=rpe
+            vsm=vpl
+            sl=0.2d0*dlt/(rpe-rrel(is))
+            if(sl.le.0.) sl=0.05d0/(rpe-rrel(is))
+            write(6,613) vpl,rpe
+  613       format(' base zone: v_plat =',f8.2,' km/s out to Rrel =',
+     *             f8.3/)
+         end if
+         r0=rsm*(un-(vsm/vinf)**(un/beta))
 c        handover to the pure beta-law a few scale heights out,
 c        at most halfway to the outer boundary
-         rh=rrel(is)+4./max(sl,1.d-30)
-         rhmax=0.5*(rrel(is)+rrel(1))
+         rh=rsm+4./max(sl,1.d-30)
+         rhmax=0.5*(rsm+rrel(1))
          if(rh.gt.rhmax) rh=rhmax
+         if(rh.le.rsm) rh=rsm+0.05d0*(rrel(1)-rsm)
          vh=vinf*(un-r0/rh)**beta
          slh=beta*(r0/(rh*rh))/(un-r0/rh)
-         dlt=log(vh/vs)
-         xm0=sl*(rh-rrel(is))
-         xm1=slh*(rh-rrel(is))
+         dlt=log(vh/vsm)
+         xm0=sl*(rh-rsm)
+         xm1=slh*(rh-rsm)
          if(xm0.gt.3.*dlt) xm0=3.*dlt
          if(xm1.gt.3.*dlt) xm1=3.*dlt
          do id=1,nrext0
+            if(rrel(id).le.rsm) cycle
             if(rrel(id).ge.rh) then
                vel0(id)=vinf*(un-r0/rrel(id))**beta
             else
-               tt=(rrel(id)-rrel(is))/(rh-rrel(is))
+               tt=(rrel(id)-rsm)/(rh-rsm)
                t2=tt*tt
                t3=t2*tt
-               vel0(id)=exp(log(vs)*(2.*t3-3.*t2+un)
+               vel0(id)=exp(log(vsm)*(2.*t3-3.*t2+un)
      *                     +xm0*(t3-2.*t2+tt)
      *                     +log(vh)*(3.*t2-2.*t3)
      *                     +xm1*(t3-t2))
@@ -19192,6 +19325,13 @@ c     and the clumping law D(v) = 1 + (DCLMAX-1)*exp(-VCLM/v);
 c     as in SETWIN, DENS/ELEC/POPUL become in-clump values (D * mean)
       do id=1,nd
          if(vtb.ge.0.) vturb(id)=vtb*vtb*1.e10
+c        wind microturbulence: v_turb = max(vtb, vtwind*v) in the
+c        added layers (v_turb in km/s here; VTURB stores (cm/s)^2)
+         if(vtwind.gt.0..and.id.le.nrext0) then
+            vtw=vtwind*vel0(id)
+            if(vtb.ge.0..and.vtw.lt.vtb) vtw=vtb
+            vturb(id)=vtw*vtw*1.e10
+         end if
          denscon(id)=un
          if(dclmax.ne.1.) then
             if(vclm.le.0.) then
@@ -19239,7 +19379,7 @@ c        iwneb=3: differential q-scaling (no SED needed; WP3 behavior)
             if(iwneb.eq.1) call reccheck
             iwabs=iwneb
          end if
-         call winneb(nrext0,rrel,vel0)
+         call winneb(nrext0,rrel,vel0,vblnd)
       end if
 c
 c     recompute the approximate-NLTE ion populations PNLT for the
@@ -19247,14 +19387,40 @@ c     final (shifted, scaled, rebalanced) structure
 c
       call pnltw
       do id=1,nd
+c        shielding diagnostics: VDOP = metal Doppler+turbulence
+c        coupling width (km/s); ZCPL = velocity-coupled path length
+c        toward the star (cm; Gaussian-weighted as in WESCK2) -
+c        the shielding line optical depth is tau ~ kappa_line * ZCPL
+         vdop=sqrt(1.65d8*temp(id)/14.d0+vturb(id))
+         if(id.eq.1) then
+            zcpl=0.5d0*(rd(1)-rd(2))
+         else if(id.lt.nd) then
+            zcpl=0.25d0*(rd(id-1)-rd(id+1))
+         else
+            zcpl=0.5d0*(rd(nd-1)-rd(nd))
+         end if
+         do id2=id+1,nd
+            vd2=sqrt(1.65d8*temp(id2)/14.d0+vturb(id2))
+            xw=(vel(id2)-vel(id))/(0.5d0*(vdop+vd2))
+            xw2=xw*xw
+            if(xw2.gt.25.d0) go to 51
+            if(id2.eq.nd) then
+               dzc=rd(nd-1)-rd(nd)
+            else
+               dzc=0.5d0*(rd(id2-1)-rd(id2+1))
+            end if
+            zcpl=zcpl+(dens(id2)/dens(id))*dzc*exp(-xw2)
+         end do
+   51    continue
          write(6,601) id,dm(id),temp(id),elec(id),dens(id),rd(id),
-     *                rrel(id),vel0(id)
+     *                rrel(id),vel0(id),vdop*1.d-5,log10(zcpl)
          write(96,601) id,dm(id),temp(id),elec(id),dens(id),rd(id),
-     *                rrel(id),vel0(id),vel00(id)
+     *                rrel(id),vel0(id),vdop*1.d-5,log10(zcpl),
+     *                vel00(id)
       end do
   600 format('    ID    M      TEMP       ELEC      DENS             ',
-     *       'R       Rrel     VEL')
-  601 format(1h ,i3,1pe10.3,0pf8.0,1p3e12.3,0pf10.4,0p2f8.2)
+     *       'R       Rrel     VEL    VDOP log(ZCPL)')
+  601 format(1h ,i3,1pe10.3,0pf8.0,1p3e12.3,0pf10.4,0p3f8.2,0pf9.3)
 C
 C
   606 format(/' nda =',I3,':'/
@@ -19291,8 +19457,8 @@ C
 C ***********************************************************************
 C
 C
-      SUBROUTINE WINNEB(NRX,RREL,VEL0)
-C     ================================
+      SUBROUTINE WINNEB(NRX,RREL,VEL0,VBLND)
+C     ======================================
 C
 C     Nebular ionization balance in the added wind layers.
 C
@@ -19319,7 +19485,7 @@ C
       INCLUDE 'INCLUDE/WINCOM.FOR'
       DIMENSION RREL(MDEPTH),VEL0(MDEPTH)
       DIMENSION SION(MIOEX),QF(MIOEX)
-      PARAMETER (UN=1.,VBLEND=10.)
+      PARAMETER (UN=1.)
 C
       IS=NRX+1
       RX2S=UN/(RREL(IS)*RREL(IS))
@@ -19338,7 +19504,7 @@ c        guard against absurd factors in nearly-static layers
          IF(Q.GT.1.D8) Q=1.D8
          IF(Q.LT.1.D-8) Q=1.D-8
 c        blend weight: nebular in the wind, frozen at the base
-         BLW=VEL0(ID)/(VEL0(ID)+VBLEND)
+         BLW=VEL0(ID)/(VEL0(ID)+VBLND)
 C
 C        loop over explicit elements: collect stage sums, rebalance
 C
@@ -19495,7 +19661,9 @@ C
          DO 50 I=1,NS
             IF(FRS(I).LT.FREDG) GO TO 50
             SG=SIGK(FRS(I),II,0)
-            GI=SG*2.*HNS(I)/(H*FRS(I))
+c           J(r) = W * I_disk with I_disk = 4 H_nu (uniform disk;
+c           W=1/2 at the surface reproduces J_surf = 2 H_nu)
+            GI=SG*4.*HNS(I)/(H*FRS(I))
             IF(FRM.GT.0.)
      *         GSUM=GSUM+0.5*(GI+SGM)*(FRS(I)-FRM)
             SGM=GI
