@@ -10522,17 +10522,6 @@ C
       DO 100 I=1,NLIN
          IL=INDLIN(I)
          INNLT=INDNLT(IL)
-c        
-c        rejecting lines for v > velmax
-c
-         if(ilvi(id).gt.0) then
-            if(innlt.eq.0) then
-               go to 100
-             else
-               if(nltoff.ne.0) go to 100
-            end if
-         end if
-c
 c
 c     frequency indices of the line centers
 c
@@ -10590,6 +10579,23 @@ c        the same lower level (equal lower excitation energy)
          end if
 c        write(80,*) i,ijcntr(i),2.997925e18/freq0(il)
          endif
+c
+c        rejecting lines for v > velmax.  Must come AFTER the id=1
+c        bookkeeping above: IJCNTR is filled only at id=1, which in
+c        wind mode is the outermost (fastest) layer, so rejecting a
+c        line there left its line-centre index at the value left over
+c        from the previous interval (zero in the first one) and its
+c        opacity was then deposited at the wrong frequencies at every
+c        deeper layer - LTE lines vanished from their own position and
+c        reappeared as spurious absorption elsewhere.
+c
+         if(ilvi(id).gt.0) then
+            if(innlt.eq.0) then
+               go to 100
+             else
+               if(nltoff.ne.0) go to 100
+            end if
+         end if
 c
          IAT=INDAT(IL)/100
          ION=MOD(INDAT(IL),100)
@@ -11087,11 +11093,19 @@ C     a small covering fraction subtends a small solid angle, so the
 C     structure absorbs without a matching emission lobe - which is the
 C     reason for treating it separately from the wind at all.
 C
-C     The column is the GROUND-level one, so only lines rising from the
-C     ground term are included (EXCL0 < EXCLIM): a discrete absorber at
-C     wind temperatures keeps essentially all of its population there,
-C     and applying a ground-state column to a subordinate line would
-C     overestimate that line by orders of magnitude.
+C     CLCOMP is the column of the GROUND term, so the population of the
+C     lower level of an arbitrary line is set by an excitation
+C     temperature TCOMP:
+C
+C        (N/g)_low = (N/g)_ground * exp(-EXCL0/TCOMP)
+C
+C     with the stimulated-emission correction 1-exp(-h*nu/k/TCOMP).
+C     TCOMP <= 0 (the default) means "cold": only lines rising from the
+C     ground term are included (EXCL0 < EXCLIM) and the others are
+C     skipped rather than being given the ground-term column, which
+C     would overestimate them by orders of magnitude.  In that limit
+C     the stimulated correction is unity to better than 1.d-4 anywhere
+C     shortward of the far IR, so it is left out.
 C
 C     Applied to the emergent flux before any instrumental broadening:
 C        F -> F * [ (1-fc) + fc*exp(-tau) ]
@@ -11103,45 +11117,78 @@ C
       INCLUDE 'INCLUDE/WINCOM.FOR'
       COMMON/EMFLUX/FLUX(MFREQ),FLUXC(MFREQC)
       DIMENSION TAUC(MFREQ)
-      PARAMETER (UN=1., CKMS=2.997925D5, EXCLIM=1.D4)
+      PARAMETER (UN=1., CKMS=2.997925D5, EXCLIM=1.D4, HCK=1.43877D8,
+     *           XCUT=5.D0, TAUMIN=1.D-6)
 C
-      DO IJ=1,NFROBS
+      NF=MIN(NFROBS,MFREQ)
+      IF(NF.LE.0) RETURN
+      DO IJ=1,NF
          TAUC(IJ)=0.
       END DO
+c     widest wavelength margin the component can reach, so lines whose
+c     shifted centre falls outside the interval cost one comparison
+      DLMAR=(ABS(VCOMP)+XCUT*BCOMP+UN)/CKMS
+      WL1=WLOBS(1)*(UN-DLMAR)
+      WL2=WLOBS(NF)*(UN+DLMAR)
       NLC=0
       NLX=0
+      NLW=0
       DO I=1,NLIN
          IL=INDLIN(I)
+         ALAM0=2.997925D18/FREQ0(IL)
+         IF(ALAM0.LT.WL1.OR.ALAM0.GT.WL2) CYCLE
          IAT=INDAT(IL)/100
          ION=MOD(INDAT(IL),100)
          DO K=1,NCOMP
 c           both IZCOMP and ION are spectroscopic stages (1 = neutral)
             IF(IAT.NE.IACOMP(K).OR.ION.NE.IZCOMP(K)) CYCLE
-c           ground-term lines only (EXCL0 is E_low/k in K)
-            IF(EXCL0(IL).GT.EXCLIM) THEN
-               NLX=NLX+1
-               CYCLE
+c           lower-level population relative to the ground term
+            IF(TCOMP.GT.0.) THEN
+               BOLT=EXP(-EXCL0(IL)/TCOMP)*
+     *              (UN-EXP(-HCK/(ALAM0*TCOMP)))
+             ELSE
+c              cold: ground-term lines only (EXCL0 is E_low/k in K)
+               IF(EXCL0(IL).GT.EXCLIM) THEN
+                  NLX=NLX+1
+                  GO TO 20
+               END IF
+               BOLT=UN
             END IF
-            ALAM0=2.997925D18/FREQ0(IL)
             TAU0=EXP(DBLE(GF0(IL)))*ALAM0*1.D-8
-     *           *1.D1**CLCOMP(K)/(BCOMP*1.D5)
-            IF(TAU0.LE.1.D-4) CYCLE
+     *           *1.D1**CLCOMP(K)*BOLT/(BCOMP*1.D5)
+            IF(TAU0.LE.TAUMIN) THEN
+               NLW=NLW+1
+               GO TO 20
+            END IF
             NLC=NLC+1
-            DO IJ=1,NFROBS
+            DO IJ=1,NF
                VV=CKMS*(WLOBS(IJ)/ALAM0-UN)
                X=(VV-VCOMP)/BCOMP
-               IF(X*X.GT.25.D0) CYCLE
+               IF(ABS(X).GT.XCUT) CYCLE
                TAUC(IJ)=TAUC(IJ)+TAU0*EXP(-X*X)
             END DO
+c           one entry per ion: never accumulate a duplicate record twice
+            GO TO 20
          END DO
+   20    CONTINUE
       END DO
-      DO IJ=1,NFROBS
+      DO IJ=1,NF
          FLUX(IJ)=FLUX(IJ)*((UN-FCCOMP)
      *            +FCCOMP*EXP(-MIN(TAUC(IJ),5.D1)))
       END DO
-      WRITE(6,600) NLC,NLX
-  600 FORMAT(' discrete component applied to',i5,' ground-term lines',
-     *       ' (',i4,' excited-level lines of the same ions skipped)'/)
+      IF(TCOMP.GT.0.) THEN
+         WRITE(6,600) NLC,TCOMP,NLW
+       ELSE
+         WRITE(6,601) NLC,NLX,NLW
+      END IF
+      IF(NLC.EQ.0) WRITE(6,602)
+  600 FORMAT(' discrete component applied to',i5,' lines, Texc =',
+     *       f9.1,' K (',i5,' negligible)'/)
+  601 FORMAT(' discrete component applied to',i5,' ground-term lines',
+     *       ' (',i5,' excited, ',i5,' negligible, skipped)'/)
+  602 FORMAT(' *** WARNING: discrete component matched no line in this',
+     *       ' interval;'/'     check the (Z, stage) entries - stage is',
+     *       ' spectroscopic, 1 = neutral'/)
       RETURN
       END
 C
@@ -19321,6 +19368,7 @@ c     frozen model ionization and the nebular balance (default 10)
       vtcut=0.
       fpcov=1.
       ncomp=0
+      tcomp=0.
       read(linew,*,err=11,end=11) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm
       read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
@@ -19392,26 +19440,38 @@ c     frozen model ionization and the nebular balance (default 10)
   618 format('                  peaked: turnover at',f8.1,' km/s'/)
 c     optional discrete-component record, read from unit 55 right
 c     after the wind record:
-c        v0  b  fcov  nion  (Z  stage  logN/g) x nion
-c     v0 and b in km/s, logN/g = log10 of the lower-level column
-c     divided by its statistical weight, in cm-2
+c        v0  b  fcov  nion  (Z  stage  logN/g) x nion  [Texc]
+c     v0 and b in km/s, logN/g = log10 of the ground-term column
+c     divided by its statistical weight, in cm-2.  The trailing Texc
+c     (K) is optional: if absent or <=0 the absorber is taken to be
+c     cold and only ground-term lines are included, otherwise every
+c     line of the ion is populated by a Boltzmann factor at Texc
       read(55,'(a)',err=13,end=13) linec
       read(linec,*,err=13,end=13) vcmp,bcmp,fccmp,ncmp
       if(ncmp.le.0.or.ncmp.gt.mcomp) go to 13
       read(linec,*,err=13,end=13) vcmp,bcmp,fccmp,ncmp,
      *     (iacomp(k),izcomp(k),clcomp(k),k=1,ncmp)
+      tcmp=0.
+      read(linec,*,err=14,end=14) vcmp,bcmp,fccmp,ncmp,
+     *     (iacomp(k),izcomp(k),clcomp(k),k=1,ncmp),tcmp
+   14 continue
       vcomp=vcmp
       bcomp=bcmp
       fccomp=fccmp
+      tcomp=tcmp
       if(fccomp.le.0..or.fccomp.gt.1.) fccomp=1.
+      if(bcomp.le.0.) bcomp=1.
       ncomp=ncmp
       write(6,620) vcomp,bcomp,fccomp
       do k=1,ncomp
          write(6,621) iacomp(k),izcomp(k),clcomp(k)
       end do
+      if(tcomp.gt.0.) write(6,622) tcomp
   620 format(' discrete component: v0 =',f9.1,' km/s   b =',f7.1,
      *       ' km/s   covering =',f6.3)
   621 format('    Z =',i3,'  stage =',i3,'   log(N/g) =',f8.3)
+  622 format('    excitation temperature =',f9.1,' K',
+     *       '   (all lines of the ion included)')
    13 continue
       if(fpcov.lt.1.) write(6,619) fpcov
   619 format(' partial coverage (flux level): fpcov =',f6.3/
