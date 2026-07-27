@@ -14,6 +14,12 @@
       COMMON/CORLAY/DLAY(MDEPTH),KLAY(MDEPTH),IFINE(MKU)
       COMMON/WINDTP/TWFLOOR,NRXW,IWNEB,IWABS,FCOVW,FSHLD,
      *              QTILT,VTILT,IATILT,IZTILT,VTCUT,FPCOV
+c     discrete absorbing component(s) in front of the wind:
+c     velocity, Doppler b (km/s), covering fraction, and per-ion
+c     lower-level column N/g (cm-2) for NCOMP ions
+      PARAMETER (MCOMP=10)
+      COMMON/WCOMPP/VCOMP,BCOMP,FCCOMP,CLCOMP(MCOMP),
+     *              NCOMP,IZCOMP(MCOMP),IACOMP(MCOMP)
       COMMON/CONJNU/XJCON(MFREQC,MDEPF)
       COMMON/WTAULN/TAUWL(MDEPTH)
       PARAMETER (MREC=80)

@@ -11068,6 +11068,85 @@ C
 C
 C ********************************************************************
 C
+      SUBROUTINE WCOMPA
+C     =================
+C
+C     Discrete absorbing component(s) in front of the wind.
+C
+C     A structure at velocity VCOMP with Doppler parameter BCOMP covers
+C     a fraction FCCOMP of the stellar disk.  Its optical depth in every
+C     line of the listed ions follows from ONE column per ion, so the
+C     doublet ratios are not free parameters:
+C
+C        tau0 = (pi e^2/m c /sqrt(pi)) * gf * lam0 * (N/g) / b
+C             = EXP(GF0) * lam0 * (N/g) / b
+C
+C     because the line list stores GF0 = ln(gf) - 4.2014672 and
+C     exp(-4.2014672) = pi e^2/(m c sqrt(pi)).  Emission is not added:
+C     a small covering fraction subtends a small solid angle, so the
+C     structure absorbs without a matching emission lobe - which is the
+C     reason for treating it separately from the wind at all.
+C
+C     The column is the GROUND-level one, so only lines rising from the
+C     ground term are included (EXCL0 < EXCLIM): a discrete absorber at
+C     wind temperatures keeps essentially all of its population there,
+C     and applying a ground-state column to a subordinate line would
+C     overestimate that line by orders of magnitude.
+C
+C     Applied to the emergent flux before any instrumental broadening:
+C        F -> F * [ (1-fc) + fc*exp(-tau) ]
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/SYNTHP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
+      COMMON/EMFLUX/FLUX(MFREQ),FLUXC(MFREQC)
+      DIMENSION TAUC(MFREQ)
+      PARAMETER (UN=1., CKMS=2.997925D5, EXCLIM=1.D4)
+C
+      DO IJ=1,NFROBS
+         TAUC(IJ)=0.
+      END DO
+      NLC=0
+      NLX=0
+      DO I=1,NLIN
+         IL=INDLIN(I)
+         IAT=INDAT(IL)/100
+         ION=MOD(INDAT(IL),100)
+         DO K=1,NCOMP
+c           both IZCOMP and ION are spectroscopic stages (1 = neutral)
+            IF(IAT.NE.IACOMP(K).OR.ION.NE.IZCOMP(K)) CYCLE
+c           ground-term lines only (EXCL0 is E_low/k in K)
+            IF(EXCL0(IL).GT.EXCLIM) THEN
+               NLX=NLX+1
+               CYCLE
+            END IF
+            ALAM0=2.997925D18/FREQ0(IL)
+            TAU0=EXP(DBLE(GF0(IL)))*ALAM0*1.D-8
+     *           *1.D1**CLCOMP(K)/(BCOMP*1.D5)
+            IF(TAU0.LE.1.D-4) CYCLE
+            NLC=NLC+1
+            DO IJ=1,NFROBS
+               VV=CKMS*(WLOBS(IJ)/ALAM0-UN)
+               X=(VV-VCOMP)/BCOMP
+               IF(X*X.GT.25.D0) CYCLE
+               TAUC(IJ)=TAUC(IJ)+TAU0*EXP(-X*X)
+            END DO
+         END DO
+      END DO
+      DO IJ=1,NFROBS
+         FLUX(IJ)=FLUX(IJ)*((UN-FCCOMP)
+     *            +FCCOMP*EXP(-MIN(TAUC(IJ),5.D1)))
+      END DO
+      WRITE(6,600) NLC,NLX
+  600 FORMAT(' discrete component applied to',i5,' ground-term lines',
+     *       ' (',i4,' excited-level lines of the same ions skipped)'/)
+      RETURN
+      END
+C
+C ********************************************************************
+C
       SUBROUTINE WSHADW(ID,IL,IL2,ABC0,TAUSH)
 C     =======================================
 C
@@ -18618,6 +18697,8 @@ c     disk while leaving the envelope emission untouched.
         IF(FPCOV.LT.1.) FLUX(IJ)=FLUX(IJ)
      *      +(1.-FPCOV)*(FLUXP(IJ)-FLUXA(IJ))*R2F
       END DO
+c     discrete absorbing component(s) in front of everything
+      IF(NCOMP.GT.0) CALL WCOMPA
 C
       RETURN
       END
@@ -19194,7 +19275,7 @@ C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
       INCLUDE 'INCLUDE/WINCOM.FOR'
-      character*200 linew
+      character*200 linew,linec
       dimension zz(mdepth),vel0(mdepth),rrel(mdepth),
 c     *          dvel0(mdepth),vel1(mdepth),hstt(mdepth),
      *          den0(mdepth),vel00(mdepth),ind(mdepth),
@@ -19239,6 +19320,7 @@ c     frozen model ionization and the nebular balance (default 10)
       iztilt=0
       vtcut=0.
       fpcov=1.
+      ncomp=0
       read(linew,*,err=11,end=11) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm
       read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
@@ -19308,6 +19390,29 @@ c     frozen model ionization and the nebular balance (default 10)
      *       '                  q =',f7.3,'   vref =',f8.1,' km/s'/)
       if(qtilt.ne.0..and.vtcut.gt.0.) write(6,618) vtcut
   618 format('                  peaked: turnover at',f8.1,' km/s'/)
+c     optional discrete-component record, read from unit 55 right
+c     after the wind record:
+c        v0  b  fcov  nion  (Z  stage  logN/g) x nion
+c     v0 and b in km/s, logN/g = log10 of the lower-level column
+c     divided by its statistical weight, in cm-2
+      read(55,'(a)',err=13,end=13) linec
+      read(linec,*,err=13,end=13) vcmp,bcmp,fccmp,ncmp
+      if(ncmp.le.0.or.ncmp.gt.mcomp) go to 13
+      read(linec,*,err=13,end=13) vcmp,bcmp,fccmp,ncmp,
+     *     (iacomp(k),izcomp(k),clcomp(k),k=1,ncmp)
+      vcomp=vcmp
+      bcomp=bcmp
+      fccomp=fccmp
+      if(fccomp.le.0..or.fccomp.gt.1.) fccomp=1.
+      ncomp=ncmp
+      write(6,620) vcomp,bcomp,fccomp
+      do k=1,ncomp
+         write(6,621) iacomp(k),izcomp(k),clcomp(k)
+      end do
+  620 format(' discrete component: v0 =',f9.1,' km/s   b =',f7.1,
+     *       ' km/s   covering =',f6.3)
+  621 format('    Z =',i3,'  stage =',i3,'   log(N/g) =',f8.3)
+   13 continue
       if(fpcov.lt.1.) write(6,619) fpcov
   619 format(' partial coverage (flux level): fpcov =',f6.3/
      *       '   F = (1-f)*F_phot + f*F_windabs + F_windemis'/)
