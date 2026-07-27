@@ -1,4 +1,14 @@
+# build products
 synspec51_fork
 synspec51_fork_*
-data_syn/linelist.dat
 *.mod
+*.dSYM/
+
+# large data not kept in the repo
+data_syn/linelist.dat
+
+# local test/example work folders - never committed
+workspaces/
+
+# macOS
+.DS_Store
