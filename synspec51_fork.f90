@@ -19158,6 +19158,11 @@ c     frozen model ionization and the nebular balance (default 10)
       fcovw=1.
       fshld=1.
       bspan=4.
+      qtilt=0.
+      vtilt=1000.
+      iatilt=0
+      iztilt=0
+      vtcut=0.
       read(linew,*,err=11,end=11) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm
       read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
@@ -19187,6 +19192,19 @@ c     frozen model ionization and the nebular balance (default 10)
       read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
      *           vtwind,vblnd,vplat,rplat,fcov,fshl,bspn
+      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
+     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
+     *           vtwind,vblnd,vplat,rplat,fcov,fshl,bspn,
+     *           qtlt,vtlt,iatlt,iztlt
+      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
+     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
+     *           vtwind,vblnd,vplat,rplat,fcov,fshl,bspn,
+     *           qtlt,vtlt,iatlt,iztlt,vtcut
+      qtilt=qtlt
+      vtilt=vtlt
+      iatilt=iatlt
+      iztilt=iztlt
+      if(vtilt.le.0.) vtilt=1000.
       bspan=bspn
       if(bspan.le.0.) bspan=4.
       go to 12
@@ -19202,6 +19220,12 @@ c     frozen model ionization and the nebular balance (default 10)
      *       ' two-level scattering source function'/)
       if(bspan.ne.4.) write(6,616) bspan
   616 format(' bridge span: bspan =',f6.2,' (default 4)'/)
+      if(qtilt.ne.0.) write(6,617) iatilt,iztilt,qtilt,vtilt
+  617 format(' ionization tilt: Z =',i3,' stage =',i3,
+     *       '  weight * (v/vref)**q'/
+     *       '                  q =',f7.3,'   vref =',f8.1,' km/s'/)
+      if(qtilt.ne.0..and.vtcut.gt.0.) write(6,618) vtcut
+  618 format('                  peaked: turnover at',f8.1,' km/s'/)
       if(fshld.ne.1.) write(6,615) fshld
   615 format(' shielding scale: fshld =',f6.3,
      *       ' (tau_shield multiplied; <1 = leakier slow zone)'/)
@@ -19708,6 +19732,33 @@ c           (for C IV, N V etc. this IS the observable balance)
             END IF
             QFK=QF(NION0)*RATKN
             QNORM=QNORM+QFK
+c           empirical ionization tilt: multiply the relative weight of
+c           one stage by (v/VTILT)**QTILT.  Applied to the stage weights
+c           before the renormalization below, so the element total is
+c           preserved by construction (only the stage ratios change).
+            IF(QTILT.NE.0..AND.IATX.EQ.IATILT) THEN
+               VV=VEL0(ID)
+               IF(VV.LT.UN) VV=UN
+c              VTCUT > 0 turns the monotonic tilt into a peak at VTCUT
+c              (symmetric in log v): the stage is suppressed both below
+c              and above it
+               IF(VTCUT.GT.0..AND.VV.GT.VTCUT) VV=VTCUT*VTCUT/VV
+               IF(VV.LT.UN) VV=UN
+               FTLT=(VV/VTILT)**QTILT
+               ITG=0
+               DO IONE=NIO1,NION0
+                  IF(IZ(IONE).EQ.IZTILT) ITG=IONE
+               END DO
+               IF(ITG.GT.0) THEN
+                  QNORM=QNORM-QF(ITG)
+                  QF(ITG)=QF(ITG)*FTLT
+                  QNORM=QNORM+QF(ITG)
+                ELSE IF(IZ(NION0)+1.EQ.IZTILT) THEN
+                  QNORM=QNORM-QFK
+                  QFK=QFK*FTLT
+                  QNORM=QNORM+QFK
+               END IF
+            END IF
 c           rescale each stage (and the top continuum level) so the
 c           element total is unchanged
             DO IONE=NIO1,NION0
