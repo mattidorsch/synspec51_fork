@@ -10484,6 +10484,10 @@ C
      *           XET    = 8067.6,
      *           XET3   = XET*C3)
       DIMENSION ABLIN(MFREQ),EMLIN(MFREQ),ABLINN(MFREQ)
+c     wind-line opacity/emissivity accumulated separately, so SETWIN
+c     can build the 'wind lines removed' tables used by the
+c     flux-level partial-coverage blend
+      COMMON/WLNOPA/ABSOW(MOPAC),EMISW(MOPAC)
       COMMON/PRFQUA/DOPA1(MATOM,MDEPTH),VDWC(MDEPTH)
       COMMON/NLTPOP/PNLT(MATOM,MION,MDEPTH)
       COMMON/IPOTLS/IPOTL(mlin0)
@@ -10495,6 +10499,8 @@ C
          ABLIN(IJ)=0.
          ABLINN(IJ)=0.
          EMLIN(IJ)=0.
+         ABSOW(IJ)=0.
+         EMISW(IJ)=0.
    10 CONTINUE
 c     source-function dilution: in the diluted-wind mode (twfloor>0)
 c     keep the geometric dilution from RADTEM; otherwise reset to 1
@@ -10588,6 +10594,7 @@ c
          IAT=INDAT(IL)/100
          ION=MOD(INDAT(IL),100)
          FR0=FREQ0(IL)
+         IWL=0
          LPR=.TRUE.
          ISP=ISPRF(IL)
 C        LPR = .FALSE. -> special HeI broadening
@@ -10638,6 +10645,7 @@ c              partner, at the interior layer where v = v(id)-dv12
                q2=wesck2(id,ab0,tauc)
                if(fshld.ne.1.) q2=xk2dop(fshld*tauc)
                sl0=(un-epsw)*q2*xjc+epsw*pla
+               iwl=1
 c              partial coverage (picket fence): scale the opacity so
 c              the coupled column saturates at exp(-tau_eff) =
 c              (1-fcov) + fcov*exp(-tau); weak lines scale by fcov
@@ -10698,6 +10706,7 @@ c              partner, at the interior layer where v = v(id)-dv12
                q2=wesck2(id,ab0,tauc)
                if(fshld.ne.1.) q2=xk2dop(fshld*tauc)
                sl0=(un-epsw)*q2*xjc+epsw*pla
+               iwl=1
 c              partial coverage (picket fence): scale the opacity so
 c              the coupled column saturates at exp(-tau_eff) =
 c              (1-fcov) + fcov*exp(-tau); weak lines scale by fcov
@@ -10763,8 +10772,10 @@ C
                XF=ABS(FREQ(IJ)-FR0)*DOP1
                ABL=AB0*VOIGTK(AGAM,XF)
                ABLINN(IJ)=ABLINN(IJ)+ABL
+               if(iwl.eq.1) ABSOW(IJ)=ABSOW(IJ)+ABL
                if(ilne(id).gt.0) go to 80
                EMLIN(IJ)=EMLIN(IJ)+ABL*SL0
+               if(iwl.eq.1) EMISW(IJ)=EMISW(IJ)+ABL*SL0
    80       CONTINUE
 C
 C        again, special expressions for 4 selected He I lines
@@ -10774,6 +10785,7 @@ C
                FR=FREQ(IJ)
                ABL=AB0*PHE1(ID,FR,ISP-1,0.D0)
                ABLINN(IJ)=ABLINN(IJ)+ABL
+               if(iwl.eq.1) ABSOW(IJ)=ABSOW(IJ)+ABL
                if(ilne(id).gt.0) go to 90
                EMLIN(IJ)=EMLIN(IJ)+ABL*SL0
    90       CONTINUE
@@ -18375,11 +18387,15 @@ C
       COMMON/CONOPA/CHC(MFREQC,MDEPTH),ETC(MFREQC,MDEPTH),
      *              SCC(MFREQC,MDEPTH)
       COMMON/HPOPST/HPOP
-      COMMON/COPAC/AB(MOPAC,MDEPF),STH(MOPAC,MDEPF),SCH(MFREQC,MDEPF)
+      COMMON/COPAC/AB(MOPAC,MDEPF),STH(MOPAC,MDEPF),SCH(MFREQC,MDEPF),
+     *             ABP(MOPAC,MDEPF),STHP(MOPAC,MDEPF),
+     *             STHA(MOPAC,MDEPF)
       COMMON/LIMPAR/ALAM0,ALAM1,FRMIN,FRLAST,FRLI0,FRLIM
       COMMON/BLAPAR/RELOP,SPACE0,CUTOF0,TSTD,DSTD,ALAMC
       COMMON/FRQSET/IFRS,NFRS
       COMMON/EMFLUX/FLUX(MFREQ),FLUXC(MFREQC)
+      COMMON/WLNOPA/ABSOW(MOPAC),EMISW(MOPAC)
+      COMMON/PCOVFL/FLUXA(MFREQ),FLUXP(MFREQ),IPCMOD
 C
 C     set up the partial line list for the current interval
 C
@@ -18510,6 +18526,14 @@ C
          DO IJ=1,NOPAC
             AB(IJ,ID)=ABSO(IJ) / DENSCON(ID)
             STH(IJ,ID)=EMIS(IJ)/ABSO(IJ)
+c           partial-coverage tables: ABP/STHP = wind lines removed
+c           (uncovered sightline); STHA = wind line opacity kept but
+c           its emissivity removed (absorption-only)
+            ABW=ABSO(IJ)-ABSOW(IJ)
+            IF(ABW.LE.0.) ABW=ABSO(IJ)
+            ABP(IJ,ID)=ABW / DENSCON(ID)
+            STHP(IJ,ID)=(EMIS(IJ)-EMISW(IJ))/ABW
+            STHA(IJ,ID)=(EMIS(IJ)-EMISW(IJ))/ABSO(IJ)
          END DO
       END DO
 C
@@ -18574,12 +18598,25 @@ C     Loop on rays, solving radiative transfer equation
 C
       DO IJ=1,NFREQ
         FLUX(IJ)=0.
+        FLUXA(IJ)=0.
+        FLUXP(IJ)=0.
       END DO
-      DO IU=2,KMU
-        CALL RTEWIN(IU)
+c     with partial coverage, three passes: 1 = full wind,
+c     2 = wind absorption only, 3 = wind lines removed.  The blend
+c     F = FLUX + (1-f)*(FLUXP-FLUXA) uncovers a fraction (1-f) of the
+c     disk while leaving the envelope emission untouched.
+      NPASS=1
+      IF(FPCOV.LT.1.) NPASS=3
+      DO IPCMOD=1,NPASS
+        DO IU=2,KMU
+          CALL RTEWIN(IU)
+        END DO
       END DO
+      IPCMOD=1
       DO IJ=1,NFREQ
         FLUX(IJ)=FLUX(IJ)*R2F
+        IF(FPCOV.LT.1.) FLUX(IJ)=FLUX(IJ)
+     *      +(1.-FPCOV)*(FLUXP(IJ)-FLUXA(IJ))*R2F
       END DO
 C
       RETURN
@@ -18623,7 +18660,9 @@ C
       dimension densr(mrpf),rdy(mrpf),
      *          abc0(mdepf),abc1(mdepf),stc0(mdepf),stc1(mdepf),
      *          scc0(mdepf),scc01(mdepf)
-      COMMON/COPAC/AB(MOPAC,MDEPF),STH(MOPAC,MDEPF),SCH(MFREQC,MDEPF)
+      COMMON/COPAC/AB(MOPAC,MDEPF),STH(MOPAC,MDEPF),SCH(MFREQC,MDEPF),
+     *             ABP(MOPAC,MDEPF),STHP(MOPAC,MDEPF),
+     *             STHA(MOPAC,MDEPF)
 C
 C     overall loop over continuum frequencies
 C
@@ -18867,10 +18906,13 @@ C
      *          rip(2*MRPF ),rim(2*MRPF )
 c     dimension sc0(2*mrpf)
       dimension sctd(2*mrpf)
-      COMMON/COPAC/AB(MOPAC,MDEPF),STH(MOPAC,MDEPF),SCH(MFREQC,MDEPF)
+      COMMON/COPAC/AB(MOPAC,MDEPF),STH(MOPAC,MDEPF),SCH(MFREQC,MDEPF),
+     *             ABP(MOPAC,MDEPF),STHP(MOPAC,MDEPF),
+     *             STHA(MOPAC,MDEPF)
       COMMON/EMFLUX/FLUX(MFREQ),FLUXC(MFREQC)
       COMMON/CONSCV/SCCF(MFREQC,mdepf)
       COMMON/REFDEP/IREFD(MFREQ)
+      COMMON/PCOVFL/FLUXA(MFREQ),FLUXP(MFREQ),IPCMOD
 C
       IUD=NUDF(IU)
       IF(IU.LE.NREXT) IUD=2*NUDF(IU)-1
@@ -18900,12 +18942,30 @@ C
             abd0=ab(1,ky)
             std0=sth(1,ky)
             ij1=1
+            if(ipcmod.eq.2) then
+               std1=stha(1,ky-1)
+               std0=stha(1,ky)
+             else if(ipcmod.eq.3) then
+               abd1=abp(1,ky-1)
+               std1=sthp(1,ky-1)
+               abd0=abp(1,ky)
+               std0=sthp(1,ky)
+            end if
           else if(wlcom.ge.wlam(nfreq)) then
             abd1=ab(nfreq,ky-1)
             std1=sth(nfreq,ky-1)
             abd0=ab(nfreq,ky)
             std0=sth(nfreq,ky)
             ij1=nfreq
+            if(ipcmod.eq.2) then
+               std1=stha(nfreq,ky-1)
+               std0=stha(nfreq,ky)
+             else if(ipcmod.eq.3) then
+               abd1=abp(nfreq,ky-1)
+               std1=sthp(nfreq,ky-1)
+               abd0=abp(nfreq,ky)
+               std0=sthp(nfreq,ky)
+            end if
           else
             xijap=(wlcom-wlam(1))/dlama0+1.
             ijap=int(xijap)
@@ -18932,6 +18992,15 @@ C
             std1=xfa*sth(ij1,ky-1)+(1.-xfa)*sth(ij1+1,ky-1)
             abd0=xfa*ab(ij1,ky)+(1.-xfa)*ab(ij1+1,ky)
             std0=xfa*sth(ij1,ky)+(1.-xfa)*sth(ij1+1,ky)
+            if(ipcmod.eq.2) then
+               std1=xfa*stha(ij1,ky-1)+(1.-xfa)*stha(ij1+1,ky-1)
+               std0=xfa*stha(ij1,ky)+(1.-xfa)*stha(ij1+1,ky)
+             else if(ipcmod.eq.3) then
+               abd1=xfa*abp(ij1,ky-1)+(1.-xfa)*abp(ij1+1,ky-1)
+               std1=xfa*sthp(ij1,ky-1)+(1.-xfa)*sthp(ij1+1,ky-1)
+               abd0=xfa*abp(ij1,ky)+(1.-xfa)*abp(ij1+1,ky)
+               std0=xfa*sthp(ij1,ky)+(1.-xfa)*sthp(ij1+1,ky)
+            end if
          end if
         AB0(ID)=YDR1*Abd1+YDR*abd0
         ST0(ID)=YDR1*Std1+YDR*Std0
@@ -19027,7 +19096,13 @@ C
            rim(id)=(two*rim(id+1)+dt0*st0(id+1)+cc*st0(id))*aa
         enddo
       ENDIF
-      FLUX(IJ)=FLUX(IJ)+WMUH(IU)*RIM(1)
+      IF(IPCMOD.EQ.2) THEN
+         FLUXA(IJ)=FLUXA(IJ)+WMUH(IU)*RIM(1)
+       ELSE IF(IPCMOD.EQ.3) THEN
+         FLUXP(IJ)=FLUXP(IJ)+WMUH(IU)*RIM(1)
+       ELSE
+         FLUX(IJ)=FLUX(IJ)+WMUH(IU)*RIM(1)
+      END IF
 c
 c      if(ij.eq.1.or.ij.eq.3.or.ij.eq.5.or.ij.eq.9.or.ij.eq.83) then
 c      if(iu.eq.2.or.iu.eq.20.or.iu.eq.60.or.iu.eq.80) then
@@ -19163,6 +19238,7 @@ c     frozen model ionization and the nebular balance (default 10)
       iatilt=0
       iztilt=0
       vtcut=0.
+      fpcov=1.
       read(linew,*,err=11,end=11) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm
       read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
@@ -19200,6 +19276,12 @@ c     frozen model ionization and the nebular balance (default 10)
      *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
      *           vtwind,vblnd,vplat,rplat,fcov,fshl,bspn,
      *           qtlt,vtlt,iatlt,iztlt,vtcut
+      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
+     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
+     *           vtwind,vblnd,vplat,rplat,fcov,fshl,bspn,
+     *           qtlt,vtlt,iatlt,iztlt,vtcut,fpcv
+      fpcov=fpcv
+      if(fpcov.le.0..or.fpcov.gt.1.) fpcov=1.
       qtilt=qtlt
       vtilt=vtlt
       iatilt=iatlt
@@ -19226,6 +19308,9 @@ c     frozen model ionization and the nebular balance (default 10)
      *       '                  q =',f7.3,'   vref =',f8.1,' km/s'/)
       if(qtilt.ne.0..and.vtcut.gt.0.) write(6,618) vtcut
   618 format('                  peaked: turnover at',f8.1,' km/s'/)
+      if(fpcov.lt.1.) write(6,619) fpcov
+  619 format(' partial coverage (flux level): fpcov =',f6.3/
+     *       '   F = (1-f)*F_phot + f*F_windabs + F_windemis'/)
       if(fshld.ne.1.) write(6,615) fshld
   615 format(' shielding scale: fshld =',f6.3,
      *       ' (tau_shield multiplied; <1 = leakier slow zone)'/)
