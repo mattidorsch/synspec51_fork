@@ -89,6 +89,10 @@ C
      *              EXHK(MDEPTH)
 C
       COMMON/LINCTR/DFRCON,IJCNTR(MLIN),IJCMTR(MLINM,MMLIST)
+c     blue-shadows-red doublet coupling: for each line in the current
+c     list, the position of the nearest BLUER line of the same ion
+c     sharing the same lower level (0 if none)
+      COMMON/DBLSHD/IPARTN(MLIN)
       COMMON/MLINRE/FRLASM(MMLIST),ALASTM(MMLIST),
      *              NXTSEM(MMLIST),IPRSEM(MMLIST),IREADM(MMLIST)
 

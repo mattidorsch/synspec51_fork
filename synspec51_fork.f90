@@ -10565,6 +10565,23 @@ c           keep the walk inside the (non-uniform) padded grid
          end if
          IJCNTR(I)=IJC
   255  continue
+c        doublet coupling: nearest bluer line of the same ion sharing
+c        the same lower level (equal lower excitation energy)
+         ipartn(i)=0
+         if(innlt.ne.0.and.iwneb.gt.0) then
+            do i2=1,nlin
+               il2=indlin(i2)
+               if(indnlt(il2).eq.0) cycle
+               if(indat(il2).ne.indat(il)) cycle
+               if(abs(excl0(il2)-excl0(il)).gt.1.d0) cycle
+               if(freq0(il2).le.freq0(il)) cycle
+               if(ipartn(i).eq.0) then
+                  ipartn(i)=i2
+                else if(freq0(il2).lt.freq0(indlin(ipartn(i)))) then
+                  ipartn(i)=i2
+               end if
+            end do
+         end if
 c        write(80,*) i,ijcntr(i),2.997925e18/freq0(il)
          endif
 c
@@ -10611,6 +10628,13 @@ c              the pure scattering limit (1-eps)*Jc + eps*B
                epsw=eps(temp(id),elec(id),2.997925e18/fr0,ion,0)
 c              pumping continuum shielded by the line-thick slow
 c              layers between this point and the photosphere
+c              blue-shadows-red: the continuum pumping this line has
+c              already crossed the resonance of its bluer doublet
+c              partner, at the interior layer where v = v(id)-dv12
+               if(ipartn(i).gt.0) then
+                  call wshadw(id,il,indlin(ipartn(i)),ab0,tsh)
+                  xjc=xjc*exp(-min(tsh,3.d1))
+               end if
                q2=wesck2(id,ab0,tauc)
                if(fshld.ne.1.) q2=xk2dop(fshld*tauc)
                sl0=(un-epsw)*q2*xjc+epsw*pla
@@ -10664,6 +10688,13 @@ c           function is diluted geometrically, S ~ W * S_phot
                epsw=eps(temp(id),elec(id),2.997925e18/fr0,ion,0)
 c              pumping continuum shielded by the line-thick slow
 c              layers between this point and the photosphere
+c              blue-shadows-red: the continuum pumping this line has
+c              already crossed the resonance of its bluer doublet
+c              partner, at the interior layer where v = v(id)-dv12
+               if(ipartn(i).gt.0) then
+                  call wshadw(id,il,indlin(ipartn(i)),ab0,tsh)
+                  xjc=xjc*exp(-min(tsh,3.d1))
+               end if
                q2=wesck2(id,ab0,tauc)
                if(fshld.ne.1.) q2=xk2dop(fshld*tauc)
                sl0=(un-epsw)*q2*xjc+epsw*pla
@@ -11020,6 +11051,62 @@ C
       GO TO 20
    10 C=2.16/T/SQRT(T)/X**1.68*ANE
    20 EPS=C/(C+A)
+      RETURN
+      END
+C
+C ********************************************************************
+C
+      SUBROUTINE WSHADW(ID,IL,IL2,ABC0,TAUSH)
+C     =======================================
+C
+C     Blue-shadows-red doublet coupling.
+C     The continuum beam that is resonant with line IL at layer ID was,
+C     on its way out from the star, resonant with the bluer partner IL2
+C     (same ion, same lower level) at the interior layer where
+C        v = v(ID) - dv12,   dv12 = c*(FREQ0(IL2)/FREQ0(IL) - 1) > 0.
+C     TAUSH is the partner's optical depth there, so the pumping
+C     continuum of IL must be multiplied by exp(-TAUSH).
+C
+C     The partner shares the lower level, so its line-centre opacity
+C     differs only by the gf ratio; along the path it is scaled with
+C     the density, and the Gaussian velocity offset selects the
+C     resonance - the same construction (and the same approximations)
+C     as WESCK2, over mean (clump-corrected) densities.
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/LINDAT.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
+      PARAMETER (UN=1.)
+C
+      TAUSH=0.
+      IF(ABC0.LE.0.) RETURN
+      DV12=2.997925D10*(FREQ0(IL2)/FREQ0(IL)-UN)
+      IF(DV12.LE.0.) RETURN
+      VTAR=VEL(ID)-DV12
+      IF(VTAR.LE.VEL(ND)) RETURN
+      ABP=ABC0*EXP(GF0(IL2)-GF0(IL))
+      TAU=0.
+      DO ID2=ID,ND
+         DVM=SQRT(1.65D8*TEMP(ID2)/14.D0+VTURB(ID2))
+         X=(VEL(ID2)-VTAR)/DVM
+         X2=X*X
+         IF(X2.GT.25.D0) THEN
+            IF(VEL(ID2).LT.VTAR) GO TO 10
+            CYCLE
+         END IF
+         IF(ID2.EQ.1) THEN
+            DZ=RD(1)-RD(2)
+          ELSE IF(ID2.LT.ND) THEN
+            DZ=0.5D0*(RD(ID2-1)-RD(ID2+1))
+          ELSE
+            DZ=RD(ND-1)-RD(ND)
+         END IF
+         TAU=TAU+ABP*(DENS(ID2)/DENS(ID))*DZ*EXP(-X2)/DENSCON(ID2)
+         IF(TAU.GT.1.D2) GO TO 10
+      END DO
+   10 CONTINUE
+      TAUSH=TAU
       RETURN
       END
 C
