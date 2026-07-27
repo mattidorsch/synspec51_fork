@@ -11058,7 +11058,11 @@ c     half of the local layer
       ELSE
          DZ=RD(ND-1)-RD(ND)
       END IF
-      TAU=0.5D0*ABC0*DZ
+c     ABC0 and DENS are in-clump values; as everywhere else the opacity
+c     entering the transfer is the mean one (SETWIN, RTESCA divide by
+c     DENSCON), so the shielding column does too - otherwise tau is a
+c     factor DENSCON too large
+      TAU=0.5D0*ABC0*DZ/DENSCON(ID)
 c     inward accumulation (toward the star); leakage through the
 c     internal velocity gradient: a shifted layer absorbs at this
 c     layer's line frequency only in its profile wing, weight
@@ -11074,7 +11078,7 @@ c     ~ exp(-(dv/vD)^2) with the mean coupling width of the pair
          ELSE
             DZ=0.5D0*(RD(ID2-1)-RD(ID2+1))
          END IF
-         TAU=TAU+ABC0*(DENS(ID2)/DENS(ID))*DZ*EXP(-X2)
+         TAU=TAU+ABC0*(DENS(ID2)/DENS(ID))*DZ*EXP(-X2)/DENSCON(ID2)
 c        the hydrostatic photosphere is opaque anyway - stop early
          IF(TAU.GT.1.D3) GO TO 10
       END DO
