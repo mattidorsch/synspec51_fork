@@ -70,13 +70,14 @@ Enable it by subtracting 100 from `imode` (e.g. `imode=-100` for a normal spectr
 ```text
 velmax itrad nltoff iemoff
 rstar rmax amloss vinf beta ndrad nrcore nfiry ndf nda
-CLUMP  dclmax [vclm]
+CLUMP  dclmax [vclm [dfloor]]
 WTEMP  twind
 NEB    iwneb [vtwind [vblnd]]
 VLAW   vplat [rplat [bspan]]
 SHIELD fshld [fcov]
 COVER  fpcov
 TILT   qtilt [vtilt [iatilt iztilt [vtcut]]]
+GAMMA  Z stage factor
 COMP   v0 b fcov nion (Z stage log(N/g)) x nion [Texc]
 END
 ```
@@ -95,7 +96,9 @@ optionally followed by an untagged `COMP` record.
 - `rmax` - outer boundary in units of `rstar`
 - `amloss`, `vinf`, `beta` - mass-loss rate (Msun/yr) and beta-law parameters `v = vinf*(1-r0/r)**beta`; the velocity follows the continuity equation `v = Mdot/(4 pi r**2 rho)` in the hydrostatic part and transitions smoothly to the beta law
 - `ndrad` - total radial layers (model ND + added wind layers); `nrcore` - core rays; `nfiry` - outermost rays with a velocity-resolved fine grid; `ndf` - fine density grid for the opacity table (0 = ndrad); `nda` - diagnostic print only
-- `dclmax`, `vclm` (optional) - clumping law `D(v) = 1 + (dclmax-1)*exp(-vclm/v)`, density contrast `D = 1/f_vol`; omit for a smooth wind
+- `dclmax`, `vclm`, `dfloor` (optional) - clumping, density contrast `D = 1/f_vol`; omit for a smooth wind. Two forms, selected by the sign of `vclm`:
+  - `vclm > 0`: `D(v) = 1 + (dclmax-1)*exp(-vclm/v)` - clumping switches on above `vclm` and rises outward to `dclmax`. `vclm = 0` gives a depth-independent `D = dclmax`
+  - `vclm < 0`: `D(v) = dfloor + (dclmax-dfloor)*exp(-(v-v_graft)/|vclm|)` - clumping peaks at the beta-law graft and decays outward on the scale `|vclm|` to `dfloor` (default 1). Confined to the added wind layers: unlike the `vclm > 0` form it does not vanish as `v -> 0`, so it would otherwise clump the hydrostatic photosphere. This form matters because recombination scales with the in-clump electron density, so a base-peaked `D` keeps trace ions (C IV, C III) alive in the slow wind while barely touching a dominant stage like N V
 - `twind` (optional) - if > 0, the added wind layers get the diluted radiative-equilibrium temperature `T = T_s * Wn^(1/4)` (`Wn` = geometric dilution, `T_s` = outermost model temperature), floored at `twind*T_s` (typical 0.4), and the NLTE line source function in those layers is diluted by `Wn` (normalized to 1 at the graft; hydrostatic layers keep their solved NLTE state). Omit or 0 for an isothermal, undiluted wind. Recommended for `rmax` > a few: the isothermal wind is too hot far out and overestimates the P Cygni emission humps
 - `iwneb` (optional) - wind NLTE mode. In the added wind layers, (a) the ionization balance is recomputed per layer (element totals preserved), and (b) NLTE lines get a two-level scattering source function `S = (1-eps)*J_cont + eps*B(T)` with the continuum mean intensity from the scattering transfer solution and Kastner's collisional `eps`. Prevents saturated black troughs and removes excess low-velocity absorption of the dominant ion stage; recommended together with `twind`; quantitative work should still use PoWR/CMFGEN/FASTWIND instead. Values:
   - `1` - absolute nebular balance, `n(k+1)/n(k) = W*Gamma_k/(ne*alpha_k)`: photoionization rates `Gamma_k` from the TLUSTY SED (**requires `fort.13.tlusty`**, the TLUSTY unit-13 spectrum `freq[Hz] H_nu`, in the run directory) and RR+DR recombination fits from `data_syn/wind_recomb.dat` (Badnell RR + Shull & Van Steenberg 1982 DR).
@@ -109,6 +112,7 @@ optionally followed by an untagged `COMP` record.
 - `bspan` (optional) - span of the C1 Hermite bridge between the base/plateau and the pure beta-law, in units of the local slope length (default 4). With a plateau, a large `bspan` makes the bridge (not the beta-law) control the mid-velocity structure and `beta` has little effect; `bspan` = 0.3-1 hands the velocity range above the plateau to the beta-law. Smaller `bspan` puts more column at high velocity (deeper absorption near the terminal-velocity edge)
 - `TILT` (optional) - empirical ionization tilt: the weight of stage `iztilt` of element `iatilt` (both spectroscopic, 1 = neutral) is multiplied by `(v/vtilt)**qtilt` before the stage weights are renormalized, so the element total is preserved. `qtilt` < 0 concentrates the ion at low velocity and depletes it in the outer envelope - more absorption along the line of sight, less scattered emission from the extended wind. `vtcut` > 0 turns the monotonic tilt into a peak at `vtcut`. Photospheric layers are untouched (default `qtilt` = 0 = off)
 - `COVER` (optional) - flux-level partial coverage, `F = (1-fpcov)*F_phot + fpcov*F_windabs + F_windemis`: a fraction `1-fpcov` of the disk is seen without wind absorption, so saturated troughs floor at `1-fpcov` while the envelope emission is untouched. Unlike `fcov` this does not rescale opacity, so unsaturated lines are unaffected (default 1 = full coverage)
+- `GAMMA` (optional, repeatable - one ion per line) - multiplies the photoionization rate of the given ion (spectroscopic stage, 1 = neutral) in the nebular balance, i.e. rescales the ionizing SED at that ion's edge. Unlike density, clumping or dilution this is element-specific, which matters because different ions are ionized in very different parts of the EUV (C IV at 192 A just below the He II edge, N V at 127 A four decades further down). A factor < 1 keeps the ion alive. The effect is flat in velocity, so it cannot substitute for `TILT` if the data demand a gradient
 - `COMP` (optional) - discrete absorbing component in front of the wind: a structure at velocity `v0` with Doppler parameter `b` (km/s) covering a fraction `fcov` of the disk. One ground-term column `log(N/g)` (cm^-2) per ion fixes the optical depth in every line of that ion, so doublet ratios are not free parameters. No emission is added (a small covering fraction subtends a small solid angle). The optional trailing `Texc` (K) populates every line of the ion by a Boltzmann factor; absent or <= 0 means a cold absorber and only ground-term lines are included. Use for DAC/CIR-like features that no beta-law can produce
 
 Typical luminous sdO settings (following [Krticka et al. 2016](https://ui.adsabs.harvard.edu/abs/2016A%26A...593A.101K/abstract), Mdot = 1e-12 - 1e-9 Msun / yr, vinf = 500 - 1800 km/s depending on radius and Teff):
@@ -122,14 +126,15 @@ Example model for a luminous He-sdO (Teff = 55 kK, log g = 4.85, R = 0.7 Rsun; f
 ```text
 1300. 1 0 0
 0.70 25.00 1.3e-11 1550. 1.2 380 40 100 0 0
-CLUMP  10. 100.
+CLUMP  50. -200. 10.
 WTEMP  0.4
 NEB    1 0.1 10.
 VLAW   0. 0. 1.0
 SHIELD 1.0 1.0
 COVER  0.85
-TILT   -0.9 1000. 6 4 0.
 COMP   -1454. 149. 1.0 2  7 5 14.301  6 4 13.559
 END
 ```
-i.e. clumped (D = 10), diluted wind temperature, absolute nebular balance, wind microturbulence 0.1 v, a pure beta-law from the hydrostatic seam (no plateau), 85% disk coverage, C IV concentrated toward low velocity, and a discrete absorber at -1454 km/s. One block serves both windows: the tilt is per element.
+i.e. clumping peaked at the beta-law graft (D = 50, decaying outward on 200 km/s to a floor of 10), a diluted wind temperature, absolute nebular balance, wind microturbulence 0.1 v, a pure beta-law from the hydrostatic seam (no plateau), 85 % disk coverage, and a discrete absorber at -1454 km/s carrying N V and C IV columns. One block serves both windows.
+
+The base-peaked clumping is what keeps C IV alive in the slow wind: recombination scales with the in-clump electron density, so raising `D` from 10 to 50 near the graft multiplies the C IV fraction by ~3.5 (and C III by ~13) while *reducing* the dominant N V stage by ~2. An earlier version of this model used the empirical `TILT` instead; the clumping law reproduces it exactly in C IV and fits N V slightly better, so no tilt is needed. Note `D = 50` at the base is a large contrast, and it does real work in the fit - treat it as the parameter most in need of an independent check.

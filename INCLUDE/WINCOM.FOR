@@ -26,5 +26,10 @@ c     column N/g (cm-2) for NCOMP ions
       PARAMETER (MREC=80)
       COMMON/WNEBPH/GAMPH(MIOEX),RRCF(6,MREC),DRC(4,MREC),
      *              IZREC(MREC),IATREC(MREC),NRECTB
+c     per-ion scale factors on the photoionization rate GAMPH, i.e. on
+c     the ionizing SED at that ion's edge (element-specific, unlike
+c     density, clumping or dilution)
+      PARAMETER (MGSC=10)
+      COMMON/WGSCAL/GSCF(MGSC),NGSC,IZGSC(MGSC),IAGSC(MGSC)
       COMMON/OPAVEL/WDIL(MDEPTH),PLANW(MDEPTH),TRAD(MTRAD,MDEPTH),
      *              DENSCON(MDEPTH)

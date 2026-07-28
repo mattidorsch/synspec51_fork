@@ -19377,6 +19377,8 @@ c     frozen model ionization and the nebular balance (default 10)
       fpcov=1.
       ncomp=0
       tcomp=0.
+      ngsc=0
+      dfloor=1.
       read(linew,*,err=11,end=11) rstar,rmax,amloss,vinf,beta,
      *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm
       read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
@@ -19434,7 +19436,8 @@ c     frozen model ionization and the nebular balance (default 10)
 c     optional keyword-tagged lines after the wind record; they may set
 c     anything the record itself could, so the guards below are applied
 c     after them rather than inside the record parsing above
-      call wkeyrd(dclmax,vclm,twind,vtwind,vblnd,vplat,rplat,bspan)
+      call wkeyrd(dclmax,vclm,dfloor,twind,vtwind,vblnd,vplat,
+     *            rplat,bspan)
       twfloor=twind
       if(vblnd.le.0.) vblnd=10.
       if(vtilt.le.0.) vtilt=1000.
@@ -19473,8 +19476,12 @@ c     after them rather than inside the record parsing above
      *        2f6.2, 2e8.1, f5.2 / 5i3 /)
       write(6,604) rstar,rmax,amloss,vinf,beta,
      *             ndrad,nrcore,nfiry,ndf,nda
-      if(dclmax.ne.1.) write(6,607) dclmax,vclm
+      if(dclmax.ne.1..and.vclm.ge.0.) write(6,607) dclmax,vclm
+      if(dclmax.ne.1..and.vclm.lt.0.) write(6,627) dclmax,dfloor,-vclm
   607 format(' clumping: DCLMAX =',f7.2,'   VCLM =',f7.2,' km/s'/)
+  627 format(' clumping: peaked at the graft, D =',f7.2,
+     *       ' decaying to',f7.2/
+     *       '           on the scale',f8.2,' km/s'/)
 
       rstr=rstar
       if(rstar.lt.1.e5) rstr=rstar*6.9598e10
@@ -19727,10 +19734,20 @@ c        added layers (v_turb in km/s here; VTURB stores (cm/s)^2)
          end if
          denscon(id)=un
          if(dclmax.ne.1.) then
-            if(vclm.le.0.) then
+            if(vclm.eq.0.) then
                denscon(id)=dclmax
-            else if(vel0(id).gt.1.e-3) then
+            else if(vclm.gt.0..and.vel0(id).gt.1.e-3) then
+c              clumping switched on above VCLM, rising outward to DCLMAX
                denscon(id)=un+(dclmax-un)*exp(-vclm/vel0(id))
+            else if(vclm.lt.0..and.id.le.nrext0) then
+c              VCLM < 0: clumping peaks at the graft and decays outward
+c              on the scale |VCLM| to the floor DFLOOR,
+c                 D = DFLOOR + (DCLMAX-DFLOOR)*exp(-(v-v_s)/|VCLM|).
+c              Confined to the added wind layers: unlike the VCLM > 0
+c              form this does not vanish as v -> 0, so without the guard
+c              it would clump the hydrostatic photosphere too.
+               denscon(id)=dfloor+(dclmax-dfloor)*
+     *                     exp((vel0(id)-vel0(nrext0))/vclm)
             end if
          end if
          dens(id)=dens(id)*denscon(id)
@@ -19921,8 +19938,8 @@ C
 C ***********************************************************************
 C
 C
-      SUBROUTINE WKEYRD(DCLMAX,VCLM,TWIND,VTWIND,VBLND,VPLAT,RPLAT,
-     *                  BSPAN)
+      SUBROUTINE WKEYRD(DCLMAX,VCLM,DFLOOR,TWIND,VTWIND,VBLND,VPLAT,
+     *                  RPLAT,BSPAN)
 C     ==================================================================
 C
 C     Optional keyword-tagged wind-parameter lines on unit 55, read
@@ -19930,12 +19947,13 @@ C     after the wind record.  Each line stands alone: any of them may be
 C     left out, they may come in any order, and whatever a missing line
 C     would have set simply keeps its default.
 C
-C        CLUMP  dclmax [vclm]
+C        CLUMP  dclmax [vclm [dfloor]]
 C        WTEMP  twind
 C        NEB    iwneb [vtwind [vblnd]]
 C        VLAW   vplat [rplat [bspan]]
 C        SHIELD fshld [fcov]
 C        COVER  fpcov
+C        GAMMA  Z stage factor        (repeatable, one ion per line)
 C        TILT   qtilt [vtilt [iatilt iztilt [vtcut]]]
 C        COMP   v0 b fcov nion (Z stage log(N/g)) x nion [Texc]
 C        END
@@ -19987,6 +20005,7 @@ c
       if(kwd.eq.'CLUMP') then
          read(lrest,*,err=80,end=80) dclmax
          read(lrest,*,err=10,end=10) dclmax,vclm
+         read(lrest,*,err=10,end=10) dclmax,vclm,dfloor
          go to 10
       end if
       if(kwd.eq.'WTEMP') then
@@ -20012,6 +20031,16 @@ c
       end if
       if(kwd.eq.'COVER') then
          read(lrest,*,err=80,end=80) fpcov
+         go to 10
+      end if
+      if(kwd.eq.'GAMMA') then
+c        one ion per line, repeatable: scale that ion's photoionization
+c        rate, i.e. the ionizing SED at its edge
+         if(ngsc.ge.mgsc) go to 80
+         read(lrest,*,err=80,end=80) iagsc(ngsc+1),izgsc(ngsc+1),
+     *        gscf(ngsc+1)
+         if(gscf(ngsc+1).le.0.) go to 80
+         ngsc=ngsc+1
          go to 10
       end if
       if(kwd.eq.'TILT') then
@@ -20339,10 +20368,33 @@ c           W=1/2 at the surface reproduces J_surf = 2 H_nu)
    50    CONTINUE
          GAMPH(IONE)=PI4W*GSUM
   100 CONTINUE
+C
+C     per-ion scale factors on GAMPH.  The two ions of interest here are
+C     ionized in very different parts of the SED (C IV at 192 A, just
+C     below the He II edge; N V at 127 A, four decades further down), so
+C     an error in the ionizing flux is element-specific in a way that
+C     density, clumping and dilution can never be.
+C
+      DO K=1,NGSC
+         DO IONE=1,NION
+            IF(NFIRST(IONE).LT.1.OR.NFIRST(IONE).GT.MLEVEL) CYCLE
+            IF(NUMAT(IATM(NFIRST(IONE))).NE.IAGSC(K)) CYCLE
+            IF(IZ(IONE).NE.IZGSC(K)) CYCLE
+            GAMPH(IONE)=GAMPH(IONE)*GSCF(K)
+            WRITE(6,601) IAGSC(K),IZGSC(K),GSCF(K),GAMPH(IONE)
+            GO TO 110
+         END DO
+         WRITE(6,602) IAGSC(K),IZGSC(K)
+  110    CONTINUE
+      END DO
       IERR=0
       WRITE(6,600) NS
   600 FORMAT(' WINSED: photoionization rates from fort.13.tlusty (',
      *       I6,' SED points)'/)
+  601 FORMAT(' GAMMA scale: Z =',i3,'  stage =',i3,'   factor =',
+     *       1pe10.3,'   ->  GAMPH =',1pe11.3)
+  602 FORMAT(' *** GAMMA scale: Z =',i3,'  stage =',i3,
+     *       ' is not an explicit ion; ignored'/)
       RETURN
   900 CONTINUE
       RETURN
