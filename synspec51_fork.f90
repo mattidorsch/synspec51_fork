@@ -19322,12 +19322,19 @@ C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
       INCLUDE 'INCLUDE/WINCOM.FOR'
-      character*200 linew,linec
+      character*200 linew
       dimension zz(mdepth),vel0(mdepth),rrel(mdepth),
 c     *          dvel0(mdepth),vel1(mdepth),hstt(mdepth),
      *          den0(mdepth),vel00(mdepth),ind(mdepth),
      *          densa(mdepth),eleca(mdepth),tempa(mdepth),
      *          rda(mdepth),rrela(mdepth),vel0a(mdepth)
+c     ionization-stratification table
+      parameter (mixw=mioex+matom, nixcol=12)
+      character*4 tyrom(10)
+      character*8 clab(mixw)
+      dimension ixat(mixw),ixf(mixw),ixl(mixw),qion(mixw),eltt(matom)
+      data tyrom /' I  ',' II ',' III',' IV ',' V  ',
+     *            ' VI ',' VII','VIII',' IX ',' X  '/
 c
       un=1
       two=2.
@@ -19353,6 +19360,7 @@ c     hydrostatic layers keep the photospheric vtb.
 c     vblnd > 0: velocity scale (km/s) of the sonic blend between the
 c     frozen model ionization and the nebular balance (default 10)
       twfloor=0.
+      twind=0.
       iwneb=0
       vtwind=0.
       vblnd=10.
@@ -19423,7 +19431,17 @@ c     frozen model ionization and the nebular balance (default 10)
    11 dclmax=1.
       vclm=0.
    12 continue
+c     optional keyword-tagged lines after the wind record; they may set
+c     anything the record itself could, so the guards below are applied
+c     after them rather than inside the record parsing above
+      call wkeyrd(dclmax,vclm,twind,vtwind,vblnd,vplat,rplat,bspan)
+      twfloor=twind
       if(vblnd.le.0.) vblnd=10.
+      if(vtilt.le.0.) vtilt=1000.
+      if(bspan.le.0.) bspan=4.
+      if(fshld.le.0.) fshld=1.
+      if(fcovw.le.0..or.fcovw.gt.1.) fcovw=1.
+      if(fpcov.le.0..or.fpcov.gt.1.) fpcov=1.
       if(twfloor.gt.0.) write(6,609) twfloor
   609 format(' wind temperature: T = T_s * Wn^(1/4), floor =',
      *       f6.2,' * T_s; NLTE source function diluted'/)
@@ -19438,41 +19456,6 @@ c     frozen model ionization and the nebular balance (default 10)
      *       '                  q =',f7.3,'   vref =',f8.1,' km/s'/)
       if(qtilt.ne.0..and.vtcut.gt.0.) write(6,618) vtcut
   618 format('                  peaked: turnover at',f8.1,' km/s'/)
-c     optional discrete-component record, read from unit 55 right
-c     after the wind record:
-c        v0  b  fcov  nion  (Z  stage  logN/g) x nion  [Texc]
-c     v0 and b in km/s, logN/g = log10 of the ground-term column
-c     divided by its statistical weight, in cm-2.  The trailing Texc
-c     (K) is optional: if absent or <=0 the absorber is taken to be
-c     cold and only ground-term lines are included, otherwise every
-c     line of the ion is populated by a Boltzmann factor at Texc
-      read(55,'(a)',err=13,end=13) linec
-      read(linec,*,err=13,end=13) vcmp,bcmp,fccmp,ncmp
-      if(ncmp.le.0.or.ncmp.gt.mcomp) go to 13
-      read(linec,*,err=13,end=13) vcmp,bcmp,fccmp,ncmp,
-     *     (iacomp(k),izcomp(k),clcomp(k),k=1,ncmp)
-      tcmp=0.
-      read(linec,*,err=14,end=14) vcmp,bcmp,fccmp,ncmp,
-     *     (iacomp(k),izcomp(k),clcomp(k),k=1,ncmp),tcmp
-   14 continue
-      vcomp=vcmp
-      bcomp=bcmp
-      fccomp=fccmp
-      tcomp=tcmp
-      if(fccomp.le.0..or.fccomp.gt.1.) fccomp=1.
-      if(bcomp.le.0.) bcomp=1.
-      ncomp=ncmp
-      write(6,620) vcomp,bcomp,fccomp
-      do k=1,ncomp
-         write(6,621) iacomp(k),izcomp(k),clcomp(k)
-      end do
-      if(tcomp.gt.0.) write(6,622) tcomp
-  620 format(' discrete component: v0 =',f9.1,' km/s   b =',f7.1,
-     *       ' km/s   covering =',f6.3)
-  621 format('    Z =',i3,'  stage =',i3,'   log(N/g) =',f8.3)
-  622 format('    excitation temperature =',f9.1,' K',
-     *       '   (all lines of the ion included)')
-   13 continue
       if(fpcov.lt.1.) write(6,619) fpcov
   619 format(' partial coverage (flux level): fpcov =',f6.3/
      *       '   F = (1-f)*F_phot + f*F_windabs + F_windemis'/)
@@ -19828,6 +19811,77 @@ c        the shielding line optical depth is tau ~ kappa_line * ZCPL
      *                rrel(id),vel0(id),vdop*1.d-5,log10(zcpl),
      *                vel00(id)
       end do
+c
+c     ------------------------------------------------------------------
+c     ionization stratification: n(ion)/n(element) for every explicit
+c     ion of the model, each element closed by the ground state of the
+c     next stage (NNEXT), which carries the rest of the element.  The
+c     ion list is whatever the model atom actually contains, so this is
+c     silently skipped if there are none, and ions absent from the model
+c     simply do not get a column.  IZ is already the spectroscopic
+c     stage (1 = neutral), set as IZI+1 when the atom is read.
+c     ------------------------------------------------------------------
+      nix=0
+      do ione=1,nion
+         if(nfirst(ione).lt.1.or.nfirst(ione).gt.mlevel) cycle
+         ia=numat(iatm(nfirst(ione)))
+         if(ia.lt.1.or.ia.gt.matom) cycle
+         if(nix.ge.mixw) go to 52
+         nix=nix+1
+         ixat(nix)=ia
+         ixf(nix)=nfirst(ione)
+         ixl(nix)=nlast(ione)
+         izs=iz(ione)
+         clab(nix)=typat(ia)//tyrom(max(1,min(izs,10)))
+c        is this the last explicit stage of this element?
+         ilast=1
+         do io2=ione+1,nion
+            if(nfirst(io2).lt.1.or.nfirst(io2).gt.mlevel) cycle
+            if(numat(iatm(nfirst(io2))).eq.ia) ilast=0
+         end do
+         nk=nnext(ione)
+         if(ilast.eq.1.and.nk.ge.1.and.nk.le.mlevel.and.
+     *      nix.lt.mixw) then
+            nix=nix+1
+            ixat(nix)=ia
+            ixf(nix)=nk
+            ixl(nix)=nk
+            clab(nix)=typat(ia)//tyrom(max(1,min(izs+1,10)))
+         end if
+      end do
+   52 continue
+      if(nix.gt.0) then
+         write(6,624)
+         do ib=1,nix,nixcol
+            ib2=min(ib+nixcol-1,nix)
+            write(6,625) (clab(k),k=ib,ib2)
+            do id=1,nd
+               do ia=1,matom
+                  eltt(ia)=0.
+               end do
+               do k=1,nix
+                  ss=0.
+                  do ii=ixf(k),ixl(k)
+                     ss=ss+popul(ii,id)
+                  end do
+                  qion(k)=ss
+                  eltt(ixat(k))=eltt(ixat(k))+ss
+               end do
+               do k=ib,ib2
+                  if(eltt(ixat(k)).gt.0.) then
+                     qion(k)=qion(k)/eltt(ixat(k))
+                   else
+                     qion(k)=0.
+                  end if
+               end do
+               write(6,626) id,vel0(id),(qion(k),k=ib,ib2)
+            end do
+         end do
+      end if
+  624 format(/' IONIZATION STRATIFICATION   n(ion)/n(element)'/
+     *        ' ---------------------------------------------')
+  625 format(/'    ID     VEL',12(2x,a8))
+  626 format(' ',i5,f8.1,1p12e10.2)
   600 format('    ID    M      TEMP       ELEC      DENS             ',
      *       'R       Rrel     VEL    VDOP log(ZCPL)')
   601 format(1h ,i3,1pe10.3,0pf8.0,1p3e12.3,0pf10.4,0p3f8.2,0pf9.3)
@@ -19866,6 +19920,183 @@ C
 C
 C ***********************************************************************
 C
+C
+      SUBROUTINE WKEYRD(DCLMAX,VCLM,TWIND,VTWIND,VBLND,VPLAT,RPLAT,
+     *                  BSPAN)
+C     ==================================================================
+C
+C     Optional keyword-tagged wind-parameter lines on unit 55, read
+C     after the wind record.  Each line stands alone: any of them may be
+C     left out, they may come in any order, and whatever a missing line
+C     would have set simply keeps its default.
+C
+C        CLUMP  dclmax [vclm]
+C        WTEMP  twind
+C        NEB    iwneb [vtwind [vblnd]]
+C        VLAW   vplat [rplat [bspan]]
+C        SHIELD fshld [fcov]
+C        COVER  fpcov
+C        TILT   qtilt [vtilt [iatilt iztilt [vtcut]]]
+C        COMP   v0 b fcov nion (Z stage log(N/g)) x nion [Texc]
+C        END
+C
+C     Trailing values on a line are optional too, and a trailing "!"
+C     comment is ignored because the list-directed read stops once the
+C     requested values are in.  Blank lines and lines starting with
+C     !, * or # are skipped.
+C
+C     Reading stops at END, at end of file, or at the first line that is
+C     neither a keyword nor a bare component record - so both legacy
+C     forms keep working unchanged: every parameter on the wind record
+C     itself, and an untagged component record straight after it.
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
+      CHARACTER*200 LINEC,LREST
+      CHARACTER*8 KWD
+C
+   10 continue
+      read(55,'(a)',err=90,end=90) linec
+      if(linec.eq.' ') go to 10
+c     first blank-delimited token, upper-cased
+      i1=1
+   11 if(i1.lt.200.and.linec(i1:i1).eq.' ') then
+         i1=i1+1
+         go to 11
+      end if
+      if(linec(i1:i1).eq.'!'.or.linec(i1:i1).eq.'*'.or.
+     *   linec(i1:i1).eq.'#') go to 10
+      i2=i1
+   12 if(i2.le.200) then
+         if(linec(i2:i2).ne.' ') then
+            i2=i2+1
+            go to 12
+         end if
+      end if
+      kwd=' '
+      kwd=linec(i1:min(i2-1,i1+7))
+      do i=1,8
+         ic=ichar(kwd(i:i))
+         if(ic.ge.97.and.ic.le.122) kwd(i:i)=char(ic-32)
+      end do
+      lrest=linec(i2:)
+c
+      if(kwd.eq.'END') go to 90
+c
+      if(kwd.eq.'CLUMP') then
+         read(lrest,*,err=80,end=80) dclmax
+         read(lrest,*,err=10,end=10) dclmax,vclm
+         go to 10
+      end if
+      if(kwd.eq.'WTEMP') then
+         read(lrest,*,err=80,end=80) twind
+         go to 10
+      end if
+      if(kwd.eq.'NEB') then
+         read(lrest,*,err=80,end=80) iwneb
+         read(lrest,*,err=10,end=10) iwneb,vtwind
+         read(lrest,*,err=10,end=10) iwneb,vtwind,vblnd
+         go to 10
+      end if
+      if(kwd.eq.'VLAW') then
+         read(lrest,*,err=80,end=80) vplat
+         read(lrest,*,err=10,end=10) vplat,rplat
+         read(lrest,*,err=10,end=10) vplat,rplat,bspan
+         go to 10
+      end if
+      if(kwd.eq.'SHIELD') then
+         read(lrest,*,err=80,end=80) fshld
+         read(lrest,*,err=10,end=10) fshld,fcovw
+         go to 10
+      end if
+      if(kwd.eq.'COVER') then
+         read(lrest,*,err=80,end=80) fpcov
+         go to 10
+      end if
+      if(kwd.eq.'TILT') then
+         read(lrest,*,err=80,end=80) qtilt
+         read(lrest,*,err=10,end=10) qtilt,vtilt
+         read(lrest,*,err=10,end=10) qtilt,vtilt,iatilt,iztilt
+         read(lrest,*,err=10,end=10) qtilt,vtilt,iatilt,iztilt,vtcut
+         go to 10
+      end if
+      if(kwd.eq.'COMP') then
+         call wcompr(lrest,ierr)
+         if(ierr.ne.0) go to 80
+         go to 10
+      end if
+c     no keyword: accept a bare component record (legacy).  Anything
+c     else is reported and skipped rather than ending the block - a
+C     mistyped keyword should cost that one line, not every line after
+c     it, and nothing else reads unit 55 once we are here
+      call wcompr(linec,ierr)
+      if(ierr.eq.0) go to 10
+      write(6,600) linec(i1:min(i2-1,i1+19))
+      go to 10
+   80 write(6,601) kwd
+      go to 10
+   90 continue
+  600 format(' *** wind input: line starting "',a,'" is neither a',
+     *       ' keyword nor a component'/'     record; line ignored'/)
+  601 format(' *** wind input: cannot read the values on the ',a,
+     *       ' line; line ignored'/)
+      RETURN
+      END
+C
+C ********************************************************************
+C
+      SUBROUTINE WCOMPR(STR,IERR)
+C     ===========================
+C
+C     Parse one discrete-component record out of STR,
+C        v0  b  fcov  nion  (Z  stage  log(N/g)) x nion  [Texc]
+C     v0 and b in km/s, log(N/g) = log10 of the ground-term column
+C     divided by its statistical weight, in cm-2.  The trailing Texc
+C     (K) is optional: absent or <=0 means the absorber is cold and
+C     only ground-term lines are included, otherwise every line of the
+C     ion is populated by a Boltzmann factor at Texc.
+C
+C     IERR = 0 if the record parsed, 1 if it did not (so the caller can
+C     tell a component record from an unrelated line).
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
+      CHARACTER*(*) STR
+C
+      ierr=1
+      read(str,*,err=90,end=90) vcmp,bcmp,fccmp,ncmp
+      if(ncmp.le.0.or.ncmp.gt.mcomp) go to 90
+      read(str,*,err=90,end=90) vcmp,bcmp,fccmp,ncmp,
+     *     (iacomp(k),izcomp(k),clcomp(k),k=1,ncmp)
+      tcmp=0.
+      read(str,*,err=20,end=20) vcmp,bcmp,fccmp,ncmp,
+     *     (iacomp(k),izcomp(k),clcomp(k),k=1,ncmp),tcmp
+   20 continue
+      vcomp=vcmp
+      bcomp=bcmp
+      fccomp=fccmp
+      tcomp=tcmp
+      if(fccomp.le.0..or.fccomp.gt.1.) fccomp=1.
+      if(bcomp.le.0.) bcomp=1.
+      ncomp=ncmp
+      write(6,600) vcomp,bcomp,fccomp
+      do k=1,ncomp
+         write(6,601) iacomp(k),izcomp(k),clcomp(k)
+      end do
+      if(tcomp.gt.0.) write(6,602) tcomp
+      ierr=0
+   90 continue
+  600 format(' discrete component: v0 =',f9.1,' km/s   b =',f7.1,
+     *       ' km/s   covering =',f6.3)
+  601 format('    Z =',i3,'  stage =',i3,'   log(N/g) =',f8.3)
+  602 format('    excitation temperature =',f9.1,' K',
+     *       '   (all lines of the ion included)')
+      RETURN
+      END
+C
+C ********************************************************************
 C
       SUBROUTINE WINNEB(NRX,RREL,VEL0,VBLND)
 C     ======================================
