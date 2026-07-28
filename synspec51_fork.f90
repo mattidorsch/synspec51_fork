@@ -2193,6 +2193,8 @@ C
       INCLUDE 'INCLUDE/LINDAT.FOR'
       INCLUDE 'INCLUDE/SYNTHP.FOR'
       INCLUDE 'INCLUDE/WINCOM.FOR'
+      CHARACTER*200 LINVT
+      CHARACTER*8 KWVT
       parameter (un=1.)
       logical lasdel
       DIMENSION CROSS(MCROSS,MFREQ),
@@ -2291,8 +2293,58 @@ c     VTB    - turbulent velocity (in km/s). In non-negative, this
 C              value overwrites the value given by the standard input
 C
       read(55,*,err=20,end=20) VTB
+c     optional depth-dependent turbulent velocity on the NEXT line:
+c        VTURB  vt_top [vt_deep [logm0 [dlogm]]]     (km/s, g/cm2, dex)
+c     Read here rather than in the wind keyword block so it works in
+c     static runs too; if the line is not a VTURB line it is put back.
+      nvtdep=0
+      read(55,'(a)',err=16,end=16) linvt
+      i1=1
+   12 if(i1.lt.200.and.linvt(i1:i1).eq.' ') then
+         i1=i1+1
+         go to 12
+      end if
+      i2=i1
+   13 if(i2.le.200) then
+         if(linvt(i2:i2).ne.' ') then
+            i2=i2+1
+            go to 13
+         end if
+      end if
+      kwvt=' '
+      kwvt=linvt(i1:min(i2-1,i1+7))
+      do i=1,8
+         ic=ichar(kwvt(i:i))
+         if(ic.ge.97.and.ic.le.122) kwvt(i:i)=char(ic-32)
+      end do
+      if(kwvt.ne.'VTURB') then
+         backspace(55)
+         go to 16
+      end if
+      vtdeep=abs(vtb)
+      vtlgm0=-3.
+      vtdlgm=1.
+      read(linvt(i2:),*,err=16,end=16) vttop
+      nvtdep=1
+      read(linvt(i2:),*,err=15,end=15) vttop,vtdeep
+      read(linvt(i2:),*,err=15,end=15) vttop,vtdeep,vtlgm0
+      read(linvt(i2:),*,err=15,end=15) vttop,vtdeep,vtlgm0,vtdlgm
+   15 continue
+      if(vtdlgm.le.0.) vtdlgm=1.
+      write(6,610) vttop,vtdeep,vtlgm0,vtdlgm
+  610 format(//' TURBULENT VELOCITY  -  DEPTH-DEPENDENT'/
+     *         ' ------------------'/
+     *  '   ',f8.2,' km/s high in the atmosphere ->',f8.2,
+     *  ' km/s deep'/
+     *  '   transition at log m =',f7.2,' , width',f6.2,' dex'/)
+   16 continue
       if(ifwin.le.0) then
-        if(vtb.ge.0.) then
+        if(nvtdep.gt.0) then
+           do id=1,nd
+              vt=vtdep(dm(id))
+              vturb(id)=vt*vt*1.e10
+           end do
+        else if(vtb.ge.0.) then
            WRITE(6,608) VTB
   608      FORMAT(//' TURBULENT VELOCITY  -  CHANGED TO   VTURB =',
      *      1PE10.3,'  KM/S'/
@@ -10600,7 +10652,14 @@ c
          IAT=INDAT(IL)/100
          ION=MOD(INDAT(IL),100)
          FR0=FREQ0(IL)
+c        a line counts as a wind line if it acts in the added wind
+c        layers.  This is what the flux-level partial coverage (FPCOV)
+c        blends out, and it must not depend on IWNEB, which selects the
+c        ionization treatment rather than the geometry - gating it on
+c        IWNEB made FPCOV a silent no-op for any model without the
+c        nebular balance.
          IWL=0
+         IF(ID.LE.NRXW) IWL=1
          LPR=.TRUE.
          ISP=ISPRF(IL)
 C        LPR = .FALSE. -> special HeI broadening
@@ -10651,7 +10710,6 @@ c              partner, at the interior layer where v = v(id)-dv12
                q2=wesck2(id,ab0,tauc)
                if(fshld.ne.1.) q2=xk2dop(fshld*tauc)
                sl0=(un-epsw)*q2*xjc+epsw*pla
-               iwl=1
 c              partial coverage (picket fence): scale the opacity so
 c              the coupled column saturates at exp(-tau_eff) =
 c              (1-fcov) + fcov*exp(-tau); weak lines scale by fcov
@@ -10712,7 +10770,6 @@ c              partner, at the interior layer where v = v(id)-dv12
                q2=wesck2(id,ab0,tauc)
                if(fshld.ne.1.) q2=xk2dop(fshld*tauc)
                sl0=(un-epsw)*q2*xjc+epsw*pla
-               iwl=1
 c              partial coverage (picket fence): scale the opacity so
 c              the coupled column saturates at exp(-tau_eff) =
 c              (1-fcov) + fcov*exp(-tau); weak lines scale by fcov
@@ -19724,7 +19781,12 @@ c     apply the fort.55 turbulent velocity (not done in INIBL0 for wind)
 c     and the clumping law D(v) = 1 + (DCLMAX-1)*exp(-VCLM/v);
 c     as in SETWIN, DENS/ELEC/POPUL become in-clump values (D * mean)
       do id=1,nd
-         if(vtb.ge.0.) vturb(id)=vtb*vtb*1.e10
+         if(nvtdep.gt.0) then
+            vt=vtdep(dm(id))
+            vturb(id)=vt*vt*1.e10
+         else if(vtb.ge.0.) then
+            vturb(id)=vtb*vtb*1.e10
+         end if
 c        wind microturbulence: v_turb = max(vtb, vtwind*v) in the
 c        added layers (v_turb in km/s here; VTURB stores (cm/s)^2)
          if(vtwind.gt.0..and.id.le.nrext0) then
@@ -19937,6 +19999,30 @@ C
 C
 C ***********************************************************************
 C
+C
+      FUNCTION VTDEP(DMI)
+C     =================
+C
+C     Depth-dependent turbulent velocity (km/s) at column mass DMI
+C     (g/cm2), used when a VTURB line is present in fort.55:
+C
+C        v(m) = VTDEEP + (VTTOP-VTDEEP)*0.5*
+C               [ 1 - tanh( (log10 m - VTLGM0)/VTDLGM ) ]
+C
+C     so v -> VTTOP high in the atmosphere (small m) and -> VTDEEP
+C     deep down.  This is the height dependence Lanz, Hubeny & Heap
+C     (1997) inferred for BD+75 325: their iron lines wanted ~10 km/s
+C     while the N V resonance lines, formed much higher, wanted 15-20.
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/WINCOM.FOR'
+      X=LOG10(MAX(DMI,1.E-30))
+      VTDEP=VTDEEP+(VTTOP-VTDEEP)*0.5*
+     *      (1.-TANH((X-VTLGM0)/VTDLGM))
+      RETURN
+      END
+C
+C ********************************************************************
 C
       SUBROUTINE WKEYRD(DCLMAX,VCLM,DFLOOR,TWIND,VTWIND,VBLND,VPLAT,
      *                  RPLAT,BSPAN)

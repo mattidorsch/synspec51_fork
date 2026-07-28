@@ -31,5 +31,11 @@ c     the ionizing SED at that ion's edge (element-specific, unlike
 c     density, clumping or dilution)
       PARAMETER (MGSC=10)
       COMMON/WGSCAL/GSCF(MGSC),NGSC,IZGSC(MGSC),IAGSC(MGSC)
+c     optional depth-dependent turbulent velocity (fort.55 VTURB line):
+c     v_turb rises from VTDEEP deep down to VTTOP high in the
+c     atmosphere, over a tanh transition centred on column mass
+c     10**VTLGM0 g/cm2 and VTDLGM dex wide.  NVTDEP=0 keeps the usual
+c     depth-independent VTB.
+      COMMON/VTDEPT/VTTOP,VTDEEP,VTLGM0,VTDLGM,NVTDEP
       COMMON/OPAVEL/WDIL(MDEPTH),PLANW(MDEPTH),TRAD(MTRAD,MDEPTH),
      *              DENSCON(MDEPTH)

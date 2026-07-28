@@ -63,8 +63,25 @@ Zeeman splitting requires knowledge of the L, S quantum numbers for the lower an
 
 Note that the `DATA` folder was renamed to `data` for and an additional `data_syn` folder was added. The latter contains data necessary to compute the partition functions for heavy metals, the updated He I broadening tables, and atomic data for Zeeman splitting.
 
+#### Depth-dependent turbulent velocity
+
+`VTURB` may be placed on the line immediately after the `vtb` record (line 8), in static as well as wind runs:
+```text
+VTURB  vt_top [vt_deep [logm0 [dlogm]]]
+```
+It replaces the depth-independent `vtb` by
+`v(m) = vt_deep + (vt_top - vt_deep) * 0.5 * [1 - tanh((log10 m - logm0)/dlogm)]`,
+so `v -> vt_top` high in the atmosphere (small column mass `m` in g/cm2) and `-> vt_deep` deep down. Defaults: `vt_deep = |vtb|`, `logm0 = -3`, `dlogm = 1`. Omit the line for the usual uniform `vtb`.
+
+Lanz, Hubeny & Heap (1997) inferred ~10 km/s from the iron lines of BD+75 325 and 15-20 km/s from its N V resonance lines. A height-dependent law does not reproduce that split for this star: N V improves only in proportion to the degradation of regions the model otherwise fits well.
+
 #### Wind mode
-Synspec includes a wind mode that solves the transfer equation in the observer's frame along impact-parameter rays through a spherically expanding envelope, producing asymmetric (blue-shifted) line profiles. It was used by [Lanz et al. (1997)](https://ui.adsabs.harvard.edu/abs/1997ApJ...485..843L/abstract) to measure the weak wind of BD+75 325. The only changes here are small fixes, like the frequency handling (opacity table padded by +-vinf/c).
+
+Synspec includes a wind mode that solves the transfer equation in the observer's frame along impact-parameter rays through a spherically expanding envelope, producing asymmetric (blue-shifted) line profiles. It was introduced by [Lanz et al. (1997)](https://ui.adsabs.harvard.edu/abs/1997ApJ...485..843L/abstract) to measure the weak wind of BD+75 325, where the wind was described simply by imposing a velocity field from the continuity equation on the hydrostatic photospheric structure.
+
+This fork keeps that transfer scheme and adds: a beta-law envelope grafted onto the hydrostatic structure, microclumping (`CLUMP`), a diluted wind temperature (`WTEMP`), a wind NLTE mode with a nebular ionization balance and a two-level scattering source function with escape-probability damping (`NEB`, `SHIELD`), flux-level partial coverage (`COVER`), an empirical ionization tilt (`TILT`), per-ion scaling of the photoionization rates (`GAMMA`), a discrete absorbing component (`COMP`), blue-shadows-red coupling within a doublet, and an ionization-stratification table on `fort.6`. Fixes include the frequency handling (opacity table padded by +-vinf/c) and the line-centre indexing in the wind layers.
+
+These are parameterised treatments, suitable for estimating a mass-loss rate, terminal velocity or ionization structure from a few resonance lines. Quantitative wind work should use PoWR, CMFGEN or FASTWIND.
 
 Enable it by subtracting 100 from `imode` (e.g. `imode=-100` for a normal spectrum) and appending to the end of `fort.55`:
 ```text
@@ -82,12 +99,6 @@ COMP   v0 b fcov nion (Z stage log(N/g)) x nion [Texc]
 END
 ```
 Only the first two records are required. Every keyword line may be omitted (its parameters keep their defaults) or given in any order, and trailing values within a line may be dropped. Keywords are case-insensitive; blank lines and lines starting with `!`, `*` or `#` are skipped; `END` stops early. A line that is neither a keyword nor a `COMP` record is reported and skipped.
-
-The legacy positional form is still accepted, everything on the second record:
-```text
-rstar rmax amloss vinf beta ndrad nrcore nfiry ndf nda [dclmax vclm [twind [iwneb [vtwind vblnd [vplat rplat [fcov [fshld [bspan [qtilt vtilt iatilt iztilt [vtcut [fpcov]]]]]]]]]]]
-```
-optionally followed by an untagged `COMP` record.
 
 - `velmax` - velocity (km/s) above which LTE background lines are rejected; if negative, the structure is instead read from the end of `fort.8` (`SETWIN` path: per-depth `r, v, vturb, denscon`)
 - `itrad` - 1: excitation/ionization of the LTE background from radiation temperatures ([Schmutz 1991](https://ui.adsabs.harvard.edu/abs/1991sabc.conf..191S/abstract)); 0: strict LTE
@@ -115,12 +126,26 @@ optionally followed by an untagged `COMP` record.
 - `GAMMA` (optional, repeatable - one ion per line) - multiplies the photoionization rate of the given ion (spectroscopic stage, 1 = neutral) in the nebular balance, i.e. rescales the ionizing SED at that ion's edge. Unlike density, clumping or dilution this is element-specific, which matters because different ions are ionized in very different parts of the EUV (C IV at 192 A just below the He II edge, N V at 127 A four decades further down). A factor < 1 keeps the ion alive. The effect is flat in velocity, so it cannot substitute for `TILT` if the data demand a gradient
 - `COMP` (optional) - discrete absorbing component in front of the wind: a structure at velocity `v0` with Doppler parameter `b` (km/s) covering a fraction `fcov` of the disk. One ground-term column `log(N/g)` (cm^-2) per ion fixes the optical depth in every line of that ion, so doublet ratios are not free parameters. No emission is added (a small covering fraction subtends a small solid angle). The optional trailing `Texc` (K) populates every line of the ion by a Boltzmann factor; absent or <= 0 means a cold absorber and only ground-term lines are included. Use for DAC/CIR-like features that no beta-law can produce
 
-Typical luminous sdO settings (following [Krticka et al. 2016](https://ui.adsabs.harvard.edu/abs/2016A%26A...593A.101K/abstract), Mdot = 1e-12 - 1e-9 Msun / yr, vinf = 500 - 1800 km/s depending on radius and Teff):
+A reasonable starting point for a luminous sdO, following [Krticka et al. 2016](https://ui.adsabs.harvard.edu/abs/2016A%26A...593A.101K/abstract) (Mdot = 1e-12 - 1e-9 Msun/yr, vinf = 500 - 1800 km/s depending on radius and Teff):
 ```text
-300. 1 0 0
-0.2 1.2 1e-10 1000. 1.0 90 20 10 0 0
+2000. 1 0 0
+0.2 15.0 1e-10 1000. 1.0 300 20 100 0 0
+WTEMP  0.4
+NEB    3 0.1 10.
+END
 ```
-with `ndrad` = model ND + 20. For most sdO/Bs, winds are not detectable (Mdot < 1e-12) and the wind mode is not needed. Also, at low mass-loss rates the profiles are insensitive to `vinf`.
+`ndrad` is the *total* number of layers, so allow the model ND plus a few hundred wind layers. `NEB 3` uses the differential ionization balance, which needs no extra data files; `WTEMP` is worth having whenever `rmax` is more than a few, since an isothermal wind is too hot far out and overpredicts the P Cygni emission. Keep `velmax` at or above `vinf`, and `rmax` large enough for the velocity to approach `vinf`: the beta-law approaches it only asymptotically, reaching about 1-1/`rmax` of it for `beta` = 1, so `rmax` = 1.2 gets to under 20% while `rmax` = 15 gets to ~93%. A compact envelope produces no wind profile at any mass-loss rate.
+
+For most sdO/Bs winds are undetectable (Mdot < 1e-12) and the wind mode is not needed; at low mass-loss rates the profiles are also insensitive to `vinf`.
+
+Example model for the intermediate He-sdO BD+75 325 (Teff = 52 kK, log g = 5.50, R = 0.1578 Rsun), fitted to the N V doublet in a STIS/E140H spectrum. This is the simplest wind that works - nothing optional is set, and `vtb = 10` on line 8:
+```text
+2000. 1 0 0
+0.1578 10.0 1.0e-13 200. 1.0 300 20 100 0 0
+```
+Both N V components show blue-shifted absorption that no static model reproduces, so the wind is real, but it is weak and the constraints are loose: `vinf` = 200 km/s (150-300), `amloss` = 1e-13 Msun/yr to within a factor of a few, limited mainly by blending with unmodelled iron-group lines.
+
+This is not directly comparable to the 1.5e-11 Msun/yr of [Lanz et al. (1997)](https://ui.adsabs.harvard.edu/abs/1997ApJ...485..843L/abstract), who imposed the velocity field on the photosphere alone: that geometry needs ~100x more mass loss to put the same absorbing column at 40-250 km/s.
 
 Example model for a luminous He-sdO (Teff = 55 kK, log g = 4.85, R = 0.7 Rsun; fitted to STIS N V/C IV wind lines, needs `fort.13.tlusty`):
 ```text
