@@ -66,11 +66,28 @@ Note that the `DATA` folder was renamed to `data` for and an additional `data_sy
 #### Wind mode
 Synspec includes a wind mode that solves the transfer equation in the observer's frame along impact-parameter rays through a spherically expanding envelope, producing asymmetric (blue-shifted) line profiles. It was used by [Lanz et al. (1997)](https://ui.adsabs.harvard.edu/abs/1997ApJ...485..843L/abstract) to measure the weak wind of BD+75 325. The only changes here are small fixes, like the frequency handling (opacity table padded by +-vinf/c).
 
-Enable it by subtracting 100 from `imode` (e.g. `imode=-100` for a normal spectrum) and appending two records at the end of `fort.55`:
+Enable it by subtracting 100 from `imode` (e.g. `imode=-100` for a normal spectrum) and appending to the end of `fort.55`:
 ```text
 velmax itrad nltoff iemoff
-rstar rmax amloss vinf beta ndrad nrcore nfiry ndf nda [dclmax vclm [twind [iwneb [vtwind vblnd [vplat rplat [fcov [fshld [bspan]]]]]]]]
+rstar rmax amloss vinf beta ndrad nrcore nfiry ndf nda
+CLUMP  dclmax [vclm]
+WTEMP  twind
+NEB    iwneb [vtwind [vblnd]]
+VLAW   vplat [rplat [bspan]]
+SHIELD fshld [fcov]
+COVER  fpcov
+TILT   qtilt [vtilt [iatilt iztilt [vtcut]]]
+COMP   v0 b fcov nion (Z stage log(N/g)) x nion [Texc]
+END
 ```
+Only the first two records are required. Every keyword line may be omitted (its parameters keep their defaults) or given in any order, and trailing values within a line may be dropped. Keywords are case-insensitive; blank lines and lines starting with `!`, `*` or `#` are skipped; `END` stops early. A line that is neither a keyword nor a `COMP` record is reported and skipped.
+
+The legacy positional form is still accepted, everything on the second record:
+```text
+rstar rmax amloss vinf beta ndrad nrcore nfiry ndf nda [dclmax vclm [twind [iwneb [vtwind vblnd [vplat rplat [fcov [fshld [bspan [qtilt vtilt iatilt iztilt [vtcut [fpcov]]]]]]]]]]]
+```
+optionally followed by an untagged `COMP` record.
+
 - `velmax` - velocity (km/s) above which LTE background lines are rejected; if negative, the structure is instead read from the end of `fort.8` (`SETWIN` path: per-depth `r, v, vturb, denscon`)
 - `itrad` - 1: excitation/ionization of the LTE background from radiation temperatures ([Schmutz 1991](https://ui.adsabs.harvard.edu/abs/1991sabc.conf..191S/abstract)); 0: strict LTE
 - `nltoff`, `iemoff` - also reject NLTE lines / only line emissivity above `velmax` (normally 0 0)
@@ -90,6 +107,9 @@ rstar rmax amloss vinf beta ndrad nrcore nfiry ndf nda [dclmax vclm [twind [iwne
 - `fcov` (optional) - partial-coverage fudge: rescales the wind NLTE line opacity as if only a fraction `fcov` of the stellar disk were covered (picket fence). Weakens saturated lines but also guts unsaturated ones; `fshld` is usually the better dial (default 1 = off)
 - `fshld` (optional) - multiplies the self-shielding optical depth of the two-level source function, `S = (1-eps)*K2(fshld*tau)*J_cont + eps*B`: values < 1 mean a leaky slow zone, giving weak red-wing P Cygni emission and partial filling of photospheric resonance cores (typical 0.1; default 1)
 - `bspan` (optional) - span of the C1 Hermite bridge between the base/plateau and the pure beta-law, in units of the local slope length (default 4). With a plateau, a large `bspan` makes the bridge (not the beta-law) control the mid-velocity structure and `beta` has little effect; `bspan` = 0.3-1 hands the velocity range above the plateau to the beta-law. Smaller `bspan` puts more column at high velocity (deeper absorption near the terminal-velocity edge)
+- `TILT` (optional) - empirical ionization tilt: the weight of stage `iztilt` of element `iatilt` (both spectroscopic, 1 = neutral) is multiplied by `(v/vtilt)**qtilt` before the stage weights are renormalized, so the element total is preserved. `qtilt` < 0 concentrates the ion at low velocity and depletes it in the outer envelope - more absorption along the line of sight, less scattered emission from the extended wind. `vtcut` > 0 turns the monotonic tilt into a peak at `vtcut`. Photospheric layers are untouched (default `qtilt` = 0 = off)
+- `COVER` (optional) - flux-level partial coverage, `F = (1-fpcov)*F_phot + fpcov*F_windabs + F_windemis`: a fraction `1-fpcov` of the disk is seen without wind absorption, so saturated troughs floor at `1-fpcov` while the envelope emission is untouched. Unlike `fcov` this does not rescale opacity, so unsaturated lines are unaffected (default 1 = full coverage)
+- `COMP` (optional) - discrete absorbing component in front of the wind: a structure at velocity `v0` with Doppler parameter `b` (km/s) covering a fraction `fcov` of the disk. One ground-term column `log(N/g)` (cm^-2) per ion fixes the optical depth in every line of that ion, so doublet ratios are not free parameters. No emission is added (a small covering fraction subtends a small solid angle). The optional trailing `Texc` (K) populates every line of the ion by a Boltzmann factor; absent or <= 0 means a cold absorber and only ground-term lines are included. Use for DAC/CIR-like features that no beta-law can produce
 
 Typical luminous sdO settings (following [Krticka et al. 2016](https://ui.adsabs.harvard.edu/abs/2016A%26A...593A.101K/abstract), Mdot = 1e-12 - 1e-9 Msun / yr, vinf = 500 - 1800 km/s depending on radius and Teff):
 ```text
@@ -98,9 +118,18 @@ Typical luminous sdO settings (following [Krticka et al. 2016](https://ui.adsabs
 ```
 with `ndrad` = model ND + 20. For most sdO/Bs, winds are not detectable (Mdot < 1e-12) and the wind mode is not needed. Also, at low mass-loss rates the profiles are insensitive to `vinf`.
 
-Best current model for a luminous He-sdO (Teff = 55 kK, log g = 4.85, R = 0.7 Rsun; fitted to STIS N V/C IV wind lines, needs `fort.13.tlusty`):
+Example model for a luminous He-sdO (Teff = 55 kK, log g = 4.85, R = 0.7 Rsun; fitted to STIS N V/C IV wind lines, needs `fort.13.tlusty`):
 ```text
 1300. 1 0 0
-0.70 25.00 2e-11 1550. 0.5 380 40 100 0 0 10. 100. 0.4 1 0.1 10. 20. 1.15 1.0 0.1 1.0
+0.70 25.00 1.3e-11 1550. 1.2 380 40 100 0 0
+CLUMP  10. 100.
+WTEMP  0.4
+NEB    1 0.1 10.
+VLAW   0. 0. 1.0
+SHIELD 1.0 1.0
+COVER  0.85
+TILT   -0.9 1000. 6 4 0.
+COMP   -1454. 149. 1.0 2  7 5 14.301  6 4 13.559
+END
 ```
-i.e. clumped (D = 10), diluted wind temperature, absolute nebular balance, wind microturbulence 0.1 v, a slow dense base zone out to 1.15 rstar, leaky shielding, and a short beta-law bridge. The N V doublet shows terminal-edge pile-up dips that fix `vinf`; N V and C IV prefer somewhat different (`amloss`, `vinf`), as expected for a fractionated metal-driven wind.
+i.e. clumped (D = 10), diluted wind temperature, absolute nebular balance, wind microturbulence 0.1 v, a pure beta-law from the hydrostatic seam (no plateau), 85% disk coverage, C IV concentrated toward low velocity, and a discrete absorber at -1454 km/s. One block serves both windows: the tilt is per element.
