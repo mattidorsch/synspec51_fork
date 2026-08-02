@@ -2195,6 +2195,7 @@ C
       INCLUDE 'INCLUDE/WINCOM.FOR'
       CHARACTER*200 LINVT
       CHARACTER*8 KWVT
+      CHARACTER*12 KWFR
       parameter (un=1.)
       logical lasdel
       DIMENSION CROSS(MCROSS,MFREQ),
@@ -2265,6 +2266,9 @@ c     write(*,*) 'ihydpr',ihydpr
 
 C     if ALAST.lt.0 - set up vacuum wavelengths everywhere
 C
+c     full-range grid: off unless FULLRANGE is found at label 16
+      ifullr=0
+      fulgap=1.
       vaclim=2999.
       if(alast.lt.0.) then
          alast=abs(alast)
@@ -2338,6 +2342,43 @@ c     static runs too; if the line is not a VTURB line it is put back.
      *  ' km/s deep'/
      *  '   transition at log m =',f7.2,' , width',f6.2,' dex'/)
    16 continue
+c     optional next line "FULLRANGE [gap]": keep [ALAM0,ALAST] even
+c     where no line is selected; gap = filler spacing in units of
+c     SPACE0.  Parsed like VTURB above; put back if not FULLRANGE.
+      read(55,'(a)',err=19,end=19) linvt
+      i1=1
+   17 if(i1.lt.200.and.linvt(i1:i1).eq.' ') then
+         i1=i1+1
+         go to 17
+      end if
+      i2=i1
+   18 if(i2.le.200) then
+         if(linvt(i2:i2).ne.' ') then
+            i2=i2+1
+            go to 18
+         end if
+      end if
+      kwfr=' '
+      kwfr=linvt(i1:min(i2-1,i1+11))
+      do i=1,12
+         ic=ichar(kwfr(i:i))
+         if(ic.ge.97.and.ic.le.122) kwfr(i:i)=char(ic-32)
+      end do
+      if(kwfr.ne.'FULLRANGE') then
+         backspace(55)
+         go to 19
+      end if
+      ifullr=1
+      read(linvt(i2:),*,err=185,end=185) fulgap
+  185 continue
+      if(fulgap.le.0.) fulgap=1.
+      write(6,611) fulgap
+  611 format(//' FULL-RANGE FREQUENCY GRID'/
+     *         ' -------------------------'/
+     *  '   the requested interval is covered even where no line is'/
+     *  '   selected; line-free stretches filled at',f7.2,
+     *  ' * SPACE'/)
+   19 continue
       if(ifwin.le.0) then
         if(nvtdep.gt.0) then
            do id=1,nd
@@ -8113,8 +8154,16 @@ C
       IL0=0
       IPRSET=0
       NLIN=0
+C
+C     full-range mode: KFILL counts points in line-free stretches, of
+C     which every IGAP-th is kept (IGAP=1 keeps them all)
+      KFILL=0
+      IGAP=NINT(FULGAP)
+      IF(IGAP.LT.1) IGAP=1
       IREADP=1
       IF(IBLANK.LE.1.OR.IMODE.EQ.1.OR.IMODE.EQ.-1) IREADP=0
+C     ILLAST=0: the previous blank selected no line, so INDLIP is empty
+      IF(IFULLR.EQ.1.AND.IBLANK.GE.2.AND.ILLAST.LE.0) IREADP=0
       IF(IBLANK.LE.1) APREV=0.
       FRMIN=CNM/ALAM0
       FRM=FRMIN
@@ -8137,6 +8186,7 @@ C
       ISTR=0
       IJMAX=0
       IMOD1L=0
+      IFULL1=0
       if(ifwin.le.0) then
         CUTOFF=CUTOF0
         DOPSTD=1.E7/ALAM0*DSTD
@@ -8224,7 +8274,7 @@ C
       IF(IJ.GE.NFRW+1) GO TO 20
       IF(FR0.GT.FRMIN) GO TO 20
   100 DELT=ABS(FRM-FR0)
-      IF(DELT.LT.DISTA0.AND.IMODE.NE.1) GO TO 20
+      IF(DELT.LT.DISTA0.AND.IMODE.NE.1.AND.IFULL1.EQ.0) GO TO 20
       DFREL=CNM*(1.D0/FR0-1.D0/FRM)/SPACE
       NFRP=int(DFREL)+1
       IF(NFRP.LE.2) NFRP=2
@@ -8237,6 +8287,17 @@ C
          FRACT=FRACT-W0
          ALACT=ALACT+W0
          IF(IMODE.GE.1.OR.NFRP.EQ.2) GO TO 107
+         IF(IFULLR.EQ.1) THEN
+C           keep every IGAP-th of the points discarded below, i.e. those
+C           past the previous line's reach and before the next line's;
+C           on the closing pass (IFULL1=1) every point is a filler
+            IF(IFULL1.EQ.0) THEN
+               IF(FRACT.GE.FRLIM.OR.FRACT.LE.FR0+EXT+SPAC) GO TO 107
+            END IF
+            KFILL=KFILL+1
+            IF(MOD(KFILL,IGAP).NE.0) GO TO 110
+            GO TO 107
+         END IF
          IF(FRACT.LT.FRLIM.AND.FRACT.GT.FR0+EXT+SPAC) GO TO 110
   107    IJ=IJ+1
          IF(IJ.GT.NFRW) GO TO 130
@@ -8246,7 +8307,10 @@ C
 C        IF(FREQ(IJ).LT.FRLAST) GO TO 220
          IF(IMODE.EQ.1.AND.ALACT.GT.ALAMCU) GO TO 140
   110 CONTINUE
-      IJCTR(IJ)=IL0
+C     on the closing pass IL0 is past the end of the line list, so it
+C     must not be recorded as a line centre
+      IF(IFULL1.EQ.0) IJCTR(IJ)=IL0
+      IF(IFULL1.EQ.1) GO TO 210
       IF(IMOD1L.EQ.1) GO TO 210
       DISTA0=DISTAN
       GO TO 20
@@ -8256,6 +8320,7 @@ C
       NFREQ=NFRW
       IF(IMODE.EQ.2) GO TO 210
       IF(IMOD1L.EQ.1) GO TO 210
+      IF(IFULL1.EQ.1) GO TO 210
       GO TO 20
 C
   140 IJMAX=IJ
@@ -8273,6 +8338,19 @@ C
       IJMAX=IJ
       IJMAX=MIN(IJMAX,NFRW)
       NFREQ=IJMAX
+C
+C     the line list ran out before FRLAST: one closing pass fills the
+C     rest, as IMODE=1 does below
+C
+      IF(IFULLR.EQ.1.AND.IFULL1.EQ.0.AND.IMODE.LE.0) THEN
+         IF(FREQ(IJ).GT.FRLAST) THEN
+            IFULL1=1
+            FR0=FRLAST*0.99999999D0
+            ALAM=CNM/FR0
+            ALAMCU=ALAM+CUTOFF
+            GO TO 100
+         END IF
+      END IF
       IF(IMODE.NE.1) GO TO 240
       IF(IMOD1L.EQ.1) GO TO 240
 C     FR0=MAX(CNM/(ALAM+CUTOFF),FRLAST*0.99999999D0)
@@ -8402,7 +8480,14 @@ C
          INDLIP(IL)=INDLIN(IL)
   260 CONTINUE
       if(ifwin.le.0) then
-        ILLAST=INDLIN(NLIN)
+C       a blank may hold no line at all, so guard the index as the wind
+C       branch does; left untouched otherwise to reproduce earlier runs
+        IF(IFULLR.EQ.1) THEN
+          ILLAST=0
+          IF(NLIN.GT.0) ILLAST=INDLIN(NLIN)
+        ELSE
+          ILLAST=INDLIN(NLIN)
+        END IF
       else
         ILLAST=0
         IF(NLIN.GT.0) ILLAST=INDLIN(NLIN)
@@ -8998,17 +9083,26 @@ C
   100 NLIN0=IL
       NNLT=INNLT0
       NGRIEM=IGRIE0
-      ALM1=CNM/FREQ0(1)
-      IF(ALAM0.LT.ALM1.AND.IMODE.NE.1) THEN
-         ALAM0=ALM1-4.*DOPLAM
-         IF(ALAM0.LT.ALAM00) ALAM0=ALAM00
-      END IF
-      ALM2=CNM/FREQ0(NLIN0)
-      IF(NLIN0.GT.1) ALM2=CNM/FREQ0(NLIN0-1)
-      IF(ALAST.GT.ALM2.AND.IMODE.NE.1) THEN
-         ALAST=ALM2-4.*DOPLAM
-         IF(ALAST.GT.ALAST0) ALAST=ALAST0
-         FRLAST=CNM/ALAST
+C
+C     Shrink the synthesis interval to the span of the selected lines,
+C     which is what collapses a line-free interval; skipped for
+C     IFULLR=1.  The IFULLR=0 branch is the original code verbatim, so
+C     a run without the keyword reproduces earlier results bit for bit.
+C     It reads FREQ0(1) even when NLIN0=0, hence the old ALAM0=Infinity.
+C
+      IF(IFULLR.EQ.0) THEN
+         ALM1=CNM/FREQ0(1)
+         IF(ALAM0.LT.ALM1.AND.IMODE.NE.1) THEN
+            ALAM0=ALM1-4.*DOPLAM
+            IF(ALAM0.LT.ALAM00) ALAM0=ALAM00
+         END IF
+         ALM2=CNM/FREQ0(NLIN0)
+         IF(NLIN0.GT.1) ALM2=CNM/FREQ0(NLIN0-1)
+         IF(ALAST.GT.ALM2.AND.IMODE.NE.1) THEN
+            ALAST=ALM2-4.*DOPLAM
+            IF(ALAST.GT.ALAST0) ALAST=ALAST0
+            FRLAST=CNM/ALAST
+         END IF
       END IF
       IBLANK=0
 C

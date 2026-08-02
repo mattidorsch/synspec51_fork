@@ -78,6 +78,14 @@ C
      .              APREV,FRMAX
       COMMON/IPRNTR/IPRIN
 C
+C     Full-range frequency grid (optional fort.55 keyword FULLRANGE).
+C     IFULLR = 0 - standard: interval clamped to the first/last selected
+C                  line, points laid down only around selected lines
+C            = 1 - [ALAM0,ALAST] always covered: no clamping, line-free
+C                  stretches filled with points spaced by SPACE0
+C     FULGAP - filler spacing in units of SPACE0 (default 1)
+      COMMON/FULRNG/FULGAP,IFULLR
+C
 C     Parameters for explicit atoms
 C
       COMMON/ATOPAR/AMASS(MATEX),

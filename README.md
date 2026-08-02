@@ -75,6 +75,17 @@ so `v -> vt_top` high in the atmosphere (small column mass `m` in g/cm2) and `->
 
 [Lanz, Hubeny & Heap (1997)](https://ui.adsabs.harvard.edu/abs/1997ApJ...485..843L/abstract) inferred ~10 km/s from the iron lines of BD+75 325 and 15-20 km/s from its N V resonance lines. A height-dependent law does not reproduce that split for this star: N V improves only in proportion to the degradation of regions the model otherwise fits well.
 
+#### Full-range frequency grid
+
+Frequency points are placed only around selected lines, and `INILIN` then shrinks `alam0`/`alast` to their span, so an interval with no line above the strength cut returns two points of `Infinity`/`NaN` instead of a spectrum. The optional keyword `FULLRANGE [gap]`, on the line after `vtb` (or after a `VTURB` line), covers the requested interval regardless, filling line-free stretches at `gap` times the fort.55 `space` (default 1). Without it the original code path is taken, bit-identical on `fort.7`/`12`/`16`/`17` over 1140-4000 A.
+
+```text
+1140 8800 100 10 1d-06 0.007 ! alam0 alast cutof0 cutofs relop space
+0 0 ! nmlist dummy
+0.74 ! vtb
+FULLRANGE
+```
+
 #### Wind mode
 
 Synspec includes a wind mode that solves the transfer equation in the observer's frame along impact-parameter rays through a spherically expanding envelope, producing asymmetric (blue-shifted) line profiles. It was introduced by [Lanz et al. (1997)](https://ui.adsabs.harvard.edu/abs/1997ApJ...485..843L/abstract) to measure the weak wind of BD+75 325, where the wind was described simply by imposing a velocity field from the continuity equation on the hydrostatic photospheric structure.
