@@ -5631,6 +5631,10 @@ C
       common/quasun/nunalp,nunbet,nungam,nunbal
       DIMENSION PJ(40),PRF0(54),WLINE(4,22),OSCH(4,22),
      *          ABSO(MFREQ),EMIS(MFREQ),ABSOH(MFREQ),EMISH(MFREQ)
+      PARAMETER (MCI=12,MCJ=60)
+      DIMENSION ICSTK(MCI,MCJ),CWL0(MCI,MCJ),CFXK(MCI,MCJ),
+     *          CFXK1(MCI,MCJ),CDBET(MCI,MCJ),CBETD(MCI,MCJ),
+     *          CFID(MCI,MCJ),CAD(MCI,MCJ),CDIV(MCI,MCJ)
       DATA FRH    /3.289017E15/
       DATA INIT /0/
 C
@@ -5652,6 +5656,11 @@ C
          EMIS(IJ)=0.
          ABSOH(IJ)=0.
          EMISH(IJ)=0.
+      END DO
+      DO JC=1,MCJ
+         DO IC=1,MCI
+            ICSTK(IC,JC)=0
+         END DO
       END DO
        T=TEMP(ID)
        T1=UN/T
@@ -5790,14 +5799,39 @@ c
          lquasi=lquasi.or.i.eq.1.and.j.eq.4.and.nungam.gt.0
          lquasi=lquasi.or.i.eq.2.and.j.eq.3.and.nunbal.gt.0
          if(lquasi) then
-            CALL STARK0(I,J,izz,XKIJ,WL0,FIJ,FIJ0)
-            FXK=F00*XKIJ
-            FXK1=UN/FXK
-            DOP=DOP0/WL0
-            DBETA=WL0*WL0*CINV*FXK1
-            BETAD=DOP*DBETA
-            FID=CID*FIJ*DBETA
-            CALL DIVSTR(AD,DIV)
+c           STARK0 and the Stark division point depend only on the
+c           line and the depth, not on the frequency - evaluate them
+c           once per depth and reuse over the frequency loop
+            IF(I.LE.MCI.AND.J.LE.MCJ.AND.ICSTK(I,J).EQ.1) THEN
+               WL0=CWL0(I,J)
+               FXK=CFXK(I,J)
+               FXK1=CFXK1(I,J)
+               DBETA=CDBET(I,J)
+               BETAD=CBETD(I,J)
+               FID=CFID(I,J)
+               AD=CAD(I,J)
+               DIV=CDIV(I,J)
+             ELSE
+               CALL STARK0(I,J,izz,XKIJ,WL0,FIJ,FIJ0)
+               FXK=F00*XKIJ
+               FXK1=UN/FXK
+               DOP=DOP0/WL0
+               DBETA=WL0*WL0*CINV*FXK1
+               BETAD=DOP*DBETA
+               FID=CID*FIJ*DBETA
+               CALL DIVSTR(AD,DIV)
+               IF(I.LE.MCI.AND.J.LE.MCJ) THEN
+                  CWL0(I,J)=WL0
+                  CFXK(I,J)=FXK
+                  CFXK1(I,J)=FXK1
+                  CDBET(I,J)=DBETA
+                  CBETD(I,J)=BETAD
+                  CFID(I,J)=FID
+                  CAD(I,J)=AD
+                  CDIV(I,J)=DIV
+                  ICSTK(I,J)=1
+               END IF
+            END IF
             fr=freq(ij)
             BETA=ABS(WLAM(IJ)-WL0)*FXK1
             call allard(wlam(ij),popi,anp,sg,i,j)
@@ -5835,14 +5869,39 @@ c
 c         lines without special Stark broadening tables
 c
           ELSE
-            CALL STARK0(I,J,izz,XKIJ,WL0,FIJ,FIJ0)
-            FXK=F00*XKIJ
-            FXK1=UN/FXK
-            DOP=DOP0/WL0
-            DBETA=WL0*WL0*CINV*FXK1
-            BETAD=DOP*DBETA
-            FID=CID*FIJ*DBETA
-            CALL DIVSTR(AD,DIV)
+c           STARK0 and the Stark division point depend only on the
+c           line and the depth, not on the frequency - evaluate them
+c           once per depth and reuse over the frequency loop
+            IF(I.LE.MCI.AND.J.LE.MCJ.AND.ICSTK(I,J).EQ.1) THEN
+               WL0=CWL0(I,J)
+               FXK=CFXK(I,J)
+               FXK1=CFXK1(I,J)
+               DBETA=CDBET(I,J)
+               BETAD=CBETD(I,J)
+               FID=CFID(I,J)
+               AD=CAD(I,J)
+               DIV=CDIV(I,J)
+             ELSE
+               CALL STARK0(I,J,izz,XKIJ,WL0,FIJ,FIJ0)
+               FXK=F00*XKIJ
+               FXK1=UN/FXK
+               DOP=DOP0/WL0
+               DBETA=WL0*WL0*CINV*FXK1
+               BETAD=DOP*DBETA
+               FID=CID*FIJ*DBETA
+               CALL DIVSTR(AD,DIV)
+               IF(I.LE.MCI.AND.J.LE.MCJ) THEN
+                  CWL0(I,J)=WL0
+                  CFXK(I,J)=FXK
+                  CFXK1(I,J)=FXK1
+                  CDBET(I,J)=DBETA
+                  CBETD(I,J)=BETAD
+                  CFID(I,J)=FID
+                  CAD(I,J)=AD
+                  CDIV(I,J)=DIV
+                  ICSTK(I,J)=1
+               END IF
+            END IF
             fr=freq(ij)
             BETA=ABS(WLAM(IJ)-WL0)*FXK1
             SG=STARKA(BETA,AD,DIV,TWO)*FID
@@ -6433,6 +6492,10 @@ C
      *          ABSO(MFREQ),EMIS(MFREQ),ABSOH(MFREQ),EMISH(MFREQ)
       COMMON/HE2PRF/PRFHE2(19,MDEPTH,36),WLHE2(19,36),NWLHE2(19),
      *              ILHE2(19),IUHE2(19)
+      PARAMETER (MCI=12,MCJ=60)
+      DIMENSION ICSTK(MCI,MCJ),CWL0(MCI,MCJ),CFXK(MCI,MCJ),
+     *          CFXK1(MCI,MCJ),CDBET(MCI,MCJ),CBETD(MCI,MCJ),
+     *          CFID(MCI,MCJ),CAD(MCI,MCJ),CDIV(MCI,MCJ)
       common/lasers/lasdel
       DATA FRHE /1.3158153D+16, 3.2895381D+15, 1.4624854D+15,
      *           8.2261878D+14, 5.2647201D+14, 3.6560459D+14,
@@ -6451,6 +6514,11 @@ C
          EMIS(IJ)=0.
          ABSOH(IJ)=0.
          EMISH(IJ)=0.
+      END DO
+      DO JC=1,MCJ
+         DO IC=1,MCI
+            ICSTK(IC,JC)=0
+         END DO
       END DO
       IF(IFHE2.LE.0) RETURN
       T=TEMP(ID)
@@ -6582,14 +6650,39 @@ C        HeII 1640AA; air -> vacuum
             ABSO(IJ)=ABSO(IJ)+SG*ABTRA
             EMIS(IJ)=EMIS(IJ)+SG*EMTRA
           ELSE
-            CALL STARK0(I,J,izz,XKIJ,WL0,FIJ,FIJ0)
-            FXK=F00*XKIJ
-            FXK1=UN/FXK
-            DOP=DOP0/WL0
-            DBETA=WL0*WL0*CINV*FXK1
-            BETAD=DOP*DBETA
-            FID=CID*FIJ*DBETA
-            CALL DIVHE2(AD,DIV)
+c           STARK0 and the Stark division point depend only on the
+c           line and the depth, not on the frequency - evaluate them
+c           once per depth and reuse over the frequency loop
+            IF(I.LE.MCI.AND.J.LE.MCJ.AND.ICSTK(I,J).EQ.1) THEN
+               WL0=CWL0(I,J)
+               FXK=CFXK(I,J)
+               FXK1=CFXK1(I,J)
+               DBETA=CDBET(I,J)
+               BETAD=CBETD(I,J)
+               FID=CFID(I,J)
+               AD=CAD(I,J)
+               DIV=CDIV(I,J)
+             ELSE
+               CALL STARK0(I,J,izz,XKIJ,WL0,FIJ,FIJ0)
+               FXK=F00*XKIJ
+               FXK1=UN/FXK
+               DOP=DOP0/WL0
+               DBETA=WL0*WL0*CINV*FXK1
+               BETAD=DOP*DBETA
+               FID=CID*FIJ*DBETA
+               CALL DIVHE2(AD,DIV)
+               IF(I.LE.MCI.AND.J.LE.MCJ) THEN
+                  CWL0(I,J)=WL0
+                  CFXK(I,J)=FXK
+                  CFXK1(I,J)=FXK1
+                  CDBET(I,J)=DBETA
+                  CBETD(I,J)=BETAD
+                  CFID(I,J)=FID
+                  CAD(I,J)=AD
+                  CDIV(I,J)=DIV
+                  ICSTK(I,J)=1
+               END IF
+            END IF
             BETA=ABS(WLAM(IJ)-WL0)*FXK1
             SG=STARKA(BETA,AD,DIV,UN)*FID
             ABSO(IJ)=ABSO(IJ)+SG*ABTRA
@@ -18191,20 +18284,15 @@ C
 C     Additional input are read at the end of Unit 8:
 C      RCORE : Core radius (deepest layer, in solar radii or in cm)
 C      NDRAD : Number of layers
-C      NRCORE: Number of core rays
-C      INRV  : Switch indicating the data to be read:
-C           = 0 : Read an hydrostatic, plane-parallel model only; the
-C                   routine builds the radial points, density and
-C                   velocity structure;
-C           < 0 : Read also an hydrostatic, plane-parallel model, but
-C                   an empirical velocity law V(r) is read at each
-C                   radial point (r(id) is read);
-C           > 0 : Input from an extended model atmosphere; the velocity
-C                   law is read; the density structure is recomputed for
-C                   a possibly different mass-loss rate.
 C      XMDOT  : Mass loss rate (in solar mass/yr)
 C      BETAV, VINF : Parameters of the velocity law (VINF in km/s)
-C      RD, VEL: Radial points, expansion velocity
+C      RD, VEL, VTURB, DENSCON : radial points, expansion velocity,
+C               turbulent velocity and clumping contrast, per layer
+C
+C     The record after NDRAD still carries three integer slots from
+C     older files (core rays, fine-grid rays, opacity-table depths);
+C     they are read into dummies, since the ray and depth-grid
+C     resolution is now fixed (see WINCOM.FOR and SETRAY).
 C
 C     Synspec version
 C
@@ -18217,11 +18305,12 @@ C
 C     Read data for spherical atmosphere and velocity law
 C
 C      write(6,*) 'reading wind parameters'
-      READ(8,*,END=9,ERR=9) RCORE,NDRAD,NRCORE,INRV,NFIRY,NDF
-C      READ(8,*) RCORE,NDRAD,NRCORE,INRV,NFIRY,NDF
-  604 format(//' RCORE,NDRAD,NRCORE,INRV,NFIRY,NDF'/,
-     *       f6.2, 5i3)
-      write(6,604) RCORE,NDRAD,NRCORE,INRV,NFIRY,NDF
+      READ(8,*,END=9,ERR=9) RCORE,NDRAD,IDUM1,IDUM2,IDUM3,IDUM4
+  604 format(//' RCORE,NDRAD'/,
+     *       f6.2, i4)
+      write(6,604) RCORE,NDRAD
+      NRCORE=NRCOR0
+      NDF=0
       IF(RCORE.LT.1.E5) RCORE=RCORE*RSUN
       IF(NDRAD.GT.MDEPTH) CALL quit('NDRAD too large')
       READ(8,*) XMDOT,BETAV,VINF
@@ -18284,24 +18373,15 @@ C     DENSMF - mean (smooth-wind) density, used to assign ray points
 C              to depths, since the continuity density along a ray
 C              is the mean one
 C
-      if(ndf.eq.0.or.ndf.eq.nd) then
-         ndf=nd
-         DO ID=1,NDF
-            DENSF(ID)=DENS(ID)
-            DENSMF(ID)=DENS(ID)/DENSCON(ID)
-         END DO
-      else
-         XR1=LOG(DENS(1))
-         XR2=LOG(DENS(ND))
-         DXR=(XR2-XR1)/FLOAT(NDF-1)
-         XM1=LOG(DENS(1)/DENSCON(1))
-         XM2=LOG(DENS(ND)/DENSCON(ND))
-         DXM=(XM2-XM1)/FLOAT(NDF-1)
-         DO ID=1,NDF
-            DENSF(ID)=EXP(XR1+FLOAT(ID-1)*DXR)
-            DENSMF(ID)=EXP(XM1+FLOAT(ID-1)*DXM)
-         END DO
-      end if
+c     the opacity table is always tabulated on the model depth grid
+c     itself; a separate, coarser grid used to be selectable (NDF), but
+c     it never paid for itself in run time and only added interpolation
+c     error
+      ndf=nd
+      DO ID=1,NDF
+         DENSF(ID)=DENS(ID)
+         DENSMF(ID)=DENS(ID)/DENSCON(ID)
+      END DO
 C
 C
 C     Impact rays
@@ -18329,24 +18409,21 @@ C
 C
 C     Depth increments along each ray
 C
-      DELZ(1,1)=0.
       DFRQ(1,1)=0.
       DO IU=2,KMU
         NUDF(IU)=NUD(IU)
         IU1=IU
         IF(IU.GT.ND) IU1=ND
         DO ID=1,IU1-1
-          DELZ(IU,ID)=BMU(IU,ID)*RD(ID)-BMU(IU,ID+1)*RD(ID+1)
           DFRQ(IU,ID)=BMU(IU,ID)*VEL(ID)/CL
           JD=2*NUD(IU)-ID
           DFRQ(IU,JD)=-DFRQ(IU,ID)
         END DO
-        DELZ(IU,IU1)=DELZ(IU,IU1-1)
         DFRQ(IU,IU1)=0.
         IF(IU.GT.NREXT) DFRQ(IU,ND)=BMU(IU,ND)*VEL(ND)/CL
       END DO
 C
-C Finer grid along the NFIRY most external rays
+C Finer grid along the tangent rays
 C   velocity steps DVD(ID)
 C
       XMD4=XMDOT/PI4
@@ -18377,20 +18454,6 @@ c
         IF(DLAY(ID).GT.1.) DLAY(ID)=1.
       END DO
 c
-c     rays with a fine velocity-resolved grid:
-c     the first NFIRY tangent rays, and ALL core rays (they carry the
-c     absorption against the stellar disk - i.e. the line troughs)
-c
-      DO IU=1,KMU
-        IFINE(IU)=0
-      END DO
-      NFIR0=MIN(NFIRY,NREXT)
-      DO IU=2,NFIR0
-        IFINE(IU)=1
-      END DO
-      DO IU=NREXT+1,KMU
-        IFINE(IU)=1
-      END DO
 c
 c     fine grid by segment-wise insertion: all layer points are kept,
 c     and each inter-layer segment is subdivided (linearly in z, with
@@ -18401,7 +18464,6 @@ c     degenerates and costs nothing in the hydrostatic part.
 c
       NUDX=ND
       DO 40 IU=2,KMU
-        IF(IFINE(IU).EQ.0) GO TO 40
         IUD0=NUD(IU)
         IP=1
         ZIUF(1)=BMU(IU,1)*RD(1)
@@ -18468,29 +18530,6 @@ C
           END DO
         END IF
    40 CONTINUE
-C
-C    remaining rays (without finer grid): layer-based mapping
-C
-      DO IU=2,KMU
-        IF(IFINE(IU).EQ.1) GO TO 50
-        NUDF(IU)=NUD(IU)
-        DO ID=1,NUD(IU)
-          KRAY(IU,ID)=KLAY(ID)
-          DRAY(IU,ID)=DLAY(ID)
-          DFRQF(IU,ID)=DFRQ(IU,ID)
-          DELZF(IU,ID)=DELZ(IU,ID)
-        ENDDO
-        IF(IU.LE.NREXT) THEN
-          DO ID=1,NUD(IU)
-            JD=2*NUD(IU)-ID
-            KRAY(IU,JD)=KRAY(IU,ID)
-            DRAY(IU,JD)=DRAY(IU,ID)
-            DFRQF(IU,JD)=-DFRQF(IU,ID)
-          END DO
-        END IF
-   50   CONTINUE
-      END DO
-C
       NFTOT=0
       DO IU=2,KMU
         IUD=NUDF(IU)
@@ -18821,47 +18860,14 @@ c      end do
 c      end do
 c  693 format(2i5,f10.3,1p2e10.3)
 C
-C  Interpolate to a finer radial (density) grid
+C     the opacity table lives on the model depth grid (NDF=ND), so no
+C     interpolation onto a separate radial grid is needed
 C
-      if(ndf.ne.nd)  then
-      DO ID=1,ND
-        XDS(ID)=LOG10(DENS(ID))
-      END DO
-      DO ID=1,NDF
-        XDSF(ID)=LOG10(DENSF(ID))
-      END DO
-      DO IJ=1,NOPAC
-        DO ID=1,ND
-          ABSD(ID)=AB(IJ,ID)
-        END DO
-        CALL INTERP(XDS ,ABSD,XDSF ,ASF,ND,NDF,2,0,1)
-        DO ID=1,NDF
-          AB(IJ,ID)=ASF(ID)
-        END DO
-        DO ID=1,ND
-          ABSD(ID)=STH(IJ,ID)
-        END DO
-        CALL INTERP(XDS ,ABSD,XDSF ,ASF,ND,NDF,2,0,1)
-        DO ID=1,NDF
-          STH(IJ,ID)=ASF(ID)
-        END DO
-      END DO
-      DO IJ=1,NFREQC
-        DO ID=1,ND
-          ABSD(ID)=SCC(IJ,ID)
-        END DO
-        CALL INTERP(XDS ,ABSD,XDSF ,ASF,ND,NDF,2,0,1)
-        DO ID=1,NDF
-          SCH(IJ,ID)=ASF(ID)
-        END DO
-      END DO
-      end if
       WRITE(6,601)
   600 FORMAT(/,' Opacity table for',i5,' frequencies and',/,
      *         '                  ',i5,' radial (density) points')
   601 FORMAT(' Done'/)
 C
-c      if(ndf.ne.nd)  then
 c      do id=1,ndf
 c      do ij=1,nopac
 c         write(91,693) id,ij,ab(ij,id),sth(ij,id)
@@ -18882,14 +18888,10 @@ c     with partial coverage, three passes: 1 = full wind,
 c     2 = wind absorption only, 3 = wind lines removed.  The blend
 c     F = FLUX + (1-f)*(FLUXP-FLUXA) uncovers a fraction (1-f) of the
 c     disk while leaving the envelope emission untouched.
-      NPASS=1
-      IF(FPCOV.LT.1.) NPASS=3
-      DO IPCMOD=1,NPASS
-        DO IU=2,KMU
-          CALL RTEWIN(IU)
-        END DO
-      END DO
       IPCMOD=1
+      DO IU=2,KMU
+        CALL RTEWIN(IU)
+      END DO
       DO IJ=1,NFREQ
         FLUX(IJ)=FLUX(IJ)*R2F
         IF(FPCOV.LT.1.) FLUX(IJ)=FLUX(IJ)
@@ -18972,28 +18974,16 @@ C
 C
 C     Loop over impact rays
 C
-      if(nd.eq.ndf) then
-         do id=1,nd
-            densf(id)=dens(id)
-            rdx(id)=rad00(id)
-            abc0(id)=chc(ij,id)
-            stc0(id)=etc(ij,id)/chc(ij,id)
-            scc0(id)=scc(ij,id)
-         end do
-       else
-         CALL INTERP(DENS,RAD00,DENSF,RDX,ND,NDF,4,1,0)
-         do id=1,nd
-            abc1(id)=chc(ij,id)
-            stc1(id)=etc(ij,id)/chc(ij,id)
-            scc01(ij)=scc(ij,id)
-         end do
-         CALL INTERP(DENS,abc1,DENSF,abc0,ND,NDF,4,1,0)
-         CALL INTERP(DENS,stc1,DENSF,stc0,ND,NDF,4,1,0)
-         CALL INTERP(DENS,scc01,DENSF,scc0,ND,NDF,4,1,0)
-      end if
+c     NDF=ND always, so the continuum quantities are used as they stand
+      do id=1,nd
+         densf(id)=dens(id)
+         rdx(id)=rad00(id)
+         abc0(id)=chc(ij,id)
+         stc0(id)=etc(ij,id)/chc(ij,id)
+         scc0(id)=scc(ij,id)
+      end do
       DO 100 IU=1,KMU
-        iud=nud(iu)
-        IF(IFINE(IU).EQ.1) IUD=NUDF(IU)
+        iud=nudf(iu)
         if(iud.le.1) goto 100
         DO ID=1,IUD
           KY=KRAY(IU,ID)
@@ -19007,16 +18997,9 @@ C
           SS0(ID)=SC0/AB0(ID)
           ST0(ID)=ST0(ID)+SS0(ID)*RDY(ID)
         END DO
-        IF(IFINE(IU).EQ.1) THEN
-          DO ID=1,IUD-1
-            DTAU(ID)=HALF*(AB0(ID)+AB0(ID+1))*DELZF(IU,ID)
-          END DO
-        ELSE
-          DO ID=1,IUD-1
-            DT(ID)=HALF*(AB0(ID)+AB0(ID+1))
-            DTAU(ID)=DT(ID)*DELZ(IU,ID)
-          END DO
-        END IF
+        DO ID=1,IUD-1
+          DTAU(ID)=HALF*(AB0(ID)+AB0(ID+1))*DELZF(IU,ID)
+        END DO
 C
 C        incoming intensity   (TAUMIN=0.)
 C
@@ -19091,18 +19074,17 @@ C
           uf(id)=(riup(id)+riin(id))
           af(id)=(aiup(id)+aiin(id))
         end do
-        if(ifine(iu).eq.1) then
-          inrp=min(nud(iu),4)
-          call interp(densr,uf,dens,ptx,iud,nud(iu),inrp,1,0)
-          do id=1,nud(iu)
-            uf(id)=ptx(id)
-          end do
-          call interp(densr,af,dens,ptx,iud,nud(iu),inrp,1,0)
-          do id=1,nud(iu)
-            af(id)=ptx(id)
-          end do
-          iud=nud(iu)
-        end if
+c       every ray carries a fine grid, so map back onto the model grid
+        inrp=min(nud(iu),4)
+        call interp(densr,uf,dens,ptx,iud,nud(iu),inrp,1,0)
+        do id=1,nud(iu)
+          uf(id)=ptx(id)
+        end do
+        call interp(densr,af,dens,ptx,iud,nud(iu),inrp,1,0)
+        do id=1,nud(iu)
+          af(id)=ptx(id)
+        end do
+        iud=nud(iu)
 C
 C       Contribution to J
 C
@@ -19175,6 +19157,12 @@ C
 C     Version including velocity field and extension
 C      radiative transfer along ray IU
 C
+C     With partial coverage (FPCOV<1) the three sightline variants are
+C     solved in the same sweep: 1 = full wind (FLUX), 2 = wind
+C     absorption only (FLUXA, same opacity as 1, hence the same TAU),
+C     3 = wind lines removed (FLUXP, own opacity and TAU).  The
+C     comoving-wavelength lookup and the ray geometry are shared.
+C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
       INCLUDE 'INCLUDE/SYNTHP.FOR'
@@ -19185,6 +19173,8 @@ C
      *          rip(2*MRPF ),rim(2*MRPF )
 c     dimension sc0(2*mrpf)
       dimension sctd(2*mrpf)
+      DIMENSION ST0A(2*MRPF ),RIMA(2*MRPF )
+      DIMENSION AB0P(2*MRPF ),ST0P(2*MRPF ),TAUP(2*MRPF ),RIMP(2*MRPF )
       COMMON/COPAC/AB(MOPAC,MDEPF),STH(MOPAC,MDEPF),SCH(MFREQC,MDEPF),
      *             ABP(MOPAC,MDEPF),STHP(MOPAC,MDEPF),
      *             STHA(MOPAC,MDEPF)
@@ -19192,12 +19182,18 @@ c     dimension sc0(2*mrpf)
       COMMON/CONSCV/SCCF(MFREQC,mdepf)
       COMMON/REFDEP/IREFD(MFREQ)
       COMMON/PCOVFL/FLUXA(MFREQ),FLUXP(MFREQ),IPCMOD
+      LOGICAL LPC
 C
       IUD=NUDF(IU)
       IF(IU.LE.NREXT) IUD=2*NUDF(IU)-1
       IF(IUD.EQ.1) RETURN
-c     mean spacing of the (padded) opacity-table grid, for index guess
-      IF(NFREQ.GT.1) dlama0=(wlam(nfreq)-wlam(1))/(nfreq-1)
+      LPC=FPCOV.LT.1.
+c     starting index for the comoving-wavelength lookup at ID=1; the
+c     projected velocity decreases monotonically along the ray, so the
+c     index carried from the previous point is a far better guess than
+c     one built from the mean grid spacing (the grid is strongly
+c     non-uniform).  Across IJ the ID=1 index is monotone as well.
+      IJ1ST=1
 C
 C     overall loop over frequencies (observer's frame)
 C
@@ -19208,46 +19204,45 @@ C
 C    Opacity and total source function 
 c    interpolation in opacity table
 C
-      IVK=NOPAC-2
       DO ID=1,IUD
          KY=KRAY(IU,ID)
          YDR=DRAY(IU,ID)
          YDR1=UN-YDR
+         IF(ID.EQ.1) IJSAV=IJ1ST
          dwlcom=wl0*DFRQF(IU,ID)
          wlcom=wl0+dwlcom
          if(wlcom.le.wlam(1)) then
+            ij1=1
+            IJSAV=1
             abd1=ab(1,ky-1)
             std1=sth(1,ky-1)
             abd0=ab(1,ky)
             std0=sth(1,ky)
-            ij1=1
-            if(ipcmod.eq.2) then
-               std1=stha(1,ky-1)
-               std0=stha(1,ky)
-             else if(ipcmod.eq.3) then
-               abd1=abp(1,ky-1)
-               std1=sthp(1,ky-1)
-               abd0=abp(1,ky)
-               std0=sthp(1,ky)
+            if(LPC) then
+               sta1=stha(1,ky-1)
+               sta0=stha(1,ky)
+               abq1=abp(1,ky-1)
+               stq1=sthp(1,ky-1)
+               abq0=abp(1,ky)
+               stq0=sthp(1,ky)
             end if
           else if(wlcom.ge.wlam(nfreq)) then
+            ij1=nfreq
+            IJSAV=NFREQ
             abd1=ab(nfreq,ky-1)
             std1=sth(nfreq,ky-1)
             abd0=ab(nfreq,ky)
             std0=sth(nfreq,ky)
-            ij1=nfreq
-            if(ipcmod.eq.2) then
-               std1=stha(nfreq,ky-1)
-               std0=stha(nfreq,ky)
-             else if(ipcmod.eq.3) then
-               abd1=abp(nfreq,ky-1)
-               std1=sthp(nfreq,ky-1)
-               abd0=abp(nfreq,ky)
-               std0=sthp(nfreq,ky)
+            if(LPC) then
+               sta1=stha(nfreq,ky-1)
+               sta0=stha(nfreq,ky)
+               abq1=abp(nfreq,ky-1)
+               stq1=sthp(nfreq,ky-1)
+               abq0=abp(nfreq,ky)
+               stq0=sthp(nfreq,ky)
             end if
           else
-            xijap=(wlcom-wlam(1))/dlama0+1.
-            ijap=int(xijap)
+            ijap=IJSAV
             ijap=max(ijap,1)
             ijap=min(ijap,nfreq)
             wlap=wlam(ijap)
@@ -19266,23 +19261,30 @@ C
    30          continue
                ij1=iji-1
             end if
+            IJSAV=IJ1
             xfa=(wlam(ij1+1)-wlcom)/(wlam(ij1+1)-wlam(ij1))
-            abd1=xfa*ab(ij1,ky-1)+(1.-xfa)*ab(ij1+1,ky-1)
-            std1=xfa*sth(ij1,ky-1)+(1.-xfa)*sth(ij1+1,ky-1)
-            abd0=xfa*ab(ij1,ky)+(1.-xfa)*ab(ij1+1,ky)
-            std0=xfa*sth(ij1,ky)+(1.-xfa)*sth(ij1+1,ky)
-            if(ipcmod.eq.2) then
-               std1=xfa*stha(ij1,ky-1)+(1.-xfa)*stha(ij1+1,ky-1)
-               std0=xfa*stha(ij1,ky)+(1.-xfa)*stha(ij1+1,ky)
-             else if(ipcmod.eq.3) then
-               abd1=xfa*abp(ij1,ky-1)+(1.-xfa)*abp(ij1+1,ky-1)
-               std1=xfa*sthp(ij1,ky-1)+(1.-xfa)*sthp(ij1+1,ky-1)
-               abd0=xfa*abp(ij1,ky)+(1.-xfa)*abp(ij1+1,ky)
-               std0=xfa*sthp(ij1,ky)+(1.-xfa)*sthp(ij1+1,ky)
+            xfb=1.-xfa
+            abd1=xfa*ab(ij1,ky-1)+xfb*ab(ij1+1,ky-1)
+            std1=xfa*sth(ij1,ky-1)+xfb*sth(ij1+1,ky-1)
+            abd0=xfa*ab(ij1,ky)+xfb*ab(ij1+1,ky)
+            std0=xfa*sth(ij1,ky)+xfb*sth(ij1+1,ky)
+            if(LPC) then
+               sta1=xfa*stha(ij1,ky-1)+xfb*stha(ij1+1,ky-1)
+               sta0=xfa*stha(ij1,ky)+xfb*stha(ij1+1,ky)
+               abq1=xfa*abp(ij1,ky-1)+xfb*abp(ij1+1,ky-1)
+               stq1=xfa*sthp(ij1,ky-1)+xfb*sthp(ij1+1,ky-1)
+               abq0=xfa*abp(ij1,ky)+xfb*abp(ij1+1,ky)
+               stq0=xfa*sthp(ij1,ky)+xfb*sthp(ij1+1,ky)
             end if
          end if
+        IF(ID.EQ.1) IJ1ST=IJSAV
         AB0(ID)=YDR1*Abd1+YDR*abd0
         ST0(ID)=YDR1*Std1+YDR*Std0
+        if(LPC) then
+           ST0A(ID)=YDR1*sta1+YDR*sta0
+           AB0P(ID)=YDR1*abq1+YDR*abq0
+           ST0P(ID)=YDR1*stq1+YDR*stq0
+        end if
 C
 C   Add scattering
 C
@@ -19293,31 +19295,36 @@ C
           SCT=FRX1(ij1)*SC1+(1.-FRX1(ij1))*SC2
           sctd(id)=sct/ab0(id)
           ST0(ID)=ST0(ID)+SCT/AB0(ID)
+          if(LPC) then
+             ST0A(ID)=ST0A(ID)+SCT/AB0(ID)
+             ST0P(ID)=ST0P(ID)+SCT/AB0P(ID)
+          end if
         END IF
       ENDDO
 C
 C    Optical depth scale
 C
       TAU(1)=0.
+      TAUP(1)=0.
       IREF=1
-      IF(IFINE(IU).EQ.1) THEN
-         DO ID=1,IUD-1
-            JD=ID
-            IF(ID.GT.NUDF(IU)) JD=2*NUDF(IU)-ID-1
-            DT=HALF*(AB0(ID+1)+AB0(ID))*DELZF(IU,JD)
-            TAU(ID+1)=TAU(ID)+DT
-         END DO
-       ELSE
-         DO ID=1,IUD-1
-            JD=ID
-            IF(ID.GT.NUD(IU)) JD=2*NUD(IU)-ID-1
-            DT=HALF*(AB0(ID+1)+AB0(ID))*DELZ(IU,JD)
-            TAU(ID+1)=TAU(ID)+DT
-         END DO
-      END IF
+      DO ID=1,IUD-1
+         JD=ID
+         IF(ID.GT.NUDF(IU)) JD=2*NUDF(IU)-ID-1
+         DZ=DELZF(IU,JD)
+         DT=HALF*(AB0(ID+1)+AB0(ID))*DZ
+         TAU(ID+1)=TAU(ID)+DT
+         IF(LPC) TAUP(ID+1)=TAUP(ID)+HALF*(AB0P(ID+1)+AB0P(ID))*DZ
+      END DO
       if(iu.eq.kmu) then
+c        the reference depth is a diagnostic only (line-strength
+c        listing); keep the last-pass definition of the original
+c        three-pass loop, i.e. the wind-line-free scale when FPCOV<1
          DO ID=1,IUD-1
-            IF(TAU(ID).LE.TAUREF.AND.TAU(ID+1).GT.TAUREF) IREF=ID
+            IF(LPC) THEN
+               IF(TAUP(ID).LE.TAUREF.AND.TAUP(ID+1).GT.TAUREF) IREF=ID
+             ELSE
+               IF(TAU(ID).LE.TAUREF.AND.TAU(ID+1).GT.TAUREF) IREF=ID
+            END IF
          END DO
          irefd(ij)=iref
       end if
@@ -19330,23 +19337,12 @@ C     1. External rays
 C
         ndt=iud
         rip(ndt)=0.
-        dt0=tau(ndt)-tau(ndt-1)
-        dtaup1=dt0+un
-        dtau2=dt0*dt0
-        bb=two*dtaup1
-        cc=dt0*dtaup1
-        aa=dtau2+bb
-        rim(ndt)=(aa*rip(ndt)-cc*st0(ndt)+dt0*st0(ndt-1))/bb
-        do id=1,iud-1
-          jd=iud-id
-          dt0=tau(jd+1)-tau(jd)
-          dtaup1=dt0+un
-          dtau2=dt0*dt0
-          bb=two*dtaup1
-          cc=dt0*dtaup1
-          aa=un/(dtau2+bb)
-          rim(jd)=(two*rim(jd+1)+dt0*st0(jd+1)+cc*st0(jd))*aa
-        enddo
+        IF(LPC) THEN
+          CALL DFEWI2(TAU,ST0,ST0A,RIM,RIMA,IUD,0.D0)
+          CALL DFEWIN(TAUP,ST0P,RIMP,IUD,0.D0)
+         ELSE
+          CALL DFEWIN(TAU,ST0,RIM,IUD,0.D0)
+        END IF
       ELSE
 C
 C      2. core rays
@@ -19356,90 +19352,96 @@ C
         BNU=BN*FR15*FR15*FR15
         PLAND=BNU/(EXP(HK*FR/TEMP(ND))-UN)
         DPLAN=BNU/(EXP(HK*FR/TEMP(ND-1))-UN)
-        DPLAN=(PLAND-DPLAN)/(TAU(IUD)-TAU(IUD-1))
-        RIP(NDT)=PLAND+DPLAN
-        dt0=tau(ndt)-tau(ndt-1)
-        dtaup1=dt0+un
-        dtau2=dt0*dt0
-        bb=two*dtaup1
-        cc=dt0*dtaup1
-        aa=dtau2+bb
-        rim(ndt)=(aa*rip(ndt)-cc*st0(ndt)+dt0*st0(ndt-1))/bb
-        do id=iud-1,1,-1
-           dt0=tau(id+1)-tau(id)
-           dtaup1=dt0+un
-           dtau2=dt0*dt0
-           bb=two*dtaup1
-           cc=dt0*dtaup1
-           aa=un/(dtau2+bb)
-           rim(id)=(two*rim(id+1)+dt0*st0(id+1)+cc*st0(id))*aa
-        enddo
+        DPLA0=(PLAND-DPLAN)/(TAU(IUD)-TAU(IUD-1))
+        IF(LPC) THEN
+          CALL DFEWI2(TAU,ST0,ST0A,RIM,RIMA,IUD,PLAND+DPLA0)
+          DPLA0=(PLAND-DPLAN)/(TAUP(IUD)-TAUP(IUD-1))
+          CALL DFEWIN(TAUP,ST0P,RIMP,IUD,PLAND+DPLA0)
+         ELSE
+          CALL DFEWIN(TAU,ST0,RIM,IUD,PLAND+DPLA0)
+        END IF
       ENDIF
-      IF(IPCMOD.EQ.2) THEN
-         FLUXA(IJ)=FLUXA(IJ)+WMUH(IU)*RIM(1)
-       ELSE IF(IPCMOD.EQ.3) THEN
-         FLUXP(IJ)=FLUXP(IJ)+WMUH(IU)*RIM(1)
-       ELSE
-         FLUX(IJ)=FLUX(IJ)+WMUH(IU)*RIM(1)
+      FLUX(IJ)=FLUX(IJ)+WMUH(IU)*RIM(1)
+      IF(LPC) THEN
+        FLUXA(IJ)=FLUXA(IJ)+WMUH(IU)*RIMA(1)
+        FLUXP(IJ)=FLUXP(IJ)+WMUH(IU)*RIMP(1)
       END IF
-c
-c      if(ij.eq.1.or.ij.eq.3.or.ij.eq.5.or.ij.eq.9.or.ij.eq.83) then
-c      if(iu.eq.2.or.iu.eq.20.or.iu.eq.60.or.iu.eq.80) then
-c      do id=1,iud
-c         write(79,679) ij,iu,id,ab0(id),st0(id),sctd(id),
-c     *                 tau(id),rim(id),
-c     *                 flux(ij)
-c      end do
-c      end if
-c      end if
-c  679 format(3i5,1p6e12.4)
-C
-c      CFX=WMUH(IU)*RIM(1)
-c      write(78,780) ij,iu,wlobs(ij),cfx,RIM(1)
-c  780 format(2i4,f10.3,1p2e16.8)
-C
-c     if(iflux.ge.1) then
-C
-C     output of emergent specific intensities to Unit 10 (line points)
-C     or 18 (two continuum points)
-C
-c     IF(IJ.GT.2) THEN
-c     WRITE(10,618) WLAM(IJ),FLUX(IJ),RIM(1),IU
-c     ELSE
-c     WRITE(18,618) WLAM(IJ),FLUX(IJ),RIM(1),IU
-c     END IF
-c     end if
-c 618 FORMAT(1H ,f10.3,2pe15.5,i5)
-C
-C     if needed (if iprin.ge.3), output of interesting physical
-C     quantities at the monochromatic optical depth  tau(nu)=2/3
-C
-c     IF(IPRIN.GE.3) THEN
-c     T0=LOG(TAU(IREF+1)/TAU(IREF))
-c     X0=LOG(TAU(IREF+1)/TAUREF)/T0
-c     X1=LOG(TAUREF/TAU(IREF))/T0
-c     DMREF=EXP(LOG(DM(IREF))*X0+LOG(DM(IREF+1))*X1)
-c     TREF=EXP(LOG(TEMP(IREF))*X0+LOG(TEMP(IREF+1))*X1)
-c     STREF=EXP(LOG(ST0(IREF))*X0+LOG(ST0(IREF+1))*X1)
-c     SSREF=EXP(LOG(-SS0(IREF))*X0+LOG(-SS0(IREF+1))*X1)
-c     SREF=STREF+SSREF
-c     ALM=2.997925E18/FREQ(IJ)
-c     WRITE(36,636) IJ,ALM,IREF,DMREF,TREF,STREF,SSREF,SREF
-c 636 FORMAT(1H ,I3,F10.3,I4,1PE10.3,0PF10.1,1X,1P3E10.3)
-c     END IF
-C
-C       Contribution to J and H
-C
-c        do id=1,nud(iu)
-c          rad1(id)=rad1(id)+wmuj(iu,id)*uf(id)
-c          ali1(id)=ali1(id)+wmuj(iu,id)*af(id)
-c        end do
-c        FLUXc(IJ)=FLUXc(IJ)+WMUH(IU)*RIM(1)
-C
 C
 C     end of the loop over frequencies
 C
   500 CONTINUE
+      RETURN
+      END
+C
+C
+C ***********************************************************************
+C
+C
+      SUBROUTINE DFEWIN(TAU,ST0,RIM,IUD,RIPN)
+C     =======================================
+C
+C     One inward-to-outward DFE sweep on a given optical-depth scale.
+C     RIPN is the incoming intensity at the innermost point (0 for
+C     external rays, the diffusion-approximation value for core rays).
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      PARAMETER (UN=1., TWO=2., HALF=0.5)
+      DIMENSION TAU(*),ST0(*),RIM(*)
+C
+      NDT=IUD
+      dt0=tau(ndt)-tau(ndt-1)
+      dtaup1=dt0+un
+      dtau2=dt0*dt0
+      bb=two*dtaup1
+      cc=dt0*dtaup1
+      aa=dtau2+bb
+      rim(ndt)=(aa*RIPN-cc*st0(ndt)+dt0*st0(ndt-1))/bb
+      do id=iud-1,1,-1
+         dt0=tau(id+1)-tau(id)
+         dtaup1=dt0+un
+         dtau2=dt0*dt0
+         bb=two*dtaup1
+         cc=dt0*dtaup1
+         aa=un/(dtau2+bb)
+         rim(id)=(two*rim(id+1)+dt0*st0(id+1)+cc*st0(id))*aa
+      enddo
+      RETURN
+      END
+C
+C
+C ***********************************************************************
+C
+C
+      SUBROUTINE DFEWI2(TAU,ST0,ST0A,RIM,RIMA,IUD,RIPN)
+C     =================================================
+C
+C     As DFEWIN, but for two source functions sharing one optical-depth
+C     scale (the full-wind and absorption-only partial-coverage passes),
+C     so that the DFE coefficients - and the division - are formed once.
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      PARAMETER (UN=1., TWO=2., HALF=0.5)
+      DIMENSION TAU(*),ST0(*),ST0A(*),RIM(*),RIMA(*)
+C
+      NDT=IUD
+      dt0=tau(ndt)-tau(ndt-1)
+      dtaup1=dt0+un
+      dtau2=dt0*dt0
+      bb=two*dtaup1
+      cc=dt0*dtaup1
+      aa=dtau2+bb
+      rim(ndt)=(aa*RIPN-cc*st0(ndt)+dt0*st0(ndt-1))/bb
+      rima(ndt)=(aa*RIPN-cc*st0a(ndt)+dt0*st0a(ndt-1))/bb
+      do id=iud-1,1,-1
+         dt0=tau(id+1)-tau(id)
+         dtaup1=dt0+un
+         dtau2=dt0*dt0
+         bb=two*dtaup1
+         cc=dt0*dtaup1
+         aa=un/(dtau2+bb)
+         rim(id)=(two*rim(id+1)+dt0*st0(id+1)+cc*st0(id))*aa
+         rima(id)=(two*rima(id+1)+dt0*st0a(id+1)+cc*st0a(id))*aa
+      enddo
       RETURN
       END
 C
@@ -19460,15 +19462,9 @@ C     RMAX    - maximum radial extent (in units of RSTAR)
 C     AMLOSS  - mass loss rate ( in solar masses per year)
 C     VINF    - maximum velocity (= V_infinity) - in km/s
 C     BETA    - beta exponent in the beta-law for velocity
-C     NDRAD   - Number of layers
-C     NRCORE  - Number of core rays
-C
-C     optional (same record):
-C     DCLMAX  - maximum clumping density contrast D = 1/f_vol
-C               (default 1 = smooth wind)
-C     VCLM    - onset velocity (km/s) of the clumping law
-C               D(v) = 1 + (DCLMAX-1)*exp(-VCLM/v);
-C               VCLM = 0 gives depth-independent D = DCLMAX
+C     NDRAD   - Number of layers (model ND plus the added wind layers).
+C               This is the whole record; everything optional comes
+C               from the keyword lines that follow it, read by WKEYRD.
 C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
@@ -19476,9 +19472,7 @@ C
       character*200 linew
       dimension zz(mdepth),vel0(mdepth),rrel(mdepth),
 c     *          dvel0(mdepth),vel1(mdepth),hstt(mdepth),
-     *          den0(mdepth),vel00(mdepth),ind(mdepth),
-     *          densa(mdepth),eleca(mdepth),tempa(mdepth),
-     *          rda(mdepth),rrela(mdepth),vel0a(mdepth)
+     *          den0(mdepth),vel00(mdepth),ind(mdepth)
 c     ionization-stratification table
       parameter (mixw=mioex+matom, nixcol=12)
       character*4 tyrom(10)
@@ -19490,9 +19484,26 @@ c
       un=1
       two=2.
       read(55,'(a)',err=100,end=100) linew
-      read(linew,*,err=100,end=100) rstar,rmax,amloss,vinf,beta,
-     *           ndrad,nrcore,nfiry,ndf,nda
-c     optional trailing parameters: clumping, wind temperature,
+      read(linew,*,err=100,end=100) rstar,rmax,amloss,vinf,beta,ndrad
+c     ray and depth-grid resolution are not user parameters: NRCOR0
+c     core rays, a fine velocity-resolved grid on every tangent ray,
+c     and the opacity table on the model depth grid (see SETRAY)
+      nrcore=NRCOR0
+      ndf=0
+c     the geometry record carries nothing beyond ndrad.  An older file
+c     with trailing values on it would otherwise lose them silently, so
+c     say so: everything optional now comes from the keyword lines.
+      read(linew,*,err=13,end=13) rstar,rmax,amloss,vinf,beta,ndrad,xtra
+      write(6,605)
+  605 format(' WARNING: extra values on the wind geometry record are',
+     *       ' ignored.'/
+     *       '          Only rstar rmax amloss vinf beta ndrad are',
+     *       ' read; everything else'/
+     *       '          comes from the keyword lines (CLUMP, WTEMP,',
+     *       ' NEB, VLAW, SHIELD,'/
+     *       '          COVER, TILT, GAMMA, COMP).'/)
+   13 continue
+c     optional keyword-tagged parameters: clumping, wind temperature,
 c     and wind NLTE mode
 c     twind > 0: wind layers get the diluted radiative-equilibrium
 c     temperature T = T_s * Wn^(1/4) (Wn = dilution normalized to 1 at
@@ -19530,60 +19541,8 @@ c     frozen model ionization and the nebular balance (default 10)
       tcomp=0.
       ngsc=0
       dfloor=1.
-      read(linew,*,err=11,end=11) rstar,rmax,amloss,vinf,beta,
-     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm
-      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
-     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind
-      twfloor=twind
-      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
-     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb
-      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
-     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
-     *           vtwind
-      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
-     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
-     *           vtwind,vblnd
-      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
-     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
-     *           vtwind,vblnd,vplat,rplat
-      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
-     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
-     *           vtwind,vblnd,vplat,rplat,fcov
-      fcovw=fcov
-      if(fcovw.le.0..or.fcovw.gt.1.) fcovw=1.
-      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
-     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
-     *           vtwind,vblnd,vplat,rplat,fcov,fshl
-      fshld=fshl
-      if(fshld.le.0.) fshld=1.
-      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
-     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
-     *           vtwind,vblnd,vplat,rplat,fcov,fshl,bspn
-      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
-     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
-     *           vtwind,vblnd,vplat,rplat,fcov,fshl,bspn,
-     *           qtlt,vtlt,iatlt,iztlt
-      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
-     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
-     *           vtwind,vblnd,vplat,rplat,fcov,fshl,bspn,
-     *           qtlt,vtlt,iatlt,iztlt,vtcut
-      read(linew,*,err=12,end=12) rstar,rmax,amloss,vinf,beta,
-     *           ndrad,nrcore,nfiry,ndf,nda,dclmax,vclm,twind,iwneb,
-     *           vtwind,vblnd,vplat,rplat,fcov,fshl,bspn,
-     *           qtlt,vtlt,iatlt,iztlt,vtcut,fpcv
-      fpcov=fpcv
-      if(fpcov.le.0..or.fpcov.gt.1.) fpcov=1.
-      qtilt=qtlt
-      vtilt=vtlt
-      iatilt=iatlt
-      iztilt=iztlt
-      if(vtilt.le.0.) vtilt=1000.
-      bspan=bspn
-      if(bspan.le.0.) bspan=4.
-      go to 12
-   11 dclmax=1.
+      dclmax=1.
       vclm=0.
-   12 continue
 c     optional keyword-tagged lines after the wind record; they may set
 c     anything the record itself could, so the guards below are applied
 c     after them rather than inside the record parsing above
@@ -19622,11 +19581,9 @@ c     after them rather than inside the record parsing above
       if(vtwind.gt.0.) write(6,612) vtwind
   612 format(' wind microturbulence: v_turb = max(vtb,',f6.3,
      *       ' * v(r)) in the wind layers'/)
-  604 format(//' rstar  rmax amloss  vinf    beta'/,
-     *         ' ndrad nrcore nfiry ndf nda'/,
-     *        2f6.2, 2e8.1, f5.2 / 5i3 /)
-      write(6,604) rstar,rmax,amloss,vinf,beta,
-     *             ndrad,nrcore,nfiry,ndf,nda
+  604 format(//' rstar  rmax amloss  vinf    beta  ndrad'/,
+     *        2f6.2, 2e8.1, f5.2, i6 /)
+      write(6,604) rstar,rmax,amloss,vinf,beta,ndrad
       if(dclmax.ne.1..and.vclm.ge.0.) write(6,607) dclmax,vclm
       if(dclmax.ne.1..and.vclm.lt.0.) write(6,627) dclmax,dfloor,-vclm
   607 format(' clumping: DCLMAX =',f7.2,'   VCLM =',f7.2,' km/s'/)
@@ -20060,30 +20017,6 @@ c        is this the last explicit stage of this element?
   601 format(1h ,i3,1pe10.3,0pf8.0,1p3e12.3,0pf10.4,0p3f8.2,0pf9.3)
 C
 C
-  606 format(/' nda =',I3,':'/
-     *       '  ID  TEMP     ELEC        DENS        ',
-     *       'R            Rrel    VEL')
-      if(nda.gt.0) then
-         write(6,606) nda
-         XR1=LOG(DENS(1))
-         XR2=LOG(DENS(ND))
-         DXR=(XR2-XR1)/FLOAT(NDA-1)
-         DO ID=1,NDA
-            DENSA(ID)=EXP(XR1+FLOAT(ID-1)*DXR)
-         END DO
-         CALL INTERP(DENS,TEMP,DENSA,TEMPA,ND,NDA,3,1,1)
-         CALL INTERP(DENS,ELEC,DENSA,ELECA,ND,NDA,3,1,1)
-         CALL INTERP(DENS,RD,DENSA,RDA,ND,NDA,3,1,1)
-         CALL INTERP(DENS,RREl,DENSA,RRELA,ND,NDA,3,1,1)
-         CALL INTERP(DENS,VEL0,DENSA,VEL0A,ND,NDA,3,1,1)
-         do id=1,nda
-           write(6,603) id,tempa(id),eleca(id),densa(id),rda(id),
-     *                  rrela(id),vel0a(id)
-           write(96,603) id,tempa(id),eleca(id),densa(id),rda(id),
-     *                   rrela(id),vel0a(id)
-         end do
-      end if
-  603 format(1h ,i3,0pf8.0,1p3e12.3,0pf10.4,0p2f8.2)
 C
   100 write(6,*) 'VELSET END'
       continue
@@ -20144,9 +20077,7 @@ C     requested values are in.  Blank lines and lines starting with
 C     !, * or # are skipped.
 C
 C     Reading stops at END, at end of file, or at the first line that is
-C     neither a keyword nor a bare component record - so both legacy
-C     forms keep working unchanged: every parameter on the wind record
-C     itself, and an untagged component record straight after it.
+C     not a keyword.
 C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
@@ -20235,12 +20166,9 @@ c        rate, i.e. the ionizing SED at its edge
          if(ierr.ne.0) go to 80
          go to 10
       end if
-c     no keyword: accept a bare component record (legacy).  Anything
-c     else is reported and skipped rather than ending the block - a
+c     not a keyword: report and skip rather than end the block - a
 C     mistyped keyword should cost that one line, not every line after
 c     it, and nothing else reads unit 55 once we are here
-      call wcompr(linec,ierr)
-      if(ierr.eq.0) go to 10
       write(6,600) linec(i1:min(i2-1,i1+19))
       go to 10
    80 write(6,601) kwd

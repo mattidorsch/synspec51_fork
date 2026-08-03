@@ -97,7 +97,7 @@ These are parameterised treatments, suitable for estimating a mass-loss rate, te
 Enable it by subtracting 100 from `imode` (e.g. `imode=-100` for a normal spectrum) and appending to the end of `fort.55`:
 ```text
 velmax itrad nltoff iemoff
-rstar rmax amloss vinf beta ndrad nrcore nfiry ndf nda
+rstar rmax amloss vinf beta ndrad
 CLUMP  dclmax [vclm [dfloor]]
 WTEMP  twind
 NEB    iwneb [vtwind [vblnd]]
@@ -109,7 +109,7 @@ GAMMA  Z stage factor
 COMP   v0 b fcov nion (Z stage log(N/g)) x nion [Texc]
 END
 ```
-Only the first two records are required. Every keyword line may be omitted (its parameters keep their defaults) or given in any order, and trailing values within a line may be dropped. Keywords are case-insensitive; blank lines and lines starting with `!`, `*` or `#` are skipped; `END` stops early. A line that is neither a keyword nor a `COMP` record is reported and skipped.
+Only the first two records are required, and the second holds nothing beyond `ndrad`. Every keyword line may be omitted (its parameters keep their defaults) or given in any order, and trailing values within a line may be dropped. Keywords are case-insensitive; blank lines and lines starting with `!`, `*` or `#` are skipped; `END` stops early. A line that is not a keyword is reported and skipped, as are extra values on the geometry record.
 
 - `velmax` - velocity (km/s) above which LTE background lines are rejected; if negative, the structure is instead read from the end of `fort.8` (`SETWIN` path: per-depth `r, v, vturb, denscon`)
 - `itrad` - 1: excitation/ionization of the LTE background from radiation temperatures ([Schmutz 1991](https://ui.adsabs.harvard.edu/abs/1991sabc.conf..191S/abstract)); 0: strict LTE
@@ -117,7 +117,7 @@ Only the first two records are required. Every keyword line may be omitted (its 
 - `rstar` - photospheric radius in solar radii, anchored at `r(T=Teff)`, i.e. the SED-fit radius
 - `rmax` - outer boundary in units of `rstar`
 - `amloss`, `vinf`, `beta` - mass-loss rate (Msun/yr) and beta-law parameters `v = vinf*(1-r0/r)**beta`; the velocity follows the continuity equation `v = Mdot/(4 pi r**2 rho)` in the hydrostatic part and transitions smoothly to the beta law
-- `ndrad` - total radial layers (model ND + added wind layers); `nrcore` - core rays; `nfiry` - outermost rays with a velocity-resolved fine grid; `ndf` - fine density grid for the opacity table (0 = ndrad); `nda` - diagnostic print only
+- `ndrad` - total radial layers (model ND + added wind layers). This is the only resolution parameter: the number of core rays, the velocity-resolved fine grid along the tangent rays, and the depth grid of the opacity table are fixed at converged values
 - `dclmax`, `vclm`, `dfloor` (optional) - clumping, density contrast `D = 1/f_vol`; omit for a smooth wind. Two forms, selected by the sign of `vclm`:
   - `vclm > 0`: `D(v) = 1 + (dclmax-1)*exp(-vclm/v)` - clumping switches on above `vclm` and rises outward to `dclmax`. `vclm = 0` gives a depth-independent `D = dclmax`
   - `vclm < 0`: `D(v) = dfloor + (dclmax-dfloor)*exp(-(v-v_graft)/|vclm|)` - clumping peaks at the beta-law graft and decays outward on the scale `|vclm|` to `dfloor` (default 1). Confined to the added wind layers: unlike the `vclm > 0` form it does not vanish as `v -> 0`, so it would otherwise clump the hydrostatic photosphere. This form matters because recombination scales with the in-clump electron density, so a base-peaked `D` keeps trace ions (C IV, C III) alive in the slow wind while barely touching a dominant stage like N V
@@ -140,7 +140,7 @@ Only the first two records are required. Every keyword line may be omitted (its 
 A reasonable starting point for a luminous sdO, following [Krticka et al. 2016](https://ui.adsabs.harvard.edu/abs/2016A%26A...593A.101K/abstract) (Mdot = 1e-12 - 1e-9 Msun/yr, vinf = 500 - 1800 km/s depending on radius and Teff):
 ```text
 2000. 1 0 0
-0.2 15.0 1e-10 1000. 1.0 300 20 100 0 0
+0.2 15.0 1e-10 1000. 1.0 300
 WTEMP  0.4
 NEB    3 0.1 10.
 END
@@ -152,7 +152,7 @@ For most sdO/Bs winds are undetectable (Mdot < 1e-12) and the wind mode is not n
 Example model for the intermediate He-sdO BD+75 325 (Teff = 52 kK, log g = 5.50, R = 0.1578 Rsun), fitted to the N V doublet in a STIS/E140H spectrum. This is the simplest wind that works - nothing optional is set, and `vtb = 10` on line 8:
 ```text
 2000. 1 0 0
-0.1578 10.0 1.0e-13 200. 1.0 300 20 100 0 0
+0.1578 10.0 1.0e-13 200. 1.0 300
 ```
 Both N V components show blue-shifted absorption that no static model reproduces, so the wind is real, but it is weak and the constraints are loose: `vinf` = 200 km/s (150-300), `amloss` = 1e-13 Msun/yr to within a factor of a few, limited mainly by blending with unmodelled iron-group lines.
 
@@ -161,7 +161,7 @@ This is not directly comparable to the 1.5e-11 Msun/yr of [Lanz et al. (1997)](h
 Example model for a luminous He-sdO (Teff = 55 kK, log g = 4.85, R = 0.7 Rsun; fitted to STIS N V/C IV wind lines, needs `fort.13.tlusty`):
 ```text
 1300. 1 0 0
-0.70 25.00 1.3e-11 1550. 1.2 380 40 100 0 0
+0.70 25.00 1.3e-11 1550. 1.2 380
 CLUMP  50. -200. 10.
 WTEMP  0.4
 NEB    1 0.1 10.

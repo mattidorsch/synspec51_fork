@@ -1,17 +1,23 @@
       PARAMETER (MRCORE=100,
      *           MKU=MDEPTH+MRCORE,
      *           MEXT=MKU)
+c     number of core rays.  Fixed rather than user-selectable: the
+c     emergent flux is converged here to 0.03% against twice as many,
+c     while fewer than ~30 shifts the continuum level (the mu
+c     quadrature over the disk) rather than the line profile.
+c     Must not exceed MRCORE.
+      PARAMETER (NRCOR0=40)
       COMMON/COMANG/BMU(MKU,MDEPTH),WMUJ(MKU,MDEPTH),WMUH(MKU)
       COMMON/CORADI/RD(MDEPTH),RCORE,RFNORM,PIM(MKU),RAD1(MDEPTH),
-     *              DELZ(MKU,MDEPTH),NUD(MKU),NUDF(MKU),KMU,NREXT,
-     *              NRCORE,NFIRY,NDF
+     *              NUD(MKU),NUDF(MKU),KMU,NREXT,
+     *              NRCORE,NDF
       COMMON/CORAF/DELZF(MEXT,MRPF ),DFRQF(MEXT,2*MRPF )
       COMMON/COVEL/VEL(MDEPTH),DFRQ(MKU,2*MDEPTH),DVD(MDEPTH),
      *             XMDOT,XMD4,BETAV,VINF
       COMMON/EXTMOD/FFQ(MOPAC),FFQV(MOPAC),RDF(MDEPF ),DENSF(MDEPF ),
      *             VELF(MEXT,MRPF ),DRAY(MEXT,2*MRPF ),
      *             KRAY(MEXT,2*MRPF ),NOPAC
-      COMMON/CORLAY/DLAY(MDEPTH),KLAY(MDEPTH),IFINE(MKU)
+      COMMON/CORLAY/DLAY(MDEPTH),KLAY(MDEPTH)
       COMMON/WINDTP/TWFLOOR,NRXW,IWNEB,IWABS,FCOVW,FSHLD,
      *              QTILT,VTILT,IATILT,IZTILT,VTCUT,FPCOV
 c     discrete absorbing component(s) in front of the wind:
