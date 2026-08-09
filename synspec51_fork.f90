@@ -1965,6 +1965,26 @@ C         if(abn.gt.1.) abnd(i)=10.**(abn-12.)
          WRITE(6,601) I,TYPAT(I),ABND(I),ABNR
    60 CONTINUE
 C
+C     MD: YTOT, WMY and WMM were accumulated from the unit 5 abundances,
+C     so they are stale after unit 56 changed them.  HPOP=DENS/WMM/YTOT
+C     is n(H) and normalizes every implicit LTE species, which would
+C     otherwise carry a spurious abundance offset.
+C
+      DO ID=1,ND
+         YTOT(ID)=0.
+         WMY(ID)=0.
+      END DO
+      DO 65 I=1,MATOM
+         IF(IATEX(I).LT.0) GO TO 65
+         DO ID=1,ND
+            YTOT(ID)=YTOT(ID)+ABNDD(I,ID)
+            WMY(ID)=WMY(ID)+ABNDD(I,ID)*AMAS(I)
+         END DO
+   65 CONTINUE
+      DO ID=1,ND
+         WMM(ID)=WMY(ID)*HMASS/YTOT(ID)
+      END DO
+C
 C     renormalize abundances to have the standard element abundance
 C     equal to unity
 C
