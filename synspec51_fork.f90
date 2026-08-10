@@ -9322,6 +9322,10 @@ C
       COMMON/REFDEP/IREFD(MFREQ)
 C
       PARAMETER (C1=2.3025851, C2=4.2014672, C3=1.4387886)
+C
+C     EQWCOG returns the half width, the profile being symmetric
+C
+      PARAMETER (TWOCOG=2.)
       DATA TYPION /' I  ',' II ',' III',' IV ',' V  ',
      *             ' VI ',' VII','VIII',' IX ',' X  ',
      *             ' XI ',' XII','XIII',' XIV',' XV ',
@@ -9380,16 +9384,8 @@ C
          end if
          GF=(GF0(IL)+C2)/C1
          EXCL=EXCL0(IL)/C3
-         IF(STR0.LE.1.2) THEN
-            WW1=0.886*STR0*(1.-STR0*(0.707-STR0*0.577))
-          ELSE 
-            WW1=SQRT(LOG(STR0))
-         END IF
-         IF(STR0.GT.55.) THEN
-            WW2=0.5*SQRT(3.14*AGAM*STR0)
-            IF(WW2.GT.WW1) WW1=WW2
-         END IF
-         EQW=ALAM/FREQ0(IL)*1.E3/DOP1*WW1
+         WW1=EQWCOG(STR0,AGAM,FREQ0(IL),ID)
+         EQW=TWOCOG*ALAM/FREQ0(IL)*1.E3/DOP1*WW1
          STR=EQW*10.
          APR=APB
          IF(STR.GE.1.E0.AND.STR.LT.1.E1) APR=AP0
@@ -9437,9 +9433,13 @@ C
       COMMON/PRFQUA/DOPA1(MATOM,MDEPTH),VDWC(MDEPTH)
 C
       PARAMETER (C1=2.3025851, C2=4.2014672, C3=1.4387886)
-      PARAMETER (DP0=3.33564E-11, DP1=1.651E8, 
+      PARAMETER (DP0=3.33564E-11, DP1=1.651E8,
      *           VW1=0.42, VW2=0.3, TENM4=1.E-4)
-      PARAMETER (UN=1.) 
+      PARAMETER (UN=1.)
+C
+C     EQWCOG returns the half width, the profile being symmetric
+C
+      PARAMETER (TWOCOG=2.)
 
       DATA TYPION /' I  ',' II ',' III',' IV ',' V  ',
      *             ' VI ',' VII','VIII',' IX ',' X  ',
@@ -9526,17 +9526,13 @@ C        if(alam.LT.alm0.OR.alam.GE.alm1) then
          ABCNT=EXP(GF0H-EXCL0H/TEMP(ID))*RRR(ID,ION,IAT)*
      *          DOPA1(IAT,ID)*STIM(ID)
          STR0=ABCNT/ABSTD(ID)
-         IF(STR0.LE.1.2) THEN
-            WW1=0.886*STR0*(1.-STR0*(0.707-STR0*0.577))
-          ELSE 
-            WW1=SQRT(LOG(STR0))
-         END IF
-         IF(STR0.GT.55.) THEN
-            agam=0.01
-            WW2=0.5*SQRT(3.14*AGAM*STR0)
-            IF(WW2.GT.WW1) WW1=WW2
-         END IF
-         EQW=ALAM*ALAM/3.E18*1.E3/DOPA1(IAT,ID)*WW1
+C
+C        Nominal damping only: this table is written before the hydrogen
+C        profiles are set up, so no Voigt parameter is available here.
+C
+         AGAM=0.01
+         WW1=EQWCOG(STR0,AGAM,2.997925D18/ALAM,ID)
+         EQW=TWOCOG*ALAM*ALAM/3.E18*1.E3/DOPA1(IAT,ID)*WW1
          STR=EQW*10.
          APR=APB
          IF(STR.GE.1.E0.AND.STR.LT.1.E1) APR=AP0
@@ -13456,7 +13452,172 @@ C
 C     *******************************************************************
 C
 C
- 
+      FUNCTION EQWCOG(S,A,FR,IDR)
+C     ==========================
+C
+C     Half equivalent width, in Doppler units, of a single line of
+C     central line/background ratio S and Voigt parameter A, formed at
+C     frequency FR around reference depth IDR:
+C
+C          W/2 = int_0^inf D(eta) dx,   eta = S*H(A,x)
+C
+C     The line depth D is taken from Eddington-Barbier on the model's own
+C     temperature stratification: at offset x the line sees the same
+C     optical depth 2/3 as the background does, but reached a factor
+C     1+eta higher up, so
+C
+C          D(eta) = 1 - B(FR,T(tau=2/3/(1+eta))) / B(FR,T(tau=2/3)),
+C
+C     tau being scaled from the column mass, tau = 2/3 * DM/DM(IDR). A
+C     saturated core is then dark by the Planck contrast across the line
+C     formation range, not black, and a weak line is weaker than its
+C     opacity ratio by dlnB/dlntau, which at these depths is 0.07 to 0.27
+C     and was the bulk of the old overestimate.
+C
+C     Integrated as: Simpson on the Doppler core, Simpson in log x over
+C     the wing, and the Lorentz tail beyond XTOP in closed form. The tail
+C     is weak by construction, so D is linearised there, giving
+C     int_X^inf B/(x*x+B) dx = sqrt(B)*atan(sqrt(B)/X), B = A*S/sqrt(pi),
+C     scaled by the local dD/deta. That carries the damping part, so no
+C     separate damping branch is needed.
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      PARAMETER (XC=5.0, NC=24, NT=24, TAILK=60.0, XTMAX=1.E6,
+     *           SQPI=1.7724539, ZERO=0., UN=1., TWO=2., THR=3.,
+     *           FOUR=4., TAUREF=0.6666666666667, EPSCOG=1.E-4)
+C
+      EQWCOG=0.
+      IF(S.LE.0.) RETURN
+      AVGT=A
+      IF(AVGT.LT.0.) AVGT=0.
+C
+C     reference depth and the Planck function there
+C
+      IDX=IDR
+      IF(IDX.LT.1) IDX=1
+      IF(IDX.GT.ND) IDX=ND
+      BREF=PLANCG(FR,TEMP(IDX))
+      IF(BREF.LE.0.) RETURN
+C
+C     Doppler core, 0 to XC, Simpson with NC intervals
+C
+      HCOR=XC/NC
+      ETA=S*VOIGTK(AVGT,ZERO)
+      SUMC=DEPCOG(ETA,FR,IDX,BREF)
+      ETA=S*VOIGTK(AVGT,XC)
+      SUMC=SUMC+DEPCOG(ETA,FR,IDX,BREF)
+      DO 10 I=1,NC-1
+         XCOG=I*HCOR
+         ETA=S*VOIGTK(AVGT,XCOG)
+         WSIM=TWO
+         IF(MOD(I,2).EQ.1) WSIM=FOUR
+         SUMC=SUMC+WSIM*DEPCOG(ETA,FR,IDX,BREF)
+   10 CONTINUE
+      EQWCOG=SUMC*HCOR/THR
+C
+C     wing, XC to XTOP, Simpson in log x. XTOP is set well outside both
+C     the damping width and A itself, so the Lorentz tail below is in its
+C     asymptotic range (its x*x+DAMP form drops the A*A that VOIGTK keeps)
+C
+      DAMP=AVGT*S/SQPI
+      XTOP=TWO*XC
+      IF(DAMP.GT.0.) XTOP=MAX(XTOP,TAILK*SQRT(DAMP))
+      XTOP=MAX(XTOP,TAILK*AVGT)
+      IF(XTOP.GT.XTMAX) XTOP=XTMAX
+      T0=LOG(XC)
+      HT=(LOG(XTOP)-T0)/NT
+      ETA=S*VOIGTK(AVGT,XC)
+      SUMW=DEPCOG(ETA,FR,IDX,BREF)*XC
+      ETA=S*VOIGTK(AVGT,XTOP)
+      SUMW=SUMW+DEPCOG(ETA,FR,IDX,BREF)*XTOP
+      DO 20 I=1,NT-1
+         XCOG=EXP(T0+I*HT)
+         ETA=S*VOIGTK(AVGT,XCOG)
+         WSIM=TWO
+         IF(MOD(I,2).EQ.1) WSIM=FOUR
+         SUMW=SUMW+WSIM*DEPCOG(ETA,FR,IDX,BREF)*XCOG
+   20 CONTINUE
+      EQWCOG=EQWCOG+SUMW*HT/THR
+C
+C     Lorentz tail beyond XTOP, linear in eta with the local slope
+C
+      IF(DAMP.GT.0.) THEN
+         GRAD0=DEPCOG(EPSCOG,FR,IDX,BREF)/EPSCOG
+         EQWCOG=EQWCOG+GRAD0*SQRT(DAMP)*ATAN(SQRT(DAMP)/XTOP)
+      END IF
+      RETURN
+      END
+C
+C
+C     *******************************************************************
+C
+C
+
+      FUNCTION DEPCOG(ETA,FR,IDX,BREF)
+C     ================================
+C
+C     Eddington-Barbier line depth for a line/background opacity ratio
+C     ETA at frequency FR, seen against the background formed at depth
+C     IDX where the Planck function is BREF. The line reaches tau=2/3 at
+C     the column mass where the background has tau=2/3/(1+ETA);
+C     interpolation is linear in log DM, and the depth is clamped to the
+C     outermost point once the line forms above the model.
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      PARAMETER (UN=1.)
+C
+      DEPCOG=0.
+      IF(ETA.LE.0..OR.BREF.LE.0.) RETURN
+      DMF=DM(IDX)/(UN+ETA)
+      IF(DMF.LE.DM(1)) THEN
+         TFRM=TEMP(1)
+       ELSE
+         DO 10 I=IDX,2,-1
+            IF(DM(I-1).LE.DMF) THEN
+               WGT=LOG(DMF/DM(I-1))/LOG(DM(I)/DM(I-1))
+               TFRM=TEMP(I-1)+WGT*(TEMP(I)-TEMP(I-1))
+               GO TO 20
+            END IF
+   10    CONTINUE
+         TFRM=TEMP(1)
+   20    CONTINUE
+      END IF
+      DEPCOG=UN-PLANCG(FR,TFRM)/BREF
+      IF(DEPCOG.LT.0.) DEPCOG=0.
+      RETURN
+      END
+C
+C
+C     *******************************************************************
+C
+C
+
+      FUNCTION PLANCG(FR,TT)
+C     ======================
+C
+C     Planck function at frequency FR and temperature TT, in the units
+C     used elsewhere here (BN scaled by (10**15)**3), with the constant
+C     dropped since only ratios at one frequency are wanted.
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      PARAMETER (UN=1., EXPMAX=500.)
+C
+      PLANCG=0.
+      IF(TT.LE.0.) RETURN
+      EXARG=HK*FR/TT
+      IF(EXARG.GT.EXPMAX) RETURN
+      IF(EXARG.LT.1.E-8) EXARG=1.E-8
+      PLANCG=UN/(EXP(EXARG)-UN)
+      RETURN
+      END
+C
+C
+C     *******************************************************************
+C
+C
+
       SUBROUTINE RTECD
 C     ================
 C
@@ -17267,6 +17428,10 @@ C
 C
 
       PARAMETER (C1=2.3025851, C2=4.2014672, C3=1.4387886)
+C
+C     EQWCOG returns the half width, the profile being symmetric
+C
+      PARAMETER (TWOCOG=2.)
       DATA APB,AP0,AP1,AP2,AP3,AP4 /'    ','   .','   *','  **',' ***',
      *                              '****'/
 C
@@ -17298,17 +17463,8 @@ C
          if(ifwin.gt.0) STR0=ABCNT/ABSTDW(IJCONT(IL),ID)
          GF=(GFM(IL,ILIST)+C2)/C1
          EXCL=EXCLM(IL,ILIST)/C3
-         IF(STR0.LE.1.2) THEN
-            WW1=0.886*STR0*(1.-STR0*(0.707-STR0*0.577))
-          ELSE 
-            WW1=SQRT(LOG(STR0))
-         END IF
-         IF(STR0.GT.55.) THEN
-            WW2=0.5*SQRT(3.14*AGAM*STR0)
-            IF(WW2.GT.WW1) WW1=WW2
-         END IF
-
-         EQW=ALAM/FREQM(IL,ILIST)*1.E3/DOP1*WW1
+         WW1=EQWCOG(STR0,AGAM,FREQM(IL,ILIST),ID)
+         EQW=TWOCOG*ALAM/FREQM(IL,ILIST)*1.E3/DOP1*WW1
          STR=EQW*10.
          APR=APB
          IF(STR.GE.1.E0.AND.STR.LT.1.E1) APR=AP0

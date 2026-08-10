@@ -88,11 +88,19 @@ FULLRANGE
 
 #### Line strengths against the local background
 
-The `fort.12` strength `STR0` and its equivalent width are divided by `ABSTD`, the continuum at the interval edges, which omits H and He II line opacity because `OPAC` adds those only from the third frequency on. Metal lines inside a Stark wing are then far too strong, by orders of magnitude in the Lyman and He II line cores.
+The `fort.12` strength `STR0` is the line/background opacity ratio at the line centre. `OPAC` accumulates metal and molecular line opacity separately and stores `ABKG = total - metal lines`, so the background carries the continuum, H lines and He II lines but neither the line itself nor its blends; `IDTAB` divides by `ABKG`, falling back to `ABSTD` where it is not larger.
 
-`OPAC` accumulates metal and molecular line opacity separately and stores `ABKG = total - metal lines`; `IDTAB` divides by it at the line centre, falling back to `ABSTD` where it is not larger. `ABKG` never held the metal lines, so it contains neither the line nor its blends and nothing is subtracted back out.
+`EQWCOG` gives the equivalent width as `W/2 = int_0^inf D(eta) dx` over the Voigt profile `eta = STR0*H(a,x)`: Simpson over the Doppler core, Simpson in `log x` over the wing, and the Lorentz tail in closed form, `sqrt(B)*atan(sqrt(B)/x)` for `B = a*STR0/sqrt(pi)` scaled by the local `dD/deta`. The reported width is twice the integral, the profile being symmetric.
 
-Only `fort.12` changes; `ABSTD` keeps its other role as the `AVAB` selection threshold, so `fort.7` and `fort.17` are unaffected. `STR0` can only decrease. Widths follow except across `STR0 = 1.2`, where synspec's two curve-of-growth branches disagree by a factor 2.45 (1.045 against 0.427, exact 0.728), so a line crossing it widens. That discontinuity is untouched.
+The line depth `D` is from Eddington-Barbier on the model's own `T(m)`: at offset `x` the line reaches `tau = 2/3` where the background has `tau = (2/3)/(1+eta)`, so
+
+```text
+D(eta) = 1 - B(nu, T(tau = 2/3/(1+eta))) / B(nu, T(tau = 2/3))
+```
+
+with `tau` scaled from the column mass around the line's reference depth and interpolated linearly in `log DM`. A saturated core is then dark by the Planck contrast across the formation range rather than black, and a weak line is weaker than its opacity ratio by `dlnB/dlntau`.
+
+`ABSTD` keeps its other role as the `AVAB` selection threshold, so `fort.7` and `fort.17` are unaffected.
 
 #### Wind mode
 
