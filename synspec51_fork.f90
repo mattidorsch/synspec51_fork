@@ -4544,10 +4544,21 @@ C
       INCLUDE 'INCLUDE/SYNTHP.FOR'
       DIMENSION CROSS(MCROSS,MFREQ)
       DIMENSION ABSO(MFREQ),EMIS(MFREQ),SCAT(MFREQ),
-     *          ABLIN(MFREQ),EMLIN(MFREQ)
+     *          ABLIN(MFREQ),EMLIN(MFREQ),ABMET(MFREQ)
       COMMON/BLAPAR/RELOP,SPACE0,CUTOF0,TSTD,DSTD,ALAMC
       common/dissol/fropc(mlevel),indexp(mlevel)
       PARAMETER (UN=1.,TEN15=1.E-15,CSB=2.0706E-16,CFF=3.694E8)
+C
+C     Metal and molecular line opacity, accumulated apart from the rest so
+C     that ABKG can be formed without subtracting any line back out. Zeroed
+C     ahead of the return below, since several paths through this routine
+C     never reach the fill; IDTAB falls back to ABSTD wherever ABKG is not
+C     larger, so a stale value from a previous interval must not survive.
+C
+      DO IJ=1,NFREQ
+         ABMET(IJ)=0.
+         ABKG(IJ,ID)=0.
+      END DO
 C
       IF(IMODE.EQ.-1.AND.ID.NE.IDSTD) RETURN
       T=TEMP(ID)
@@ -4683,6 +4694,7 @@ C
       DO IJ=3,NFREQ
          ABSO(IJ)=ABSO(IJ)+ABLIN(IJ)
          EMIS(IJ)=EMIS(IJ)+EMLIN(IJ)
+         ABMET(IJ)=ABMET(IJ)+ABLIN(IJ)
       END DO
 C
 C     **** Opacity and emissivity in molecular lines ****
@@ -4693,6 +4705,7 @@ C
       DO IJ=3,NFREQ
          ABSO(IJ)=ABSO(IJ)+ABLIN(IJ)
          EMIS(IJ)=EMIS(IJ)+EMLIN(IJ)
+         ABMET(IJ)=ABMET(IJ)+ABLIN(IJ)
       END DO
       end do
       end if
@@ -4727,6 +4740,15 @@ C     as well as difference in INPUT!
 C
       CALL PHTION(ID,ABSO,EMIS)
       CALL PHTX(ID,ABSO,EMIS)
+C
+C     Background a metal line is seen against: everything above except the
+C     metal and molecular lines themselves. Electron scattering is in ABSO
+C     already; the rest of SCAT is not, and neither is it in ABSTD, so the
+C     two denominators stay comparable.
+C
+      DO IJ=3,NFREQ
+         ABKG(IJ,ID)=ABSO(IJ)-ABMET(IJ)
+      END DO
 C
       IF(ICONTL.EQ.1) RETURN
       ABSO(1)=ABSO(1)-ABLY1
@@ -9334,12 +9356,27 @@ C
          CALL PROFIL(IL,IAT,ID,AGAM)
          ABCNT=EXP(GF0(IL)-EXCL0(IL)/TEMP(ID))*RRR(ID,ION,IAT)*
      *         STIM(ID)
+C
+C        Opacity the line is seen against. ABSTD is the continuum at the
+C        edges of the interval, so a metal line inside a hydrogen or He II
+C        wing was divided by far too little and its strength and equivalent
+C        width came out too large. ABKG is the same total OPAC built, less
+C        the metal and molecular lines, taken at the line centre: it holds
+C        the H and He II line wings and the photoionization resonances, and
+C        it contains neither this line nor any other metal line, so nothing
+C        has to be subtracted back out. Falls back to ABSTD outside the
+C        interpolated range, in window mode, and when OPAC did not run.
+C
+         BCKOP=0.
          if(ifwin.le.0) then
+            IF(IJCN.GE.3.AND.IJCN.LE.NFREQ) BCKOP=ABKG(IJCN,ID)
+            IF(BCKOP.LE.ABSTD(ID)) BCKOP=ABSTD(ID)
             DOP1=DOPA1(IAT,ID)
-            STR0=ABCNT*DOP1/ABSTD(ID)
-          else 
+            STR0=ABCNT*DOP1/BCKOP
+          else
+            BCKOP=ABSTDW(IJCONT(IL),ID)
             DOP1=DOPA1(IAT,ID)/FREQ0(IL)
-            STR0=ABCNT*DOP1/ABSTDW(IJCONT(IL),ID)
+            STR0=ABCNT*DOP1/BCKOP
          end if
          GF=(GF0(IL)+C2)/C1
          EXCL=EXCL0(IL)/C3

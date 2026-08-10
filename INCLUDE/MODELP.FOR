@@ -23,6 +23,13 @@ C
      *              TI0(MDEPTH),
      *              TI1(MDEPTH),
      *              TI2(MDEPTH)
+C
+C     Background absorption coefficient: everything OPAC adds except the
+C     metal and molecular lines, so continuum + H lines + He II lines +
+C     detailed photoionization. Filled per interval, used by IDTAB to put
+C     the fort.12 line strengths on the opacity a line actually sits on.
+C
+      COMMON/LINBCK/ABKG(MFREQ,MDEPTH)
       COMMON/MOLPAR/RRMOL(MMOLEC,MDEPTH),
      *              DOPMOL(MMOLEC,MDEPTH),
      *              AMMOL(MMOLEC),

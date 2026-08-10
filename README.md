@@ -86,6 +86,14 @@ Frequency points are placed only around selected lines, and `INILIN` then shrink
 FULLRANGE
 ```
 
+#### Line strengths against the local background
+
+The `fort.12` strength `STR0` and its equivalent width are divided by `ABSTD`, the continuum at the interval edges, which omits H and He II line opacity because `OPAC` adds those only from the third frequency on. Metal lines inside a Stark wing are then far too strong, by orders of magnitude in the Lyman and He II line cores.
+
+`OPAC` accumulates metal and molecular line opacity separately and stores `ABKG = total - metal lines`; `IDTAB` divides by it at the line centre, falling back to `ABSTD` where it is not larger. `ABKG` never held the metal lines, so it contains neither the line nor its blends and nothing is subtracted back out.
+
+Only `fort.12` changes; `ABSTD` keeps its other role as the `AVAB` selection threshold, so `fort.7` and `fort.17` are unaffected. `STR0` can only decrease. Widths follow except across `STR0 = 1.2`, where synspec's two curve-of-growth branches disagree by a factor 2.45 (1.045 against 0.427, exact 0.728), so a line crossing it widens. That discontinuity is untouched.
+
 #### Wind mode
 
 Synspec includes a wind mode that solves the transfer equation in the observer's frame along impact-parameter rays through a spherically expanding envelope, producing asymmetric (blue-shifted) line profiles. It was introduced by [Lanz et al. (1997)](https://ui.adsabs.harvard.edu/abs/1997ApJ...485..843L/abstract) to measure the weak wind of BD+75 325, where the wind was described simply by imposing a velocity field from the continuity equation on the hydrostatic photospheric structure.
