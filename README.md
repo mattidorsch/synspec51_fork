@@ -54,6 +54,8 @@ This structure allows new ions and energy levels to be added without modifying t
 The updated line list `data_syn/linelist.dat.gz` is based on R. Kurucz's line list ([Kurucz 2018](https://ui.adsabs.harvard.edu/abs/2018ASPC..515...47K/abstract)) `gfall08oct17.dat`, as available on [Kurucz's website](http://kurucz.harvard.edu/linelists/gfnew/gfall08oct17.dat). 
 The list provided here includes many more transitions for ionised heavy metals, as well as updated line positions mostly for lines seen in UV and optical spectra of He-sdO/B stars. Some references are described by [Dorsch et al. (2019)](https://ui.adsabs.harvard.edu/abs/2019A%26A...630A.130D/abstract); the list was significantly extended by [Dorsch et al. (2026)](https://ui.adsabs.harvard.edu/abs/2026A%26A...711A..63D/abstract). See `AAREADME_linelist.txt` for a poorly formatted summary.  
 
+The list is kept compressed, being too large to hold in the repository unpacked. `make` unpacks it to `data_syn/linelist.dat` whenever the archive is the newer of the two, or nothing is unpacked yet, so no separate step is needed; `make linelist` does only that. The unpacked copy is not tracked.
+
 #### Linear Zeeman splitting
 To enable linear Zeeman splitting ([Dorsch et al. 2022](https://ui.adsabs.harvard.edu/abs/2022A%26A...658L...9D/abstract)), set `imode=3` in `fort.55`, followed by two numbers on a new line:
 - `bfield` - magnetic field strength in kG

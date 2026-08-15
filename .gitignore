@@ -1,11 +1,15 @@
 # build products
 synspec51_fork
 synspec51_fork_*
+synspec51_*
+!synspec51_fork.f90
+*.orig
 *.mod
 *.dSYM/
 
-# large data not kept in the repo
-data_syn/linelist.dat
+# large data not kept in the repo: the line list is distributed as
+# data_syn/linelist.dat.gz and unpacked next to it
+data_syn/linelist*.dat
 
 # local test/example work folders - never committed
 workspaces/

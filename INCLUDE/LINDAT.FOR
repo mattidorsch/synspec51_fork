@@ -16,10 +16,6 @@ C
      *              GF0(MLIN0),
      *              QL0(MLIN0), ! store Js for lin. Zeeman effect
      *              QU0(MLIN0),
-C     *              QSL0(MLIN0),
-C     *              QSU0(MLIN0),
-C     *              QLL0(MLIN0),
-C     *              QLU0(MLIN0),
      *              EXTIN(MLIN0),
      *              BNUL(MLIN0),
      *              GAMR0(MPRF),
@@ -39,10 +35,6 @@ C
      *              EXCU0,
      *              QL0,
      *              QU0,
-C     *              QSL0,
-C     *              QLL0,
-C     *              QSH0,
-C     *              QLH0,
      *              GF0,
      *              EXTIN,
      *              BNUL,
@@ -55,6 +47,17 @@ C     *              QLH0,
      *              INDLIP(MLIN),
      *              NLIN0,NLIN,
      *              NNLT,NGRIEM
+C
+C     Quantum numbers of the two levels of each line, as supplied by an
+C     extended (synspec54-style) line list: 2S+1, L and the parity, for
+C     the lower and the upper level.  -1 means "not specified", which is
+C     also what a standard 11-column list leaves behind.  They are used
+C     to associate the line with the right explicit level (NLTSET) and
+C     to obtain Lande factors for the Zeeman treatment (S=(ISQ-1)/2).
+C
+      COMMON/LINQNM/ISQL0(MLIN0),ILQL0(MLIN0),IPQL0(MLIN0),
+     *              ISQU0(MLIN0),ILQU0(MLIN0),IPQU0(MLIN0),
+     *              IEXTLL
 C
       COMMON/MOLTOT/FREQM(MLINM0,MMLIST),
      *              EXCLM,

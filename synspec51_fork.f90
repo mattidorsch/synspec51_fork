@@ -4608,8 +4608,7 @@ C
                   IF(INDEXP(II).EQ.5) THEN
                      IZZ=IZ(IEL(II))
                      FR0=ENION(II)/6.6256E-27
-                     FR0G=ENION(NFIRST(IEL(II)))/H
-                     CALL DWNFR1(FR,FR0,FR0G,ID,IZZ,DW1)
+                     CALL DWNFR1(FR,FR0,ID,IZZ,DW1)
                      SG=SG*DW1
                   END IF
                END IF
@@ -4844,8 +4843,7 @@ C
                   IF(INDEXP(II).EQ.5) THEN
                      IZZ=IZ(IEL(II))
                      FR0=ENION(II)/6.6256E-27
-                     FR0G=ENION(NFIRST(IEL(II)))/H
-                     CALL DWNFR1(FR,FR0,FR0G,ID,IZZ,DW1)
+                     CALL DWNFR1(FR,FR0,ID,IZZ,DW1)
                      SG=SG*DW1
                   END IF
                END IF
@@ -8856,6 +8854,7 @@ C
       COMMON/LIMPAR/ALAM0,ALAM1,FRMIN,FRLAST,FRLI0,FRLIM
       COMMON/BLAPAR/RELOP,SPACE0,CUTOF0,TSTD,DSTD,ALAMC
       COMMON/IPOTLS/IPOTL(mlin0)
+      CHARACTER*300 LINBUF
 C
       PARAMETER (C1     = 2.3025851,
      *           C2     = 4.2014672,
@@ -8898,8 +8897,15 @@ C
       IF(GRAV.GT.6.) ASTD=0.1
       CUTOFF=CUTOF0
       ALAST=CNM/FRLAST
+      ISQL=-1
+      ILQL=-1
+      IPQL=-1
+      ISQU=-1
+      ILQU=-1
+      IPQU=-1
       IF((INLTE.GE.1.OR.IAT.EQ.2).AND.INLSET.EQ.0) THEN
-         CALL NLTSET(0,IL,IAT,ION,EXCL,EXCU,QL,QU,IEVEN,INNLT0)
+         CALL NLTSET(0,IL,IAT,ION,EXCL,EXCU,QL,QU,IEVEN,INNLT0,
+     *               ISQL,ILQL,ISQU,ILQU)
          INLSET=1
       END IF
 C
@@ -8920,20 +8926,53 @@ c
       IPRF=0
       GS=0.
       GW=0.
-C     initialize negative LS quantum numbers
-C      QSL=-1.
-C      QLL=-1.
-C      QSH=-1.
-C      QLH=-1.
+C
+C     Quantum numbers of the two levels.  An extended (synspec54-style)
+C     line list carries 2S+1, L and the parity for each level after
+C     INEXT; a standard list does not, and they stay at -1.
+C
+      ISQL=-1
+      ILQL=-1
+      IPQL=-1
+      ISQU=-1
+      ILQU=-1
+      IPQU=-1
       IF(INLIST.EQ.0) THEN
-         READ(19,*,END=100,err=8) ALAM,ANUM,GF,EXCL,QL,EXCU,QU,AGAM,
+C
+C        The record is taken into a buffer first: a list-directed READ of
+C        17 items would happily run on into the next record if this one
+C        carries only the standard 11.  Parsing the buffer keeps the
+C        record boundary, so both list styles can be mixed in one file.
+C
+         READ(19,'(A)',END=100,err=8) LINBUF
+         READ(LINBUF,*,ERR=14,END=14) ALAM,ANUM,GF,EXCL,QL,EXCU,QU,AGAM,
+     *                        GS,GW,INEXT,ISQL,ILQL,IPQL,ISQU,ILQU,IPQU
+         IEXTLL=1
+         GO TO 15
+   14    CONTINUE
+         ISQL=-1
+         ILQL=-1
+         IPQL=-1
+         ISQU=-1
+         ILQU=-1
+         IPQU=-1
+         GS=0.
+         GW=0.
+         READ(LINBUF,*,END=100,err=8) ALAM,ANUM,GF,EXCL,QL,EXCU,QU,AGAM,
      *                        GS,GW,INEXT
+   15    CONTINUE
          IF(INEXT.GT.0) READ(19,*) WGR1,WGR2,WGR3,WGR4,ILWN,IUN,IPRF
          IF(IPRF.EQ.-2) READ(19,*) DGR1,DGR2,DGR3,DGR4
-C         IF(INEXT.LT.0) READ(19,*,END=100,err=8) QSL,QLL,QSH,QLH
        ELSE IF(INLIST.EQ.-1) THEN
-         READ(19,501,END=100,err=8) ALAM,ANUM,GF,EXCL,QL,EXCU,QU,AGAM,
+         READ(19,'(A)',END=100,err=8) LINBUF
+         READ(LINBUF,501,ERR=8) ALAM,ANUM,GF,EXCL,QL,EXCU,QU,AGAM,
      *                        GS,GW,INEXT
+         IF(LEN_TRIM(LINBUF).GT.78) THEN
+            READ(LINBUF(79:),*,ERR=16,END=16)
+     *                        ISQL,ILQL,IPQL,ISQU,ILQU,IPQU
+            IEXTLL=1
+         END IF
+   16    CONTINUE
          IF(INEXT.GT.0) READ(19,*) WGR1,WGR2,WGR3,WGR4,ILWN,IUN,IPRF
   501    FORMAT(F10.4,F6.2,F7.3,F12.3,F4.1,F12.3,F4.1,3F7.2,I2)
        ELSE IF(INLIST.EQ.1) THEN
@@ -8980,6 +9019,19 @@ C
          FRA=QL
          QL=QU
          QU=FRA
+C        The quantum numbers of an extended record belong to the fields
+C        as written, so they have to travel with them: a line list is
+C        not consistent about which level it puts first, and leaving
+C        them behind attaches each term to the other level.
+         IHLP=ISQL
+         ISQL=ISQU
+         ISQU=IHLP
+         IHLP=ILQL
+         ILQL=ILQU
+         ILQU=IHLP
+         IHLP=IPQL
+         IPQL=IPQU
+         IPQU=IHLP
          IEVEN=0
       END IF
       GFP=C1*GF-C2
@@ -9053,10 +9105,13 @@ C
 C     MD: for lin. Zeeman effect: store QL, QU = J
       QL0(IL)=real(QL)
       QU0(IL)=real(QU)
-C      QSL0(IL)=real(QSL)
-C      QSU0(IL)=real(QLL)
-C      QLL0(IL)=real(QSH)
-C      QLU0(IL)=real(QLH)
+C     2S+1, L and parity of both levels from an extended line list
+      ISQL0(IL)=ISQL
+      ILQL0(IL)=ILQL
+      IPQL0(IL)=IPQL
+      ISQU0(IL)=ISQU
+      ILQU0(IL)=ILQU
+      IPQU0(IL)=IPQU
 C
 C     indices for corresponding excitation temperatures of the lower
 C     and upper levels
@@ -9194,7 +9249,8 @@ C
          IUPN(IL)=IUN
       END IF
       IF(ILWN.EQ.0.AND.((INLTE.GE.1).OR.(IAT.EQ.2))) THEN
-         CALL NLTSET(1,IL,IAT,ION,EXCL,EXCU,QL,QU,IEVEN,INNLT0)
+         CALL NLTSET(1,IL,IAT,ION,EXCL,EXCU,QL,QU,IEVEN,INNLT0,
+     *               ISQL,ILQL,ISQU,ILQU)
          IF(INDNLT(IL).GT.0) THEN
             IF(INDNLT(IL).GT.MNLT) THEN
                WRITE(6,604) ALAM
@@ -9567,7 +9623,8 @@ C ********************************************************************
 C
 C
 
-      SUBROUTINE NLTSET(MODE,IL,IAT,ION,EXCL,EXCU,QL,QU,IEVEN,INNLT0)
+      SUBROUTINE NLTSET(MODE,IL,IAT,ION,EXCL,EXCU,QL,QU,IEVEN,INNLT0,
+     *                  ISQL,ILQL,ISQU,ILQU)
 C     ===============================================================
 C
 C     NLTE option - automatic assignement of level indices
@@ -9844,6 +9901,26 @@ C
         END IF
       END IF
 C
+C
+C     Refinement with the term of each level, when an extended line list
+C     supplies it.  The association above is by energy alone, and where
+C     two explicit levels of different multiplicity lie close together
+C     the nearest one in energy can be the wrong one -- for instance the
+C     J=3 component of N II 3d 3D sits 9 cm-1 from the singlet 1Po and
+C     159 cm-1 from its own term, so the line is handed a singlet and
+C     acquires its departure coefficient.  Restricting the search to
+C     levels whose (2S+1,L) agree with the line record removes that,
+C     without ever referring to a level index.  Energy remains a
+C     nearest-match criterion, so it tolerates model-atom energies that
+C     differ from the ones in the line list.
+C
+      IF(NLEVS(INION).GT.0) THEN
+         IF(ISQL.GE.0.OR.ILQL.GE.0)
+     *      CALL LSPICK(INION,EXCL,ISQL,ILQL,ILWN)
+         IF(ISQU.GE.0.OR.ILQU.GE.0)
+     *      CALL LSPICK(INION,EXCU,ISQU,ILQU,IUN)
+      END IF
+C
       IF(INLTE.EQ.5) THEN
          INNLT0=INNLT0+1
          INDNLT(IL)=INNLT0
@@ -9861,6 +9938,114 @@ C
       BNUL(IL)=real(BN*(FREQ0(IL)*1.E-15)**3)
       ILOWN(IL)=ILWN
       IUPN(IL)=IUN
+      RETURN
+      END
+C
+C ********************************************************************
+C
+C
+      SUBROUTINE LSTERM(TYP,ISQ,ILQ,IPQ)
+C     ==================================
+C
+C     Term of an explicit level, read off its TYPLEV label.
+C
+C     The labels carry it already: 'N II 3De 1' is a triplet D of even
+C     parity, 'C2  +4_o 5' a quartet of odd parity merged over L, and
+C     '+___ 9' a superlevel merged over everything.  An underscore, or a
+C     label that does not have the pattern at all, gives -1, meaning
+C     "unspecified" -- such a level then matches any line.
+C
+C     Output: ISQ = 2S+1, ILQ = L, IPQ = parity (0 even, 1 odd), or -1.
+C
+      CHARACTER*(*) TYP
+      CHARACTER*1 C1,C2,C3
+      CHARACTER*10 SPDF
+      DATA SPDF/'SPDFGHIJKL'/
+C
+      ISQ=-1
+      ILQ=-1
+      IPQ=-1
+      N=LEN(TYP)
+      DO 20 I=1,N-2
+         C1=TYP(I:I)
+         C2=TYP(I+1:I+1)
+         C3=TYP(I+2:I+2)
+         IF(.NOT.((C1.GE.'0'.AND.C1.LE.'9').OR.C1.EQ.'_')) GO TO 20
+         IF(.NOT.((C2.GE.'A'.AND.C2.LE.'Z').OR.C2.EQ.'_')) GO TO 20
+         IF(.NOT.(C3.EQ.'e'.OR.C3.EQ.'o'.OR.C3.EQ.'_')) GO TO 20
+C        the pattern must start a field and not run into a longer word
+         IF(I.GT.1) THEN
+            IF(TYP(I-1:I-1).NE.' '.AND.TYP(I-1:I-1).NE.'+') GO TO 20
+         END IF
+         IF(I+3.LE.N) THEN
+            IF(TYP(I+3:I+3).NE.' '.AND.
+     *         .NOT.(TYP(I+3:I+3).GE.'0'.AND.TYP(I+3:I+3).LE.'9'))
+     *         GO TO 20
+         END IF
+         IF(C1.NE.'_') ISQ=ICHAR(C1)-ICHAR('0')
+         IF(C2.NE.'_') ILQ=INDEX(SPDF,C2)-1
+         IF(C3.EQ.'e') IPQ=0
+         IF(C3.EQ.'o') IPQ=1
+         RETURN
+   20 CONTINUE
+      RETURN
+      END
+C
+C ********************************************************************
+C
+C
+      SUBROUTINE LSPICK(INION,EXC,ISQ,ILQ,IND)
+C     ========================================
+C
+C     Nearest explicit level of ion INION to the excitation energy EXC,
+C     among those whose term is consistent with (2S+1,L) = (ISQ,ILQ).
+C     A level whose own label leaves a quantum number unspecified stays
+C     eligible, which is what a merged level should do.  IND is left
+C     alone if no level qualifies.
+C
+C     The term is only allowed to settle a LOCAL ambiguity: the match is
+C     rejected if it lies farther from EXC than EWIND and farther than
+C     the nearest level of any term.  Without that, a line whose level is
+C     not in the model atom at all -- P IV 4128 sits 96000 cm-1 above the
+C     highest level of a 14-level P IV atom -- would be moved to some
+C     remote level that merely has the right term, instead of staying on
+C     the top level, where the energy-only association leaves it.
+C
+      INCLUDE 'INCLUDE/PARAMS.FOR'
+      INCLUDE 'INCLUDE/MODELP.FOR'
+      PARAMETER (MNION = MIOEX, MNLEV = MLEVEL, ECONST=5.03411142E15)
+C     how far [cm-1] a term match may sit from the line's level energy
+      PARAMETER (EWIND = 5000.)
+      COMMON/NL2PAR/ELIMEV(MNION,MNLEV),ELIMOD(MNION,MNLEV),
+     *              ELIML(MNION,MNLEV),
+     *              ENREV(MNION,MNLEV),ENROD(MNION,MNLEV),
+     *              INDEV(MNION,MNLEV),INDOD(MNION,MNLEV),
+     *              INDLV(MNION,MNLEV),
+     *              NEVEN(MNION),NODD(MNION),NODD0,NLEVS(MNION),
+     *              IATN(MNION),IONN(MNION),NNION
+      COMMON/PRINTP/TYPLEV
+      CHARACTER*10 TYPLEV(MLEVEL)
+C
+      IF(NLEVS(INION).LE.0) RETURN
+      EION=ENION(INDLV(INION,1))
+      IBEST=0
+      DBEST=0.
+      DNEAR=-1.
+      DO 10 J=1,NLEVS(INION)
+         II=INDLV(INION,J)
+         IF(II.LE.0) GO TO 10
+         E=(EION-ENION(II))*ECONST
+         D=ABS(E-EXC)
+         IF(DNEAR.LT.0..OR.D.LT.DNEAR) DNEAR=D
+         CALL LSTERM(TYPLEV(II),JSQ,JLQ,JPQ)
+         IF(ISQ.GE.0.AND.JSQ.GE.0.AND.JSQ.NE.ISQ) GO TO 10
+         IF(ILQ.GE.0.AND.JLQ.GE.0.AND.JLQ.NE.ILQ) GO TO 10
+         IF(IBEST.EQ.0.OR.D.LT.DBEST) THEN
+            IBEST=II
+            DBEST=D
+         END IF
+   10 CONTINUE
+      IF(IBEST.GT.0.AND.(DBEST.LE.EWIND.OR.DBEST.LE.DNEAR)) IND=IBEST
       RETURN
       END
 C
@@ -10392,8 +10577,24 @@ C          try to find LS terms
            iation = INDAT(IL)
            elo = EXCL0(IL)/C3
            ehi = EXCU0(IL)/C3
-           call findls(elo,iation,qslo,qllo)
-           call findls(ehi,iation,qshi,qlhi)
+C
+C          An extended line list carries the term of both levels, so S
+C          and L come with the line itself and need not be looked up by
+C          energy in zeeman_data.dat.  S = (2S+1-1)/2; -1 means the
+C          record does not say, and the lookup is used as before.
+C
+           if(ISQL0(IL).ge.0.and.ILQL0(IL).ge.0) then
+              qslo = 0.5d0*(ISQL0(IL)-1)
+              qllo = ILQL0(IL)
+            else
+              call findls(elo,iation,qslo,qllo)
+           end if
+           if(ISQU0(IL).ge.0.and.ILQU0(IL).ge.0) then
+              qshi = 0.5d0*(ISQU0(IL)-1)
+              qlhi = ILQU0(IL)
+            else
+              call findls(ehi,iation,qshi,qlhi)
+           end if
 C          find Lande-g for lower and upper level
            call landeg(qslo,qllo,jlo,gjlo)
            call landeg(qshi,qlhi,jhi,gjhi)
@@ -12562,14 +12763,20 @@ C
          wop(ii,id)=un
          if(ifwop(ii).le.0) go to 30
          ie=iel(ii)
-         nq=nquant(ii)
-         if(iz(ie).eq.1) then
-            wop(ii,id)=wnhint(nq,id)
-          else if(iz(ie).eq.2) then
-            wop(ii,id)=wnhe2(nq,id)
-          else
-            z=iz(ie)
-            xn=nq
+         z=iz(ie)
+c
+c        The occupation probability depends on the level only through its
+c        binding energy, so the quantum number handed to WN is the effective
+c        one, n* = Z*sqrt(E_H/E_ion).  For a hydrogenic ion that is the
+c        principal quantum number itself; for a level with a quantum defect,
+c        and for a merged level whose NQUANT is only a placeholder, it is
+c        the only meaningful measure.  A level at or above the ionization
+c        limit (ENION <= 0, i.e. autoionizing, converging to an excited
+c        parent) is left undissolved: its dissolution is not that of the
+c        ground-state series.  Matches WNSTOR in tlusty205_fork.
+c
+         if(enion(ii).gt.0.) then
+            xn=z*sqrt(eh/enion(ii))
             wop(ii,id)=wn(xn,a,id,z)
          end if
    30 continue
@@ -16822,7 +17029,7 @@ C
 C ********************************************************************
 C
 C
-      SUBROUTINE DWNFR1(FR,FR0,FR0G,ID,IZZ,DW1)
+      SUBROUTINE DWNFR1(FR,FR0,ID,IZZ,DW1)
 C     ====================================
 C
 C     dissolved fraction for frequency FR
@@ -16836,9 +17043,15 @@ C
      *           FR0HE14l=8.759d14,FR0HE14h=8.760d14)
 C
       IF(FR.LT.FR0) THEN
-C         XN=SQFRH*IZZ/SQRT(FR0-FR)
-C        more general (not only hydrogenic)
-         XN=SQRT(FR0G)/SQRT(FR0-FR)
+C        FR0-FR is the binding energy of the state the photon reaches, so
+C        XN is that state's effective quantum number, n* = Z*sqrt(nu_H/dE).
+C        It enters only through K_n below.  Scaling instead by the ground
+C        state, XN=SQRT(FR0G)/SQRT(FR0-FR), is the same thing for H I and
+C        He II but not for any ion with a quantum defect, where it misses
+C        n* by sqrt(Z^2*nu_H/nu_gs) at every frequency.  The BETA below is
+C        the general form and is unaffected.  Matches DWNFR2 in
+C        tlusty205_fork.
+         XN=SQFRH*IZZ/SQRT(FR0-FR)
          if(xn.le.tkn) then
             xkn=un
           else
