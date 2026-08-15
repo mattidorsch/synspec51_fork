@@ -12770,8 +12770,8 @@ c        binding energy, so the quantum number handed to WN is the effective
 c        one, n* = Z*sqrt(E_H/E_ion).  For a hydrogenic ion that is the
 c        principal quantum number itself; for a level with a quantum defect,
 c        and for a merged level whose NQUANT is only a placeholder, it is
-c        the only meaningful measure.  A level at or above the ionization
-c        limit (ENION <= 0, i.e. autoionizing, converging to an excited
+c        the only meaningful measure.  A level at or above the ionisation
+c        limit (ENION <= 0, i.e. autoionising, converging to an excited
 c        parent) is left undissolved: its dissolution is not that of the
 c        ground-state series.  Matches WNSTOR in tlusty205_fork.
 c
