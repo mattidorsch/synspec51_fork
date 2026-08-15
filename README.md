@@ -24,6 +24,7 @@ The implementation is similar to that of [Bédard et al. (2020)](https://ui.adsa
 
 If `ihe1pr=2` is set in `fort.55`, the table stored in `data_syn/beachamp_irrgang.dat` will be used.
 
+<br>
 </details>
 
 <details>
@@ -63,6 +64,7 @@ For each ion, the file contains:
 
 This structure allows new ions and energy levels to be added without modifying the source code, aside from enabling the corresponding ions in the standard subroutine `STATE0`.
 
+<br>
 </details>
 
 <details>
@@ -76,6 +78,7 @@ The list is kept compressed, being too large to hold in the repository unpacked.
 
 The list is in the *extended* format described below.
 
+<br>
 </details>
 
 <details>
@@ -105,6 +108,7 @@ One subtlety of the format: the quantum numbers belong to the fields as written,
 
 A standard list can be given the six columns by matching it against an extended one on the ion, the two J values and the two level energies; `lltools` does that.
 
+<br>
 </details>
 
 <details>
@@ -119,6 +123,7 @@ Zeeman splitting requires the L and S quantum numbers of the lower and upper lev
 
 This matters mostly outside the optical. `zeeman_data.dat` holds thirty ions, so with a standard line list nearly every iron-group and heavy-metal line in the UV was being split as a normal triplet; with an extended list about 85% of the strong optical lines and 45% of the strong UV lines get a real Landé factor instead. Lines whose record gives no term, among them the term-summed He I entries, fall back to the table and are unchanged.
 
+<br>
 </details>
 
 <details>
@@ -135,6 +140,7 @@ so `v -> vt_top` high in the atmosphere (small column mass `m` in g/cm2) and `->
 
 [Lanz, Hubeny & Heap (1997)](https://ui.adsabs.harvard.edu/abs/1997ApJ...485..843L/abstract) inferred ~10 km/s from the iron lines of BD+75 325 and 15-20 km/s from its N V resonance lines. A height-dependent law does not reproduce that split for this star: N V improves only in proportion to the degradation of regions the model otherwise fits well.
 
+<br>
 </details>
 
 <details>
@@ -150,6 +156,7 @@ Frequency points are placed only around selected lines, and `INILIN` then shrink
 FULLRANGE
 ```
 
+<br>
 </details>
 
 <details>
@@ -170,6 +177,7 @@ with `tau` scaled from the column mass around the line's reference depth and int
 
 `ABSTD` keeps its other role as the `AVAB` selection threshold, so `fort.7` and `fort.17` are unaffected.
 
+<br>
 </details>
 
 <details>
@@ -263,6 +271,7 @@ i.e. clumping peaked at the beta-law graft (D = 50, decaying outward on 200 km/s
 
 The base-peaked clumping is what keeps C IV alive in the slow wind: recombination scales with the in-clump electron density, so raising `D` from 10 to 50 near the graft multiplies the C IV fraction by ~3.5 (and C III by ~13) while *reducing* the dominant N V stage by ~2. An earlier version of this model used the empirical `TILT` instead; the clumping law reproduces it exactly in C IV and fits N V slightly better, so no tilt is needed. Note `D = 50` at the base is a large contrast, and it does real work in the fit - treat it as the parameter most in need of an independent check.
 
+<br>
 </details>
 
 <details>
@@ -277,4 +286,5 @@ The base-peaked clumping is what keeps C IV alive in the slow wind: recombinatio
 
 * Wind mode: frequency handling (the opacity table is padded by +-`vinf`/c) and the line-centre indexing in the wind layers - see *Wind mode*.
 
+<br>
 </details>
