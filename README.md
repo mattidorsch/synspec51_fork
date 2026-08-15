@@ -9,15 +9,16 @@ The `DATA` folder was renamed to `data`, and a `data_syn` folder was added. The 
 `make` builds `synspec51_fork` and, when needed, unpacks the line list; see *Updated line list*.
 
 
-### Features
+### Features and fixes
 
 
 <details>
-<summary><b>He I broadening</b> - Beauchamp, Gianninas, Lara and Tremblay tables; <code>ihe1pr=2</code></summary>
+<summary><b>He I broadening</b></summary>
+<br>
 
-The implementation is similar to that of [Bédard et al. (2020)](https://ui.adsabs.harvard.edu/abs/2020ApJ...901...93B/abstract), using the tables of [Beauchamp et al. (1997)](https://ui.adsabs.harvard.edu/abs/1997ApJS..108..559B/abstract),  [Gianninas et al. (2009)](https://ui.adsabs.harvard.edu/abs/2009A%26A...503..293G/abstract), and [Lara et al. (2012)](https://ui.adsabs.harvard.edu/abs/2012A%26A...542A..75L/abstract). Also provided are tables from [Tremblay et al. (2026)](https://ui.adsabs.harvard.edu/abs/2026ApJ..1000..253T/abstract) in the same format. Tables:
+The implementation is similar to that of [Bédard et al. (2020)](https://ui.adsabs.harvard.edu/abs/2020ApJ...901...93B/abstract), using the tables of [Beauchamp et al. (1997)](https://ui.adsabs.harvard.edu/abs/1997ApJS..108..559B/abstract), [Gianninas et al. (2009)](https://ui.adsabs.harvard.edu/abs/2009A%26A...503..293G/abstract), and [Lara et al. (2012)](https://ui.adsabs.harvard.edu/abs/2012A%26A...542A..75L/abstract). Also provided are tables from [Tremblay et al. (2026)](https://ui.adsabs.harvard.edu/abs/2026ApJ..1000..253T/abstract) in the same format. Tables:
 
-- `data_syn/beachamp_irrgang.dat`: This is a fixed version of the Beauchamp+ 1997 tables, excluding poorly normalised tables. For He I 4471, data from Gigosos+ (2009) is used, and data from Lara+ (2012) for 4922. This fixed table was constructed by Andreas Irrgang and Matti Dorsch, in collaboration with Antoine Bédarad. Cite Bédard et al. (2020), Lara et al. (2012), Gianninas et al. (2009), and Beauchamp et al. (1997). 
+- `data_syn/beachamp_irrgang.dat`: This is a fixed version of the Beauchamp+ 1997 tables, excluding poorly normalised tables. For He I 4471, data from Gigosos+ (2009) is used, and data from Lara+ (2012) for 4922. This fixed table was constructed by Andreas Irrgang and Matti Dorsch, in collaboration with Antoine Bédard. Cite Bédard et al. (2020), Lara et al. (2012), Gianninas et al. (2009), and Beauchamp et al. (1997). 
 - `data_syn/Tremblay26_format.dat`: Tables from Tremblay et al. (2026) in the Beauchamp+ 1997 format. Cite Tremblay et al. (2026). 
 - `data_syn/Beachamp25_LD_format.dat`: Tables from Tremblay et al. (2026) in the Beauchamp+ 1997 format, but using only the recomputed Beachamp tables. Cite Tremblay et al. (2026).
 
@@ -26,7 +27,8 @@ If `ihe1pr=2` is set in `fort.55`, the table stored in `data_syn/beachamp_irrgan
 </details>
 
 <details>
-<summary><b>Heavy-metal ionisation data</b> - ionisation stages beyond III for <code>Z &gt; 30</code>, levels in an external file</summary>
+<summary><b>Heavy-metal ionisation data</b></summary>
+<br>
 
 Support for heavy metals (`Z > 30`) has been extended to ionisation stages beyond III, typically up to VII. See [Dorsch et al. (2019)](https://ui.adsabs.harvard.edu/abs/2019A%26A...630A.130D/abstract) for the basic implementation and initial atomic data sources. A major extension of the line list is described in [Dorsch et al. (2026)](https://ui.adsabs.harvard.edu/abs/2026A%26A...711A..63D/abstract). 
 
@@ -44,30 +46,31 @@ For each ion, the file contains:
    ```text
    ELEMENT ION_STAGE NLEVELS IONIZATION_POTENTIAL ATOMIC_NUMBER
    ```
-   * `ELEMENT` - chemical element symbol
-   * `ION_STAGE` - ionisation stage
-   * `NLEVELS` - number of energy levels listed for the ion
-   * `IONIZATION_POTENTIAL` - ionisation potential in **eV**
-   * `ATOMIC_NUMBER` - atomic number of the element
+ * `ELEMENT` - chemical element symbol
+ * `ION_STAGE` - ionisation stage
+ * `NLEVELS` - number of energy levels listed for the ion
+ * `IONIZATION_POTENTIAL` - ionisation potential in **eV**
+ * `ATOMIC_NUMBER` - atomic number of the element
 
 2. Followed by `NLEVELS` entries of the form:
    ```text
    N G EN S
    ```
-   * `N` - principal quantum number
-   * `G` - statistical weight
-   * `EN` - excitation energy in **eV**
-   * `S` - screening constant
+ * `N` - principal quantum number
+ * `G` - statistical weight
+ * `EN` - excitation energy in **eV**
+ * `S` - screening constant
 
 This structure allows new ions and energy levels to be added without modifying the source code, aside from enabling the corresponding ions in the standard subroutine `STATE0`.
 
 </details>
 
 <details>
-<summary><b>Updated line list</b> - Kurucz-based, extended for ionised heavy metals; unpacked by <code>make</code></summary>
+<summary><b>Updated line list</b></summary>
+<br>
 
 The updated line list `data_syn/linelist.dat.gz` is based on R. Kurucz's line list ([Kurucz 2018](https://ui.adsabs.harvard.edu/abs/2018ASPC..515...47K/abstract)) `gfall08oct17.dat`, as available on [Kurucz's website](http://kurucz.harvard.edu/linelists/gfnew/gfall08oct17.dat). 
-The list provided here includes many more transitions for ionised heavy metals, as well as updated line positions mostly for lines seen in UV and optical spectra of He-sdO/B stars. Some references are described by [Dorsch et al. (2019)](https://ui.adsabs.harvard.edu/abs/2019A%26A...630A.130D/abstract); the list was significantly extended by [Dorsch et al. (2026)](https://ui.adsabs.harvard.edu/abs/2026A%26A...711A..63D/abstract). See `AAREADME_linelist.txt` for a poorly formatted summary.  
+The list provided here includes many more transitions for ionised heavy metals, as well as updated line positions mostly for lines seen in UV and optical spectra of He-sdO/B stars. Some references are described by [Dorsch et al. (2019)](https://ui.adsabs.harvard.edu/abs/2019A%26A...630A.130D/abstract); the list was significantly extended by [Dorsch et al. (2026)](https://ui.adsabs.harvard.edu/abs/2026A%26A...711A..63D/abstract). See `AAREADME_linelist.txt` for a poorly formatted summary. 
 
 The list is kept compressed, being too large to hold in the repository unpacked. `make` unpacks it to `data_syn/linelist.dat` whenever the archive is the newer of the two, or nothing is unpacked yet, so no separate step is needed; `make linelist` does only that. The unpacked copy is not tracked.
 
@@ -76,7 +79,8 @@ The list is in the *extended* format described below.
 </details>
 
 <details>
-<summary><b>Level identification from the line list</b> - association by term rather than by energy alone</summary>
+<summary><b>Level identification from the line list</b></summary>
+<br>
 
 For every line, synspec has to decide which explicit NLTE level of the model atom it belongs to, so that it can use that level's departure coefficient. With a standard line list it can only go by energy: it takes the explicit level nearest in energy, the boundaries lying halfway between neighbours (Paper I, Appendix B).
 
@@ -104,7 +108,8 @@ A standard list can be given the six columns by matching it against an extended 
 </details>
 
 <details>
-<summary><b>Linear Zeeman splitting</b> - <code>imode=3</code> in <code>fort.55</code>, field strength and viewing angle</summary>
+<summary><b>Linear Zeeman splitting</b></summary>
+<br>
 
 To enable linear Zeeman splitting ([Dorsch et al. 2022](https://ui.adsabs.harvard.edu/abs/2022A%26A...658L...9D/abstract)), set `imode=3` in `fort.55`, followed by two numbers on a new line:
 - `bfield` - magnetic field strength in kG
@@ -117,7 +122,8 @@ This matters mostly outside the optical. `zeeman_data.dat` holds thirty ions, so
 </details>
 
 <details>
-<summary><b>Depth-dependent turbulent velocity</b> - <code>VTURB</code>: a tanh law in column mass instead of a constant <code>vtb</code></summary>
+<summary><b>Depth-dependent turbulent velocity</b></summary>
+<br>
 
 `VTURB` may be placed on the line immediately after the `vtb` record (line 8), in static as well as wind runs:
 ```text
@@ -132,7 +138,8 @@ so `v -> vt_top` high in the atmosphere (small column mass `m` in g/cm2) and `->
 </details>
 
 <details>
-<summary><b>Full-range frequency grid</b> - <code>FULLRANGE</code>: cover the requested interval even where no line is selected</summary>
+<summary><b>Full-range frequency grid</b></summary>
+<br>
 
 Frequency points are placed only around selected lines, and `INILIN` then shrinks `alam0`/`alast` to their span, so an interval with no line above the strength cut returns two points of `Infinity`/`NaN` instead of a spectrum. The optional keyword `FULLRANGE [gap]`, on the line after `vtb` (or after a `VTURB` line), covers the requested interval regardless, filling line-free stretches at `gap` times the fort.55 `space` (default 1). Without it the original code path is taken, bit-identical on `fort.7`/`12`/`16`/`17` over 1140-4000 A.
 
@@ -146,7 +153,8 @@ FULLRANGE
 </details>
 
 <details>
-<summary><b>Line strengths against the local background</b> - <code>fort.12</code> strengths and equivalent widths from Eddington-Barbier depths</summary>
+<summary><b>Line strengths against the local background</b></summary>
+<br>
 
 The `fort.12` strength `STR0` is the line/background opacity ratio at the line centre. `OPAC` accumulates metal and molecular line opacity separately and stores `ABKG = total - metal lines`, so the background carries the continuum, H lines and He II lines but neither the line itself nor its blends; `IDTAB` divides by `ABKG`, falling back to `ABSTD` where it is not larger.
 
@@ -165,7 +173,8 @@ with `tau` scaled from the column mass around the line's reference depth and int
 </details>
 
 <details>
-<summary><b>Wind mode</b> - beta-law envelope, clumping, wind NLTE, discrete absorbers</summary>
+<summary><b>Wind mode</b></summary>
+<br>
 
 Synspec includes a wind mode that solves the transfer equation in the observer's frame along impact-parameter rays through a spherically expanding envelope, producing asymmetric (blue-shifted) line profiles. It was introduced by [Lanz et al. (1997)](https://ui.adsabs.harvard.edu/abs/1997ApJ...485..843L/abstract) to measure the weak wind of BD+75 325, where the wind was described simply by imposing a velocity field from the continuity equation on the hydrostatic photospheric structure.
 
@@ -198,13 +207,13 @@ Only the first two records are required, and the second holds nothing beyond `nd
 - `amloss`, `vinf`, `beta` - mass-loss rate (Msun/yr) and beta-law parameters `v = vinf*(1-r0/r)**beta`; the velocity follows the continuity equation `v = Mdot/(4 pi r**2 rho)` in the hydrostatic part and transitions smoothly to the beta law
 - `ndrad` - total radial layers (model ND + added wind layers). This is the only resolution parameter: the number of core rays, the velocity-resolved fine grid along the tangent rays, and the depth grid of the opacity table are fixed at converged values
 - `dclmax`, `vclm`, `dfloor` (optional) - clumping, density contrast `D = 1/f_vol`; omit for a smooth wind. Two forms, selected by the sign of `vclm`:
-  - `vclm > 0`: `D(v) = 1 + (dclmax-1)*exp(-vclm/v)` - clumping switches on above `vclm` and rises outward to `dclmax`. `vclm = 0` gives a depth-independent `D = dclmax`
-  - `vclm < 0`: `D(v) = dfloor + (dclmax-dfloor)*exp(-(v-v_graft)/|vclm|)` - clumping peaks at the beta-law graft and decays outward on the scale `|vclm|` to `dfloor` (default 1). Confined to the added wind layers: unlike the `vclm > 0` form it does not vanish as `v -> 0`, so it would otherwise clump the hydrostatic photosphere. This form matters because recombination scales with the in-clump electron density, so a base-peaked `D` keeps trace ions (C IV, C III) alive in the slow wind while barely touching a dominant stage like N V
+ - `vclm > 0`: `D(v) = 1 + (dclmax-1)*exp(-vclm/v)` - clumping switches on above `vclm` and rises outward to `dclmax`. `vclm = 0` gives a depth-independent `D = dclmax`
+ - `vclm < 0`: `D(v) = dfloor + (dclmax-dfloor)*exp(-(v-v_graft)/|vclm|)` - clumping peaks at the beta-law graft and decays outward on the scale `|vclm|` to `dfloor` (default 1). Confined to the added wind layers: unlike the `vclm > 0` form it does not vanish as `v -> 0`, so it would otherwise clump the hydrostatic photosphere. This form matters because recombination scales with the in-clump electron density, so a base-peaked `D` keeps trace ions (C IV, C III) alive in the slow wind while barely touching a dominant stage like N V
 - `twind` (optional) - if > 0, the added wind layers get the diluted radiative-equilibrium temperature `T = T_s * Wn^(1/4)` (`Wn` = geometric dilution, `T_s` = outermost model temperature), floored at `twind*T_s` (typical 0.4), and the NLTE line source function in those layers is diluted by `Wn` (normalised to 1 at the graft; hydrostatic layers keep their solved NLTE state). Omit or 0 for an isothermal, undiluted wind. Recommended for `rmax` > a few: the isothermal wind is too hot far out and overestimates the P Cygni emission humps
 - `iwneb` (optional) - wind NLTE mode. In the added wind layers, (a) the ionisation balance is recomputed per layer (element totals preserved), and (b) NLTE lines get a two-level scattering source function `S = (1-eps)*J_cont + eps*B(T)` with the continuum mean intensity from the scattering transfer solution and Kastner's collisional `eps`. Prevents saturated black troughs and removes excess low-velocity absorption of the dominant ion stage; recommended together with `twind`; quantitative work should still use PoWR/CMFGEN/FASTWIND instead. Values:
-  - `1` - absolute nebular balance, `n(k+1)/n(k) = W*Gamma_k/(ne*alpha_k)`: photoionisation rates `Gamma_k` from the TLUSTY SED (**requires `fort.13.tlusty`**, the TLUSTY unit-13 spectrum `freq[Hz] H_nu`, in the run directory) and RR+DR recombination fits from `data_syn/wind_recomb.dat`: radiative rates from [Badnell (2006)](https://ui.adsabs.harvard.edu/abs/2006ApJS..167..334B/abstract), dielectronic rates from [Shull & Van Steenberg (1982)](https://ui.adsabs.harvard.edu/abs/1982ApJS...48...95S/abstract), Table 2.
-  - `2` - as 1, but ions missing from `wind_recomb.dat` use the hydrogenic [Seaton (1959)](https://ui.adsabs.harvard.edu/abs/1959MNRAS.119...81S/abstract) formula instead of stopping.
-  - `3` - differential scaling, no SED or atomic data needed: stage ratios scaled by `q = (W/W_s)*(ne_s/ne)*(T/T_s)^0.8` relative to the graft layer `s`.
+ - `1` - absolute nebular balance, `n(k+1)/n(k) = W*Gamma_k/(ne*alpha_k)`: photoionisation rates `Gamma_k` from the TLUSTY SED (**requires `fort.13.tlusty`**, the TLUSTY unit-13 spectrum `freq[Hz] H_nu`, in the run directory) and RR+DR recombination fits from `data_syn/wind_recomb.dat`: radiative rates from [Badnell (2006)](https://ui.adsabs.harvard.edu/abs/2006ApJS..167..334B/abstract), dielectronic rates from [Shull & Van Steenberg (1982)](https://ui.adsabs.harvard.edu/abs/1982ApJS...48...95S/abstract), Table 2.
+ - `2` - as 1, but ions missing from `wind_recomb.dat` use the hydrogenic [Seaton (1959)](https://ui.adsabs.harvard.edu/abs/1959MNRAS.119...81S/abstract) formula instead of stopping.
+ - `3` - differential scaling, no SED or atomic data needed: stage ratios scaled by `q = (W/W_s)*(ne_s/ne)*(T/T_s)^0.8` relative to the graft layer `s`.
 - `vtwind` (optional) - if > 0, wind microturbulence: `v_turb = max(vtb, vtwind*v(r))` in the added layers (typical 0.1); hydrostatic layers keep `vtb`
 - `vblnd` (optional) - velocity scale (km/s) of the sonic blend between frozen model ionisation and the nebular balance (default 10)
 - `vplat`, `rplat` (optional) - slow dense base zone: the velocity rises only slowly to `vplat` (km/s) out to `rplat` (units of `rstar`) before the beta-law starts; density from continuity is correspondingly enhanced there. Produces broad low-velocity absorption cores of wind lines (a "filled-in" transition zone); `vplat=0` disables
@@ -256,10 +265,9 @@ The base-peaked clumping is what keeps C IV alive in the slow wind: recombinatio
 
 </details>
 
-### Fixes
-
 <details>
-<summary><b>Bug fixes</b> - occupation probabilities, dissolved fractions, wind frequencies</summary>
+<summary><b>Bug fixes</b></summary>
+<br>
 
 * **Occupation probabilities from the wrong quantum number.** `WNSTOR` took the quantum number of a level from `NQUANT` in the atomic data file. The model atoms use `NQUANT` as a placeholder - commonly 20 - for exactly the high-lying and merged levels where level dissolution acts, so `IFWOP=1` could not safely be set on a non-hydrogenic atom. It now uses the effective quantum number implied by the binding energy, `n* = Z sqrt(E_H/E_ion)`, which is the principal quantum number itself for a hydrogenic ion.
 
@@ -267,6 +275,6 @@ The base-peaked clumping is what keeps C IV alive in the slow wind: recombinatio
 
 * **Dissolved fractions scaled by the ground state.** `DWNFR1` scaled the effective quantum number by the ground-state ionisation energy. That is exact for H I and He II and misses `n*` by `sqrt(Z^2 nu_H / nu_gs)` for anything else. It now uses the same `n*` as above, so the two are consistent, as are synspec and `tlusty205_fork`, which otherwise disagree about the occupation probability of any non-hydrogenic level.
 
-* Wind mode: frequency handling (the opacity table is padded by ±`vinf`/c) and the line-centre indexing in the wind layers - see *Wind mode*.
+* Wind mode: frequency handling (the opacity table is padded by +-`vinf`/c) and the line-centre indexing in the wind layers - see *Wind mode*.
 
 </details>
