@@ -8873,6 +8873,10 @@ C
      *           AGR0=2.4734E-22, 
      *           XEH=13.595, XET=8067.6, XNF=25.,
      *           R02=2.5, R12=45., VW0=4.5E-9)
+C
+C     log gamma bounds, range check below
+C
+      PARAMETER (GSMIN=-12., GSMAX=4., GWMIN=-12., GWMAX=0.)
       PARAMETER (ENHE1=198310.76, ENHE2=438908.85)
 
       DATA INLSET /0/
@@ -9129,6 +9133,15 @@ C
       end if
 C
 C     ****** line broadening parameters *****
+C
+C     range check on the tabulated log gammas; out of range = corrupt,
+C     taken as absent, classical estimates below take over. offenders:
+C     autoionizing S I, Al I, Ca I of the Kurucz lists, log gamma_Stark
+C     to +19 (Voigt parameter 1.E20, fort.12 overflow) or both columns
+C     near -17 (no broadening at all)
+C
+      IF(GS.LT.GSMIN.OR.GS.GT.GSMAX) GS=0.
+      IF(GW.LT.GWMIN.OR.GW.GT.GWMAX) GW=0.
 C
 C     1) natural broadening
 C
@@ -13684,9 +13697,9 @@ C
 C     Integrated as: Simpson on the Doppler core, Simpson in log x over
 C     the wing, and the Lorentz tail beyond XTOP in closed form. The tail
 C     is weak by construction, so D is linearised there, giving
-C     int_X^inf B/(x*x+B) dx = sqrt(B)*atan(sqrt(B)/X), B = A*S/sqrt(pi),
-C     scaled by the local dD/deta. That carries the damping part, so no
-C     separate damping branch is needed.
+C     int_X^inf B/(x*x+Q*Q) dx = B/Q*atan(Q/X), B = A*S/sqrt(pi) and
+C     Q*Q = B + A*A, scaled by the local dD/deta. That carries the
+C     damping part, so no separate damping branch is needed.
 C
       INCLUDE 'INCLUDE/PARAMS.FOR'
       INCLUDE 'INCLUDE/MODELP.FOR'
@@ -13723,9 +13736,8 @@ C
    10 CONTINUE
       EQWCOG=SUMC*HCOR/THR
 C
-C     wing, XC to XTOP, Simpson in log x. XTOP is set well outside both
-C     the damping width and A itself, so the Lorentz tail below is in its
-C     asymptotic range (its x*x+DAMP form drops the A*A that VOIGTK keeps)
+C     wing, XC to XTOP, Simpson in log x. XTOP outside both the damping
+C     width and A, but XTMAX can clamp it below either
 C
       DAMP=AVGT*S/SQPI
       XTOP=TWO*XC
@@ -13747,11 +13759,14 @@ C
    20 CONTINUE
       EQWCOG=EQWCOG+SUMW*HT/THR
 C
-C     Lorentz tail beyond XTOP, linear in eta with the local slope
+C     Lorentz tail beyond XTOP, linear in eta with the local slope.
+C     TAILQ = the A*A in eta = DAMP/(x*x+A*A); dropped, a clamped
+C     XTOP < A leaves a tail ~ sqrt(DAMP)
 C
       IF(DAMP.GT.0.) THEN
          GRAD0=DEPCOG(EPSCOG,FR,IDX,BREF)/EPSCOG
-         EQWCOG=EQWCOG+GRAD0*SQRT(DAMP)*ATAN(SQRT(DAMP)/XTOP)
+         TAILQ=SQRT(DAMP+AVGT*AVGT)
+         EQWCOG=EQWCOG+GRAD0*DAMP/TAILQ*ATAN(TAILQ/XTOP)
       END IF
       RETURN
       END

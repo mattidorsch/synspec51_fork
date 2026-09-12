@@ -165,7 +165,9 @@ FULLRANGE
 
 The `fort.12` strength `STR0` is the line/background opacity ratio at the line centre. `OPAC` accumulates metal and molecular line opacity separately and stores `ABKG = total - metal lines`, so the background carries the continuum, H lines and He II lines but neither the line itself nor its blends; `IDTAB` divides by `ABKG`, falling back to `ABSTD` where it is not larger.
 
-`EQWCOG` gives the equivalent width as `W/2 = int_0^inf D(eta) dx` over the Voigt profile `eta = STR0*H(a,x)`: Simpson over the Doppler core, Simpson in `log x` over the wing, and the Lorentz tail in closed form, `sqrt(B)*atan(sqrt(B)/x)` for `B = a*STR0/sqrt(pi)` scaled by the local `dD/deta`. The reported width is twice the integral, the profile being symmetric.
+`EQWCOG` gives the equivalent width as `W/2 = int_0^inf D(eta) dx` over the Voigt profile `eta = STR0*H(a,x)`: Simpson over the Doppler core, Simpson in `log x` over the wing, and the Lorentz tail in closed form, `(B/Q)*atan(Q/x)` for `B = a*STR0/sqrt(pi)` and `Q = sqrt(B + a*a)`, scaled by the local `dD/deta`. The reported width is twice the integral, the profile being symmetric.
+
+The `a*a` in `Q` only matters where `XTMAX` clamps the wing limit below `a`, putting the tail inside the Lorentz core; the asymptotic `B/x^2` form would there grow as `sqrt(B)`.
 
 The line depth `D` is from Eddington-Barbier on the model's own `T(m)`: at offset `x` the line reaches `tau = 2/3` where the background has `tau = (2/3)/(1+eta)`, so
 
@@ -176,6 +178,8 @@ D(eta) = 1 - B(nu, T(tau = 2/3/(1+eta))) / B(nu, T(tau = 2/3))
 with `tau` scaled from the column mass around the line's reference depth and interpolated linearly in `log DM`. A saturated core is then dark by the Planck contrast across the formation range rather than black, and a weak line is weaker than its opacity ratio by `dlnB/dlntau`.
 
 `ABSTD` keeps its other role as the `AVAB` selection threshold, so `fort.7` and `fort.17` are unaffected.
+
+`INILIN` accepts a tabulated `log gamma_Stark` in `-12` to `4` and `log gamma_vdW` in `-12` to `0`, otherwise taking the classical estimate as for an absent value: Kurucz lists give some autoionizing S I, Al I and Ca I transitions a `log gamma_Stark` of up to `+19`.
 
 <br>
 </details>
